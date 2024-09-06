@@ -238,11 +238,23 @@ jobs:
           console.log('Issue/PR number:', issue_number);
           
           try {
+            const workflowRunId = context.runId;
+            const artifactName = 'aws-architecture-diagrams';
+            const commentBody = `AWS Architecture recommendation has been generated. 
+
+          To view the diagram:
+          1. Go to the [Actions tab](https://github.com/${owner}/${repo}/actions/runs/${workflowRunId})
+          2. Scroll down to the "Artifacts" section
+          3. Download the "${artifactName}" artifact
+          4. Extract the ZIP file to view the diagram
+
+          If you have any questions or need further clarification, please let me know.`;
+
             await github.rest.issues.createComment({
               owner: owner,
               repo: repo,
               issue_number: issue_number,
-              body: 'AWS Architecture recommendation has been generated. Please check the artifacts for the diagram.'
+              body: commentBody
             });
             console.log('Comment posted successfully');
           } catch (error) {
@@ -251,5 +263,5 @@ jobs:
           }
       # 이 단계는 Pull Request가 생성되거나 업데이트될 때만 실행됩니다.
       # GitHub API를 사용하여 Pull Request에 코멘트를 추가합니다.
-      # 코멘트는 아키텍처 추천 다이어그램이 생성되었음을 알리고, 아티팩트를 확인하도록 안내합니다.
+      # 코멘트는 아키텍처 추천 다이어그램이 생성되었음을 알리고, 아티팩트를 찾는 방법을 상세히 안내합니다.
       # 오류가 발생할 경우 상세한 오류 정보를 로그에 출력합니다.
