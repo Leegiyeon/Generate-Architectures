@@ -1,0 +1,106 @@
+name: AWS Architecture Recommendation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  analyze_and_recommend:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install diagrams openai
+
+    - name: Analyze repository with OpenAI
+      id: repo_analysis
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        python - <<EOF
+        import os
+        import openai
+        import json
+        
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+        
+        def get_repo_structure():
+            structure = ""
+            for root, dirs, files in os.walk("."):
+                level = root.replace(".", "").count(os.sep)
+                indent = " " * 4 * (level)
+                structure += f"{indent}{os.path.basename(root)}/\n"
+                subindent = " " * 4 * (level + 1)
+                for f in files:
+                    structure += f"{subindent}{f}\n"
+            return structure
+        
+        repo_structure = get_repo_structure()
+        
+        prompt = f"""
+        Based on the following repository structure, analyze the project and provide the following information:
+        1. Project type (web, mobile, backend)
+        2. Project scale (small, medium, large)
+        3. Technologies used (comma-separated list)
+        4. Estimated monthly budget in USD
+        5. Performance requirements (comma-separated list)
+
+        Repository structure:
+        {repo_structure}
+
+        Provide the answer in JSON format.
+        """
+        
+        response = openai.ChatCompletion.create(
+          model="gpt-3.5-turbo",
+          messages=[
+                {"role": "system", "content": "You are a helpful assistant that analyzes software projects."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        analysis = json.loads(response.choices[0].message.content)
+        
+        for key, value in analysis.items():
+            print(f"{key}={value}")
+            print(f"{key}={value}" >> $GITHUB_OUTPUT)
+        EOF
+
+    - name: Generate AWS architecture recommendation
+      run: |
+        python aws_architecture_recommender.py \
+          --project-type ${{ steps.repo_analysis.outputs.project_type }} \
+          --scale ${{ steps.repo_analysis.outputs.scale }} \
+          --technologies ${{ steps.repo_analysis.outputs.technologies }} \
+          --budget ${{ steps.repo_analysis.outputs.budget }} \
+          --performance-requirements ${{ steps.repo_analysis.outputs.performance_requirements }}
+
+    - name: Upload architecture diagrams
+      uses: actions/upload-artifact@v2
+      with:
+        name: aws-architecture-diagrams
+        path: aws_architecture_*.png
+
+    - name: Comment PR
+      uses: actions/github-script@v6
+      if: github.event_name == 'pull_request'
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.name,
+            body: 'AWS Architecture recommendation has been generated. Please check the artifacts for the diagram.'
+          })
