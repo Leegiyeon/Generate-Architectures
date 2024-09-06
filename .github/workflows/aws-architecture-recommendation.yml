@@ -99,7 +99,7 @@ jobs:
     - name: Analyze repository with OpenAI
       id: repo_analysis
       env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 설정
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
         python - <<EOF
         import os
