@@ -1,4 +1,5 @@
 import argparse
+import os
 from diagrams import Diagram, Edge, Cluster
 from diagrams.aws.compute import EC2, ECS, Lambda, ElasticBeanstalk
 from diagrams.aws.database import RDS, Dynamodb, ElastiCache
@@ -99,7 +100,37 @@ def analyze_requirements(project_type, scale, technologies, budget, performance_
     return architectures
 
 def generate_architecture_diagram(architecture, filename):
-    with Diagram(architecture["name"], show=False, filename=filename):
+    # Graphviz 설정
+    os.environ["PATH"] += os.pathsep + '/usr/local/bin'  # Graphviz 경로 추가
+    os.environ["DIAGRAMS_FONT"] = "Arial"  # 시스템에 설치된 폰트 사용
+
+    graph_attr = {
+        "fontsize": "45",
+        "bgcolor": "transparent",
+        "dpi": "300",  # 해상도 증가
+        "fontname": "Arial",
+        "splines": "ortho",  # 직각 연결선 사용
+    }
+    
+    node_attr = {
+        "fontsize": "14",
+        "fontname": "Arial",
+    }
+    
+    edge_attr = {
+        "fontsize": "12",
+        "fontname": "Arial",
+    }
+
+    with Diagram(
+        architecture["name"],
+        show=False,
+        filename=filename,
+        outformat="png",  # PNG 형식 사용
+        graph_attr=graph_attr,
+        node_attr=node_attr,
+        edge_attr=edge_attr
+    ):
         with Cluster("AWS 클라우드"):
             components = {}
             # 각 컴포넌트에 대한 다이어그램 객체 생성
