@@ -224,13 +224,20 @@ jobs:
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
-          github.rest.issues.createComment({
-            owner: context.repo.owner,
-            repo: context.repo.name,
-            issue_number: context.payload.pull_request.number,
+          const { owner, repo } = context.repo;
+          const issue_number = context.issue.number;
+          
+          console.log('Owner:', owner);
+          console.log('Repo:', repo);
+          console.log('Issue/PR number:', issue_number);
+          
+          await github.rest.issues.createComment({
+            owner: owner,
+            repo: repo,
+            issue_number: issue_number,
             body: 'AWS Architecture recommendation has been generated. Please check the artifacts for the diagram.'
-          })
+          });
       # 이 단계는 Pull Request가 생성되거나 업데이트될 때만 실행됩니다.
       # GitHub API를 사용하여 Pull Request에 코멘트를 추가합니다.
       # 코멘트는 아키텍처 추천 다이어그램이 생성되었음을 알리고, 아티팩트를 확인하도록 안내합니다.
-      # 'issue_number'를 사용하는 이유는 GitHub API에서 Pull Request를 Issue의 특별한 형태로 취급하기 때문입니다.
+      # owner, repo, issue_number를 동적으로 가져와 사용하므로 이전의 404 에러를 해결할 수 있습니다.
