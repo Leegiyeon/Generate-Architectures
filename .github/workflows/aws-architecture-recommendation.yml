@@ -62,7 +62,7 @@ jobs:
         1. Project type (web, mobile, backend)
         2. Project scale (small, medium, large)
         3. Technologies used (comma-separated list)
-        4. Estimated monthly budget in USD
+        4. Estimated monthly budget in USD (provide a number, e.g. 1000)
         5. Performance requirements (comma-separated list)
 
         Repository structure:
@@ -80,14 +80,41 @@ jobs:
                 ]
             )
             
+            # Log the full API response
+            print("Full API Response:")
+            print(json.dumps(response.model_dump(), indent=2))
+            
             content = response.choices[0].message.content.strip()
             if not content:
                 raise ValueError("API로부터 빈 응답을 받았습니다")
             
+            # Log the raw content received from the API
+            print("Raw content received from API:")
+            print(content)
+            
             analysis = json.loads(content)
             
-            for key, value in analysis.items():
+            # Log the parsed JSON
+            print("Parsed JSON:")
+            print(json.dumps(analysis, indent=2))
+            
+            # 기본값 설정 및 출력
+            defaults = {
+                "project_type": "web",
+                "scale": "small",
+                "technologies": "python",
+                "budget": "1000",
+                "performance_requirements": "low_latency"
+            }
+            
+            # Log the final values (after applying defaults if necessary)
+            print("Final values:")
+            for key, default_value in defaults.items():
+                value = analysis.get(key, default_value)
+                if not value:  # 빈 문자열인 경우 기본값 사용
+                    value = default_value
                 print(f"{key}={value}")
+                
         except json.JSONDecodeError as e:
             print(f"JSON 디코드 오류: {e}")
             print(f"받은 내용: {content}")
@@ -98,20 +125,34 @@ jobs:
     - name: 출력 설정
       id: set_outputs
       run: |
-        echo "${{ steps.repo_analysis.outputs.* }}" | while IFS= read -r line; do
-          key=$(echo $line | cut -d'=' -f1)
-          value=$(echo $line | cut -d'=' -f2-)
-          echo "$key=$value" >> $GITHUB_OUTPUT
-        done
+        echo "Captured outputs:"
+        cat $GITHUB_STEP_SUMMARY
+        echo "Setting outputs:"
+        while IFS='=' read -r key value; do
+          if [ -n "$value" ]; then
+            echo "$key=$value"
+            echo "$key=$value" >> $GITHUB_OUTPUT
+          else
+            echo "$key=default_value"
+            echo "$key=default_value" >> $GITHUB_OUTPUT
+          fi
+        done < <(cat $GITHUB_STEP_SUMMARY)
 
     - name: AWS 아키텍처 추천 다이어그램 생성
       run: |
+        echo "Generating AWS architecture diagram with the following parameters:"
+        echo "Project Type: ${{ steps.set_outputs.outputs.project_type || 'web' }}"
+        echo "Scale: ${{ steps.set_outputs.outputs.scale || 'small' }}"
+        echo "Technologies: ${{ steps.set_outputs.outputs.technologies || 'python' }}"
+        echo "Budget: ${{ steps.set_outputs.outputs.budget || '1000' }}"
+        echo "Performance Requirements: ${{ steps.set_outputs.outputs.performance_requirements || 'low_latency' }}"
+        
         python generate_aws_architectures.py \
-          --project-type "${{ steps.set_outputs.outputs.project_type }}" \
-          --scale "${{ steps.set_outputs.outputs.scale }}" \
-          --technologies "${{ steps.set_outputs.outputs.technologies }}" \
-          --budget "${{ steps.set_outputs.outputs.budget }}" \
-          --performance-requirements "${{ steps.set_outputs.outputs.performance_requirements }}"
+          --project-type "${{ steps.set_outputs.outputs.project_type || 'web' }}" \
+          --scale "${{ steps.set_outputs.outputs.scale || 'small' }}" \
+          --technologies "${{ steps.set_outputs.outputs.technologies || 'python' }}" \
+          --budget "${{ steps.set_outputs.outputs.budget || '1000' }}" \
+          --performance-requirements "${{ steps.set_outputs.outputs.performance_requirements || 'low_latency' }}"
         echo "다이어그램 생성 완료. 출력 파일 확인 중..."
         ls -l aws_architecture_*.png || echo "다이어그램 파일을 찾을 수 없습니다."
 
