@@ -211,14 +211,14 @@ jobs:
     # 11. Pull Request에 코멘트 추가 (Pull Request 이벤트인 경우에만)
     - name: Comment PR
       uses: actions/github-script@v6
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && github.event.action != 'closed'
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
           github.rest.issues.createComment({
-            issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.name,
+            issue_number: context.payload.pull_request.number,
             body: 'AWS Architecture recommendation has been generated. Please check the artifacts for the diagram.'
           })
       # Pull Request가 생성되었을 때, 자동으로 코멘트를 추가합니다.
