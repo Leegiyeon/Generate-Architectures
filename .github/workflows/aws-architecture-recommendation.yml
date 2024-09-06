@@ -1,3 +1,4 @@
+# 워크플로우 이름 설정
 name: AWS Architecture Recommendation
 
 # 워크플로우 트리거 조건 설정
@@ -54,6 +55,7 @@ jobs:
                     structure += f"{subindent}{f}\n"
             return structure
         
+        # 레포지토리 구조 가져오기
         repo_structure = get_repo_structure()
         
         # OpenAI API에 전송할 프롬프트 구성
@@ -71,20 +73,38 @@ jobs:
         Provide the answer in JSON format.
         """
         
-        # OpenAI API 호출 (최신 버전 방식)
-        response = client.chat.completions.create(
-          model="gpt-3.5-turbo",
-          messages=[
-                {"role": "system", "content": "You are a helpful assistant that analyzes software projects."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        # API 응답 파싱 및 출력
-        analysis = json.loads(response.choices[0].message.content)
-        
-        for key, value in analysis.items():
-            print(f"{key}={value}")
+        try:
+            # OpenAI API 호출
+            response = client.chat.completions.create(
+              model="gpt-3.5-turbo",
+              messages=[
+                    {"role": "system", "content": "You are a helpful assistant that analyzes software projects."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            # 디버깅을 위한 출력
+            print("API Response:", response)
+            print("Message Content:", response.choices[0].message.content)
+            
+            # JSON 파싱 전에 content가 비어있지 않은지 확인
+            content = response.choices[0].message.content.strip()
+            if not content:
+                raise ValueError("Empty response from API")
+            
+            # API 응답을 JSON으로 파싱
+            analysis = json.loads(content)
+            
+            # 파싱된 결과 출력
+            for key, value in analysis.items():
+                print(f"{key}={value}")
+        except json.JSONDecodeError as e:
+            # JSON 디코딩 오류 처리
+            print(f"JSON Decode Error: {e}")
+            print(f"Received content: {content}")
+        except Exception as e:
+            # 기타 예외 처리
+            print(f"An error occurred: {e}")
         EOF
 
     # 5. OpenAI 분석 결과를 GitHub Actions 출력으로 설정
