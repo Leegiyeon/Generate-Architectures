@@ -25,7 +25,14 @@ jobs:
         python-version: '3.x'  # 최신 Python 3 버전 사용
       # Python 실행 환경을 설정합니다. 최신 버전의 Python 3를 사용합니다.
 
-    # 3. 필요한 Python 패키지 설치
+    # 3. Graphviz 설치
+    - name: Install Graphviz
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y graphviz
+      # Graphviz를 설치합니다. 이는 다이어그램 생성에 필요한 도구입니다.
+
+    # 4. 필요한 Python 패키지 설치
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -33,7 +40,7 @@ jobs:
       # pip를 최신 버전으로 업그레이드하고, 필요한 패키지(diagrams, openai)를 설치합니다.
       # openai는 최신 버전(1.0.0 이상)을 사용합니다.
 
-    # 4. aws_architecture_recommender.py 파일 생성
+    # 5. aws_architecture_recommender.py 파일 생성
     - name: Create aws_architecture_recommender.py
       run: |
         cat << EOF > aws_architecture_recommender.py
@@ -76,7 +83,7 @@ jobs:
       # 이 단계에서는 aws_architecture_recommender.py 파일을 생성합니다.
       # 이 스크립트는 프로젝트 분석 결과를 바탕으로 AWS 아키텍처 다이어그램을 생성합니다.
 
-    # 5. 파일 생성 확인
+    # 6. 파일 생성 확인
     - name: Check file existence
       run: |
         if [ -f "aws_architecture_recommender.py" ]; then
@@ -88,7 +95,7 @@ jobs:
       # 생성된 aws_architecture_recommender.py 파일의 존재 여부를 확인합니다.
       # 파일이 없으면 오류를 발생시키고 워크플로우를 중단합니다.
 
-    # 6. OpenAI API를 사용하여 레포지토리 분석
+    # 7. OpenAI API를 사용하여 레포지토리 분석
     - name: Analyze repository with OpenAI
       id: repo_analysis
       env:
@@ -168,7 +175,7 @@ jobs:
       # 이 단계에서는 OpenAI API를 사용하여 레포지토리 구조를 분석합니다.
       # 분석 결과는 프로젝트 유형, 규모, 사용 기술, 예상 예산, 성능 요구사항을 포함합니다.
 
-    # 7. OpenAI 분석 결과를 GitHub Actions 출력으로 설정
+    # 8. OpenAI 분석 결과를 GitHub Actions 출력으로 설정
     - name: Set outputs
       id: set_outputs
       run: |
@@ -180,7 +187,7 @@ jobs:
       # OpenAI API를 통해 얻은 분석 결과를 GitHub Actions의 출력 변수로 설정합니다.
       # 이를 통해 다음 단계에서 분석 결과를 사용할 수 있습니다.
 
-    # 8. AWS 아키텍처 추천 다이어그램 생성
+    # 9. AWS 아키텍처 추천 다이어그램 생성
     - name: Generate AWS architecture recommendation
       run: |
         python aws_architecture_recommender.py \
@@ -192,7 +199,7 @@ jobs:
       # 이전 단계에서 얻은 분석 결과를 바탕으로 AWS 아키텍처 추천 다이어그램을 생성합니다.
       # aws_architecture_recommender.py 스크립트를 실행하여 다이어그램을 생성합니다.
 
-    # 9. 생성된 아키텍처 다이어그램 업로드
+    # 10. 생성된 아키텍처 다이어그램 업로드
     - name: Upload architecture diagrams
       uses: actions/upload-artifact@v2
       with:
@@ -201,7 +208,7 @@ jobs:
       # 생성된 AWS 아키텍처 다이어그램을 아티팩트로 업로드합니다.
       # 이를 통해 워크플로우 실행 결과에서 다이어그램을 확인할 수 있습니다.
 
-    # 10. Pull Request에 코멘트 추가 (Pull Request 이벤트인 경우에만)
+    # 11. Pull Request에 코멘트 추가 (Pull Request 이벤트인 경우에만)
     - name: Comment PR
       uses: actions/github-script@v6
       if: github.event_name == 'pull_request'
