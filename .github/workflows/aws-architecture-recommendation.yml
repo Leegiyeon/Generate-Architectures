@@ -1,107 +1,37 @@
-# 워크플로우 이름 설정
 name: AWS 아키텍처 추천
 
-# 워크플로우에 대한 권한 설정
-# issues와 pull-requests에 대한 쓰기 권한을 부여합니다.
 permissions:
   issues: write
   pull-requests: write
 
-# 워크플로우 트리거 조건 설정
 on:
   push:
-    branches: [ main ]  # main 브랜치에 push 될 때
+    branches: [ main ]
   pull_request:
-    branches: [ main ]  # main 브랜치로의 pull request가 생성될 때
-  workflow_dispatch:    # 수동으로 워크플로우를 실행할 수 있게 함
+    branches: [ main ]
+  workflow_dispatch:
 
-# 작업 정의
 jobs:
   analyze_and_recommend:
-    runs-on: ubuntu-latest  # 최신 Ubuntu 환경에서 실행
+    runs-on: ubuntu-latest
     steps:
-    # 1. 코드 체크아웃
     - uses: actions/checkout@v2
-      # 이 단계에서 GitHub 저장소의 코드를 워크플로우 실행 환경으로 가져옵니다.
 
-    # 2. Python 환경 설정
     - name: Python 설정
       uses: actions/setup-python@v2
       with:
-        python-version: '3.x'  # 최신 Python 3 버전 사용
-      # Python 실행 환경을 설정합니다. 최신 버전의 Python 3를 사용합니다.
+        python-version: '3.x'
 
-    # 3. Graphviz 설치
     - name: Graphviz 설치
       run: |
         sudo apt-get update
         sudo apt-get install -y graphviz
-      # Graphviz를 설치합니다. 이는 다이어그램 생성에 필요한 도구입니다.
 
-    # 4. 필요한 Python 패키지 설치
     - name: 의존성 설치
       run: |
         python -m pip install --upgrade pip
         pip install diagrams openai>=1.0.0
-      # pip를 최신 버전으로 업그레이드하고, 필요한 패키지(diagrams, openai)를 설치합니다.
-      # openai는 최신 버전(1.0.0 이상)을 사용합니다.
 
-    # 5. aws_architecture_recommender.py 파일 생성
-    - name: aws_architecture_recommender.py 파일 생성
-      run: |
-        cat << EOF > aws_architecture_recommender.py
-        import argparse
-        from diagrams import Diagram, Edge, Cluster
-        from diagrams.aws.compute import EC2, ECS, Lambda
-        from diagrams.aws.database import RDS, Dynamodb
-        from diagrams.aws.network import ELB, APIGateway
-
-        def generate_architecture(project_type, scale, technologies, budget, performance_requirements):
-            with Diagram("AWS Architecture", show=False):
-                with Cluster("AWS Cloud"):
-                    if "web" in project_type:
-                        ELB("Load Balancer") >> EC2("Web Server")
-                    if "mobile" in project_type or "api" in technologies:
-                        APIGateway("API Gateway") >> Lambda("Functions")
-                    if "microservices" in technologies:
-                        ECS("Container Service")
-                    if "database" in technologies:
-                        if "nosql" in technologies:
-                            Dynamodb("DynamoDB")
-                        else:
-                            RDS("Relational Database")
-
-        def main():
-            parser = argparse.ArgumentParser(description='Generate AWS architecture diagram')
-            parser.add_argument('--project-type', required=True, help='Type of the project')
-            parser.add_argument('--scale', required=True, help='Scale of the project')
-            parser.add_argument('--technologies', required=True, help='Technologies used')
-            parser.add_argument('--budget', required=True, help='Estimated budget')
-            parser.add_argument('--performance-requirements', required=True, help='Performance requirements')
-            
-            args = parser.parse_args()
-            
-            generate_architecture(args.project_type, args.scale, args.technologies, args.budget, args.performance_requirements)
-
-        if __name__ == "__main__":
-            main()
-        EOF
-      # 이 단계에서는 aws_architecture_recommender.py 파일을 생성합니다.
-      # 이 스크립트는 프로젝트 분석 결과를 바탕으로 AWS 아키텍처 다이어그램을 생성합니다.
-
-    # 6. 파일 생성 확인
-    - name: 파일 존재 확인
-      run: |
-        if [ -f "aws_architecture_recommender.py" ]; then
-          echo "aws_architecture_recommender.py 파일이 존재합니다."
-        else
-          echo "aws_architecture_recommender.py 파일이 존재하지 않습니다."
-          exit 1
-        fi
-      # 생성된 aws_architecture_recommender.py 파일의 존재 여부를 확인합니다.
-      # 파일이 없으면 오류를 발생시키고 워크플로우를 중단합니다.
-
-    # 7. OpenAI API를 사용하여 레포지토리 분석
     - name: OpenAI로 레포지토리 분석
       id: repo_analysis
       env:
@@ -110,12 +40,10 @@ jobs:
         python - <<EOF
         import os
         import json
-        from openai import OpenAI  # OpenAI 라이브러리 최신 버전 import
+        from openai import OpenAI
 
-        # OpenAI 클라이언트 초기화
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
-        # 레포지토리 구조를 문자열로 반환하는 함수
         def get_repo_structure():
             structure = ""
             for root, dirs, files in os.walk("."):
@@ -127,10 +55,8 @@ jobs:
                     structure += f"{subindent}{f}\n"
             return structure
         
-        # 레포지토리 구조 가져오기
         repo_structure = get_repo_structure()
         
-        # OpenAI API에 전송할 프롬프트 구성
         prompt = f"""
         Based on the following repository structure, analyze the project and provide the following information:
         1. Project type (web, mobile, backend)
@@ -146,7 +72,6 @@ jobs:
         """
         
         try:
-            # OpenAI API 호출
             response = client.chat.completions.create(
               model="gpt-3.5-turbo",
               messages=[
@@ -155,33 +80,21 @@ jobs:
                 ]
             )
             
-            # 디버깅을 위한 출력
-            print("API Response:", response)
-            print("Message Content:", response.choices[0].message.content)
-            
-            # JSON 파싱 전에 content가 비어있지 않은지 확인
             content = response.choices[0].message.content.strip()
             if not content:
                 raise ValueError("API로부터 빈 응답을 받았습니다")
             
-            # API 응답을 JSON으로 파싱
             analysis = json.loads(content)
             
-            # 파싱된 결과 출력
             for key, value in analysis.items():
                 print(f"{key}={value}")
         except json.JSONDecodeError as e:
-            # JSON 디코딩 오류 처리
             print(f"JSON 디코드 오류: {e}")
             print(f"받은 내용: {content}")
         except Exception as e:
-            # 기타 예외 처리
             print(f"오류 발생: {e}")
         EOF
-      # 이 단계에서는 OpenAI API를 사용하여 레포지토리 구조를 분석합니다.
-      # 분석 결과는 프로젝트 유형, 규모, 사용 기술, 예상 예산, 성능 요구사항을 포함합니다.
 
-    # 8. OpenAI 분석 결과를 GitHub Actions 출력으로 설정
     - name: 출력 설정
       id: set_outputs
       run: |
@@ -190,13 +103,10 @@ jobs:
           value=$(echo $line | cut -d'=' -f2-)
           echo "$key=$value" >> $GITHUB_OUTPUT
         done
-      # OpenAI API를 통해 얻은 분석 결과를 GitHub Actions의 출력 변수로 설정합니다.
-      # 이를 통해 다음 단계에서 분석 결과를 사용할 수 있습니다.
 
-    # 9. AWS 아키텍처 추천 다이어그램 생성
     - name: AWS 아키텍처 추천 다이어그램 생성
       run: |
-        python aws_architecture_recommender.py \
+        python generate_aws_architectures.py \
           --project-type "${{ steps.set_outputs.outputs.project_type }}" \
           --scale "${{ steps.set_outputs.outputs.scale }}" \
           --technologies "${{ steps.set_outputs.outputs.technologies }}" \
@@ -204,21 +114,14 @@ jobs:
           --performance-requirements "${{ steps.set_outputs.outputs.performance_requirements }}"
         echo "다이어그램 생성 완료. 출력 파일 확인 중..."
         ls -l aws_architecture_*.png || echo "다이어그램 파일을 찾을 수 없습니다."
-      # 이전 단계에서 얻은 분석 결과를 바탕으로 AWS 아키텍처 추천 다이어그램을 생성합니다.
-      # aws_architecture_recommender.py 스크립트를 실행하여 다이어그램을 생성합니다.
-      # 생성된 파일의 존재 여부를 확인합니다.
 
-    # 10. 생성된 아키텍처 다이어그램 업로드
     - name: 아키텍처 다이어그램 업로드
       uses: actions/upload-artifact@v2
       if: ${{ success() && hashFiles('aws_architecture_*.png') != '' }}
       with:
         name: aws-architecture-diagrams
         path: aws_architecture_*.png
-      # 생성된 AWS 아키텍처 다이어그램을 아티팩트로 업로드합니다.
-      # 이 단계는 다이어그램 파일이 실제로 존재할 때만 실행됩니다.
 
-    # 11. 디버그 정보 출력
     - name: 디버그 정보
       run: |
         echo "저장소: ${{ github.repository }}"
@@ -226,10 +129,7 @@ jobs:
         echo "PR 번호: ${{ github.event.pull_request.number }}"
         echo "워크플로우 실행 ID: ${{ github.run_id }}"
         echo "아티팩트 업로드 상태: ${{ steps.upload-artifact.outcome }}"
-      # 이 단계에서는 현재 실행 중인 워크플로우의 컨텍스트 정보를 출력합니다.
-      # 문제 해결 시 유용한 정보를 제공합니다.
 
-    # 12. Pull Request에 코멘트 추가 (Pull Request 이벤트인 경우에만)
     - name: PR에 코멘트 추가
       uses: actions/github-script@v6
       if: github.event_name == 'pull_request' && github.event.action != 'closed'
@@ -273,8 +173,3 @@ jobs:
             console.error('코멘트 게시 중 오류 발생:', error);
             console.error('오류 세부 정보:', JSON.stringify(error, null, 2));
           }
-      # 이 단계는 Pull Request가 생성되거나 업데이트될 때만 실행됩니다.
-      # GitHub API를 사용하여 Pull Request에 코멘트를 추가합니다.
-      # 코멘트는 아키텍처 추천 다이어그램 생성 프로세스의 결과를 알리고, 
-      # 아티팩트가 성공적으로 업로드된 경우에만 아티팩트를 찾는 방법을 안내합니다.
-      # 오류가 발생할 경우 상세한 오류 정보를 로그에 출력합니다.
