@@ -1,5 +1,5 @@
 # 워크플로우 이름 설정
-name: AWS Architecture Recommendation
+name: AWS 아키텍처 추천
 
 # 워크플로우에 대한 권한 설정
 # issues와 pull-requests에 대한 쓰기 권한을 부여합니다.
@@ -25,21 +25,21 @@ jobs:
       # 이 단계에서 GitHub 저장소의 코드를 워크플로우 실행 환경으로 가져옵니다.
 
     # 2. Python 환경 설정
-    - name: Set up Python
+    - name: Python 설정
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'  # 최신 Python 3 버전 사용
       # Python 실행 환경을 설정합니다. 최신 버전의 Python 3를 사용합니다.
 
     # 3. Graphviz 설치
-    - name: Install Graphviz
+    - name: Graphviz 설치
       run: |
         sudo apt-get update
         sudo apt-get install -y graphviz
       # Graphviz를 설치합니다. 이는 다이어그램 생성에 필요한 도구입니다.
 
     # 4. 필요한 Python 패키지 설치
-    - name: Install dependencies
+    - name: 의존성 설치
       run: |
         python -m pip install --upgrade pip
         pip install diagrams openai>=1.0.0
@@ -47,7 +47,7 @@ jobs:
       # openai는 최신 버전(1.0.0 이상)을 사용합니다.
 
     # 5. aws_architecture_recommender.py 파일 생성
-    - name: Create aws_architecture_recommender.py
+    - name: aws_architecture_recommender.py 파일 생성
       run: |
         cat << EOF > aws_architecture_recommender.py
         import argparse
@@ -90,19 +90,19 @@ jobs:
       # 이 스크립트는 프로젝트 분석 결과를 바탕으로 AWS 아키텍처 다이어그램을 생성합니다.
 
     # 6. 파일 생성 확인
-    - name: Check file existence
+    - name: 파일 존재 확인
       run: |
         if [ -f "aws_architecture_recommender.py" ]; then
-          echo "aws_architecture_recommender.py exists."
+          echo "aws_architecture_recommender.py 파일이 존재합니다."
         else
-          echo "aws_architecture_recommender.py does not exist."
+          echo "aws_architecture_recommender.py 파일이 존재하지 않습니다."
           exit 1
         fi
       # 생성된 aws_architecture_recommender.py 파일의 존재 여부를 확인합니다.
       # 파일이 없으면 오류를 발생시키고 워크플로우를 중단합니다.
 
     # 7. OpenAI API를 사용하여 레포지토리 분석
-    - name: Analyze repository with OpenAI
+    - name: OpenAI로 레포지토리 분석
       id: repo_analysis
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -162,7 +162,7 @@ jobs:
             # JSON 파싱 전에 content가 비어있지 않은지 확인
             content = response.choices[0].message.content.strip()
             if not content:
-                raise ValueError("Empty response from API")
+                raise ValueError("API로부터 빈 응답을 받았습니다")
             
             # API 응답을 JSON으로 파싱
             analysis = json.loads(content)
@@ -172,17 +172,17 @@ jobs:
                 print(f"{key}={value}")
         except json.JSONDecodeError as e:
             # JSON 디코딩 오류 처리
-            print(f"JSON Decode Error: {e}")
-            print(f"Received content: {content}")
+            print(f"JSON 디코드 오류: {e}")
+            print(f"받은 내용: {content}")
         except Exception as e:
             # 기타 예외 처리
-            print(f"An error occurred: {e}")
+            print(f"오류 발생: {e}")
         EOF
       # 이 단계에서는 OpenAI API를 사용하여 레포지토리 구조를 분석합니다.
       # 분석 결과는 프로젝트 유형, 규모, 사용 기술, 예상 예산, 성능 요구사항을 포함합니다.
 
     # 8. OpenAI 분석 결과를 GitHub Actions 출력으로 설정
-    - name: Set outputs
+    - name: 출력 설정
       id: set_outputs
       run: |
         echo "${{ steps.repo_analysis.outputs.* }}" | while IFS= read -r line; do
@@ -194,7 +194,7 @@ jobs:
       # 이를 통해 다음 단계에서 분석 결과를 사용할 수 있습니다.
 
     # 9. AWS 아키텍처 추천 다이어그램 생성
-    - name: Generate AWS architecture recommendation
+    - name: AWS 아키텍처 추천 다이어그램 생성
       run: |
         python aws_architecture_recommender.py \
           --project-type "${{ steps.set_outputs.outputs.project_type }}" \
@@ -202,29 +202,35 @@ jobs:
           --technologies "${{ steps.set_outputs.outputs.technologies }}" \
           --budget "${{ steps.set_outputs.outputs.budget }}" \
           --performance-requirements "${{ steps.set_outputs.outputs.performance_requirements }}"
+        echo "다이어그램 생성 완료. 출력 파일 확인 중..."
+        ls -l aws_architecture_*.png || echo "다이어그램 파일을 찾을 수 없습니다."
       # 이전 단계에서 얻은 분석 결과를 바탕으로 AWS 아키텍처 추천 다이어그램을 생성합니다.
       # aws_architecture_recommender.py 스크립트를 실행하여 다이어그램을 생성합니다.
+      # 생성된 파일의 존재 여부를 확인합니다.
 
     # 10. 생성된 아키텍처 다이어그램 업로드
-    - name: Upload architecture diagrams
+    - name: 아키텍처 다이어그램 업로드
       uses: actions/upload-artifact@v2
+      if: ${{ success() && hashFiles('aws_architecture_*.png') != '' }}
       with:
         name: aws-architecture-diagrams
         path: aws_architecture_*.png
       # 생성된 AWS 아키텍처 다이어그램을 아티팩트로 업로드합니다.
-      # 이를 통해 워크플로우 실행 결과에서 다이어그램을 확인할 수 있습니다.
+      # 이 단계는 다이어그램 파일이 실제로 존재할 때만 실행됩니다.
 
     # 11. 디버그 정보 출력
-    - name: Debug info
+    - name: 디버그 정보
       run: |
-        echo "Repository: ${{ github.repository }}"
-        echo "Event name: ${{ github.event_name }}"
-        echo "PR number: ${{ github.event.pull_request.number }}"
+        echo "저장소: ${{ github.repository }}"
+        echo "이벤트 이름: ${{ github.event_name }}"
+        echo "PR 번호: ${{ github.event.pull_request.number }}"
+        echo "워크플로우 실행 ID: ${{ github.run_id }}"
+        echo "아티팩트 업로드 상태: ${{ steps.upload-artifact.outcome }}"
       # 이 단계에서는 현재 실행 중인 워크플로우의 컨텍스트 정보를 출력합니다.
       # 문제 해결 시 유용한 정보를 제공합니다.
 
     # 12. Pull Request에 코멘트 추가 (Pull Request 이벤트인 경우에만)
-    - name: Comment PR
+    - name: PR에 코멘트 추가
       uses: actions/github-script@v6
       if: github.event_name == 'pull_request' && github.event.action != 'closed'
       with:
@@ -233,22 +239,28 @@ jobs:
           const { owner, repo } = context.repo;
           const issue_number = context.issue.number;
           
-          console.log('Owner:', owner);
-          console.log('Repo:', repo);
-          console.log('Issue/PR number:', issue_number);
+          console.log('소유자:', owner);
+          console.log('저장소:', repo);
+          console.log('이슈/PR 번호:', issue_number);
           
           try {
             const workflowRunId = context.runId;
             const artifactName = 'aws-architecture-diagrams';
-            const commentBody = `AWS Architecture recommendation has been generated. 
-
-          To view the diagram:
-          1. Go to the [Actions tab](https://github.com/${owner}/${repo}/actions/runs/${workflowRunId})
-          2. Scroll down to the "Artifacts" section
-          3. Download the "${artifactName}" artifact
-          4. Extract the ZIP file to view the diagram
-
-          If you have any questions or need further clarification, please let me know.`;
+            const artifactUploaded = '${{ steps.upload-artifact.outcome }}' === 'success';
+            
+            let commentBody = `AWS 아키텍처 추천 프로세스가 완료되었습니다.`;
+            
+            if (artifactUploaded) {
+              commentBody += `\n\n다이어그램을 확인하려면:
+              1. [Actions 탭](https://github.com/${owner}/${repo}/actions/runs/${workflowRunId})으로 이동하세요.
+              2. "Artifacts" 섹션으로 스크롤하세요.
+              3. "${artifactName}" 아티팩트를 다운로드하세요.
+              4. ZIP 파일을 추출하여 다이어그램을 확인하세요.`;
+            } else {
+              commentBody += `\n\n하지만 다이어그램 생성 또는 업로드 중 문제가 발생했습니다. 자세한 내용은 워크플로우 로그를 확인해 주세요.`;
+            }
+            
+            commentBody += `\n\n질문이 있거나 추가 설명이 필요하면 알려주세요.`;
 
             await github.rest.issues.createComment({
               owner: owner,
@@ -256,12 +268,13 @@ jobs:
               issue_number: issue_number,
               body: commentBody
             });
-            console.log('Comment posted successfully');
+            console.log('코멘트가 성공적으로 게시되었습니다');
           } catch (error) {
-            console.error('Error posting comment:', error);
-            console.error('Error details:', JSON.stringify(error, null, 2));
+            console.error('코멘트 게시 중 오류 발생:', error);
+            console.error('오류 세부 정보:', JSON.stringify(error, null, 2));
           }
       # 이 단계는 Pull Request가 생성되거나 업데이트될 때만 실행됩니다.
       # GitHub API를 사용하여 Pull Request에 코멘트를 추가합니다.
-      # 코멘트는 아키텍처 추천 다이어그램이 생성되었음을 알리고, 아티팩트를 찾는 방법을 상세히 안내합니다.
+      # 코멘트는 아키텍처 추천 다이어그램 생성 프로세스의 결과를 알리고, 
+      # 아티팩트가 성공적으로 업로드된 경우에만 아티팩트를 찾는 방법을 안내합니다.
       # 오류가 발생할 경우 상세한 오류 정보를 로그에 출력합니다.
