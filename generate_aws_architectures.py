@@ -36,6 +36,17 @@ TECHNOLOGY_COMPONENTS = {
     "big data": ["Kinesis", "EMR", "Redshift", "Athena", "S3"],
 }
 
+def extend_technology_components(suggested_services):
+    """
+    AI가 예측한 추가적인 AWS 서비스들을 기술 사전에 추가
+    """
+    for service in suggested_services:
+        if service not in globals():
+            # 만약 해당 서비스가 globals()에 없다면, 자동으로 추가할 수 있도록 확장
+            print(f"Unknown service '{service}' encountered. Consider adding this service to the system.")
+        else:
+            print(f"Service '{service}' is already known and can be used.")
+
 def add_common_components(architecture, scale, performance_requirements):
     """
     공통 컴포넌트 및 성능 요구 사항에 따른 컴포넌트 추가
@@ -61,7 +72,14 @@ def add_budget_based_components(architecture, budget):
     elif budget > 5000:
         architecture["components"].append("AWS Global Accelerator")
 
-def analyze_requirements(project_type, scale, technologies, budget, performance_requirements):
+def analyze_and_add_ai_suggested_services(architecture, ai_suggested_services):
+    """
+    AI가 추천한 추가 AWS 서비스를 아키텍처에 추가
+    """
+    extend_technology_components(ai_suggested_services)
+    architecture["components"].extend(ai_suggested_services)
+
+def analyze_requirements(project_type, scale, technologies, budget, performance_requirements, ai_suggested_services=None):
     """
     프로젝트 요구사항을 분석하고 적절한 AWS 아키텍처를 제안
     """
@@ -75,6 +93,8 @@ def analyze_requirements(project_type, scale, technologies, budget, performance_
         }
         add_common_components(architecture, scale, performance_requirements)
         add_budget_based_components(architecture, budget)
+        if ai_suggested_services:
+            analyze_and_add_ai_suggested_services(architecture, ai_suggested_services)
         return architecture
 
     if project_type in ["web", "full-stack"]:
@@ -141,21 +161,67 @@ def generate_architecture_diagram(architecture, filename):
     ):
         with Cluster("AWS 클라우드"):
             components = {}
+            
+            # 컴포넌트 인스턴스 생성
             for component in architecture["components"]:
                 if component in globals():
                     components[component] = globals()[component](component)
 
-            # 컴포넌트 간 연결 로직
-            if "Route53" in components:
-                components["Route53"] >> Edge(color="darkgreen") >> components.get("CloudFront", components.get("ELB", next(iter(components.values()))))
-            
+            # 컴포넌트 간 연결 설정
+            if "Route53" in components and "CloudFront" in components:
+                components["Route53"] >> Edge(color="darkgreen") >> components["CloudFront"]
+            elif "Route53" in components and "ELB" in components:
+                components["Route53"] >> Edge(color="darkgreen") >> components["ELB"]
+
             if "CloudFront" in components:
-                components["CloudFront"] >> Edge(color="darkgreen") >> components.get("S3", components.get("API Gateway", components.get("ELB", next(iter(components.values())))))
+                if "S3" in components:
+                    components["CloudFront"] >> Edge(color="darkgreen") >> components["S3"]
+                elif "API Gateway" in components:
+                    components["CloudFront"] >> Edge(color="darkgreen") >> components["API Gateway"]
+                else:
+                    components["CloudFront"] >> Edge(color="darkgreen") >> components["ELB"]
 
             if "ELB" in components:
                 elb_targets = [comp for comp in ["EC2 Auto Scaling", "ECS", "EKS"] if comp in components]
                 for target in elb_targets:
                     components["ELB"] >> Edge(color="darkgreen") >> components[target]
+
+            if "EC2 Auto Scaling" in components or "ECS" in components or "EKS" in components:
+                compute_components = [comp for comp in ["EC2 Auto Scaling", "ECS", "EKS"] if comp in components]
+                for comp in compute_components:
+                    if "RDS Multi-AZ" in components:
+                        components[comp] >> Edge(color="darkgreen") >> components["RDS Multi-AZ"]
+                    if "DynamoDB" in components:
+                        components[comp] >> Edge(color="darkgreen") >> components["DynamoDB"]
+                    if "ElastiCache" in components:
+                        components[comp] >> Edge(color="darkgreen") >> components["ElastiCache"]
+                    if "S3" in components:
+                        components[comp] >> Edge(color="darkgreen") >> components["S3"]
+
+            if "API Gateway" in components:
+                api_targets = [comp for comp in ["Lambda", "EC2 Auto Scaling", "ECS", "EKS"] if comp in components]
+                for target in api_targets:
+                    components["API Gateway"] >> Edge(color="darkgreen") >> components[target]
+
+            if "VPC" in components:
+                vpc_components = [comp for comp in ["EC2 Auto Scaling", "ECS", "EKS", "RDS Multi-AZ", "ElastiCache"] if comp in components]
+                for comp in vpc_components:
+                    components["VPC"] - Edge(color="darkblue", style="dashed") - components[comp]
+
+            if "IAM" in components:
+                iam_targets = [comp for comp in ["EC2 Auto Scaling", "ECS", "EKS", "S3", "DynamoDB", "RDS Multi-AZ"] if comp in components]
+                for target in iam_targets:
+                    components["IAM"] >> Edge(color="darkred", style="dashed") >> components[target]
+                    
+            if "Cloudwatch" in components:
+                cloudwatch_targets = [comp for comp in ["EC2 Auto Scaling", "ECS", "EKS", "RDS Multi-AZ", "DynamoDB", "ElastiCache"] if comp in components]
+                for target in cloudwatch_targets:
+                    components["Cloudwatch"] >> Edge(color="darkorange", style="dashed") >> components[target]
+
+            if "Cloudtrail" in components:
+                cloudtrail_targets = [comp for comp in ["EC2 Auto Scaling", "ECS", "EKS", "S3", "DynamoDB", "RDS Multi-AZ"] if comp in components]
+                for target in cloudtrail_targets:
+                    components["Cloudtrail"] >> Edge(color="darkorange", style="dashed") >> components[target]
 
 def main():
     """
@@ -167,6 +233,8 @@ def main():
     parser.add_argument('--technologies', required=True, help='사용할 주요 기술 (쉼표로 구분)')
     parser.add_argument('--budget', required=True, type=float, help='예상 월 예산 (USD)')
     parser.add_argument('--performance-requirements', required=True, help='성능 요구사항 (쉼표로 구분)')
+    parser.add_argument('--ai-suggested-services', help='AI가 제안한 서비스 목록 (쉼표로 구분)', default="")
+    
     args = parser.parse_args()
 
     project_type = args.project_type.lower()
@@ -174,13 +242,15 @@ def main():
     technologies = [tech.strip().lower() for tech in args.technologies.split(',')]
     budget = args.budget
     performance_requirements = [req.strip().lower() for req in args.performance_requirements.split(',')]
+    ai_suggested_services = [service.strip() for service in args.ai_suggested_services.split(',')] if args.ai_suggested_services else None
 
     suggested_architectures = analyze_requirements(
         project_type,
         scale,
         technologies,
         budget,
-        performance_requirements
+        performance_requirements,
+        ai_suggested_services
     )
 
     for i, architecture in enumerate(suggested_architectures):
