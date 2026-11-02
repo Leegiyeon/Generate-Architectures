@@ -30,7 +30,8 @@ jobs:
         uses: Leegiyeon/Generate-Architectures@main
         with:
           workload: auto
-          requirements_file: .architecture/requirements.json
+          # 요구사항 파일을 만든 경우에만 아래 항목의 주석을 해제하세요.
+          # requirements_file: .architecture/requirements.json
 
       # 3-3. 한국어 보고서, 설정 근거 JSON, 다이어그램 PNG/SVG 등 저장
       - name: 설계 결과 파일 보관
