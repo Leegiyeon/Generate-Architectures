@@ -1,40 +1,58 @@
-name: AWS Architecture Recommender
-description: Analyze checkout repo and generate review-only AWS architecture diagrams
+# 다른 GitHub 저장소에서 재사용하는 Composite Action 정의
+name: AWS 아키텍처 설계 초안 생성
+description: 저장소 근거와 명시적 요구사항을 분석하고 한글 보고서와 AWS 아이콘 다이어그램을 생성합니다 (배포 없음).
+
+# 1. 입력: 워크로드와 사용자 제공 요구사항. 빈 파일 경로는 분석만 진행합니다.
 inputs:
   workload:
-    description: auto, web, backend or mobile
+    description: "auto / web / backend / mobile (auto는 코드 근거로 판단)"
     required: false
     default: auto
   monthly_budget_usd:
-    description: Optional user-provided budget (not a cost calculation)
+    description: "선택 입력: 사용자 월 예산 상한 (실제 AWS 비용 추정치 아님)"
+    required: false
+    default: ""
+  requirements_file:
+    description: "선택 입력: 분석 대상 저장소 내부의 JSON 요구사항 파일 경로"
     required: false
     default: ""
   output_dir:
-    description: Output directory
+    description: "생성 보고서와 다이어그램을 저장할 위치"
     required: false
     default: architecture-output
+
+# 2. 실행: 수집된 데이터를 외부 AI 서비스로 송신하지 않는 읽기 전용 분석
 runs:
   using: composite
   steps:
-    - name: Install Graphviz
+    # 2-1. AWS 서비스 아이콘과 연결선을 렌더링하기 위한 Graphviz 바이너리
+    - name: Graphviz 설치
       shell: bash
       run: sudo apt-get update -qq && sudo apt-get install -y graphviz
-    - name: Install icon rendering library
+
+    # 2-2. 고정된 Diagrams 버전으로 실행 환경을 재현
+    - name: AWS 아이콘 렌더링 라이브러리 설치
       shell: bash
       env:
         REQUIREMENTS_FILE: ${{ github.action_path }}/requirements-diagrams.txt
       run: python3 -m pip install --disable-pip-version-check -r "$REQUIREMENTS_FILE"
-    - name: Generate recommendation
+
+    # 2-3. GitHub Actions 변수는 환경변수로 전달하여 셸 코드 주입을 방지
+    - name: 저장소 분석 및 아키텍처 보고서 생성
       shell: bash
       env:
         INPUT_WORKLOAD: ${{ inputs.workload }}
         INPUT_BUDGET: ${{ inputs.monthly_budget_usd }}
+        INPUT_REQUIREMENTS: ${{ inputs.requirements_file }}
         INPUT_OUTPUT_DIR: ${{ inputs.output_dir }}
         ACTION_SCRIPT: ${{ github.action_path }}/scripts/recommend_architecture.py
       run: |
         set -euo pipefail
-        args=(--repo . --output "$INPUT_OUTPUT_DIR" --workload "$INPUT_WORKLOAD")
+        set -- --repo . --output "$INPUT_OUTPUT_DIR" --workload "$INPUT_WORKLOAD"
         if [[ -n "$INPUT_BUDGET" ]]; then
-          args+=(--budget "$INPUT_BUDGET")
+          set -- "$@" --budget "$INPUT_BUDGET"
         fi
-        python3 "$ACTION_SCRIPT" "${args[@]}"
+        if [[ -n "$INPUT_REQUIREMENTS" ]]; then
+          set -- "$@" --requirements "$INPUT_REQUIREMENTS"
+        fi
+        python3 "$ACTION_SCRIPT" "$@"
