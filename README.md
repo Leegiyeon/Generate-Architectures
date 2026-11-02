@@ -33,6 +33,7 @@ The `app/server.py` webhook server is a **deployable scaffold**, not an already 
 Install Python 3.10+ and Graphviz (with `dot` on PATH), then run:
 
 ```bash
+python3 -m pip install -r requirements-diagrams.txt
 python3 -m unittest discover -s tests -v
 python3 scripts/recommend_architecture.py --repo . --output architecture-output
 ```
@@ -44,3 +45,19 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output
 - `recommendation.md`: concise rationale, evidence and limits
 
 No project source contents are sent to OpenAI or any model. Filesystem filename-based detection is deliberately limited; validate feasibility, runtime, networking, security, data residency, availability and actual AWS costs before using a proposal in production.
+
+## Icon-based architecture rendering
+
+The architecture diagram uses **real AWS service icons** from `diagrams==0.25.1` instead of Graphviz's default text-only boxes. Client devices use representative client icons. AWS resources are visually grouped by **delivery, compute, data, security, and observability**.
+
+**Diagram conventions:** Blue solid arrows are application/data flows; gold dashed arrows denote proposed security associations; grey dotted arrows denote telemetry. The diagrams are conceptual recommendations only; no AWS resources or verified VPC/subnet topology is represented. The `architecture.svg` embeds icon images so the artifact is viewable standalone without access to the GitHub runner filesystem.
+
+The generator exports `architecture.png`, `architecture.svg`, and `architecture.dot`. The DOT file is a Graphviz source that refers to icons from the installed Diagrams package; install the pinned dependency to render DOT on another machine. For sending a standalone diagram to a coworker, use the PNG or SVG.
+
+The upstream Diagrams library bundles its own AWS artwork; icon styling may differ from the most recently released official AWS icon package. For the latest official artwork, compare against [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/).
+
+**Smoke-test all four reference patterns:**
+```bash
+python3 -m pip install -r requirements-diagrams.txt
+python3 -m unittest discover -s tests -v
+```
