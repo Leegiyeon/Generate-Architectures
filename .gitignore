@@ -1,0 +1,17 @@
+# 실행 산출물과 의존성 캐시
+architecture-output/
+node_modules/
+__pycache__/
+*.pyc
+.terraform/
+# Terraform plan 은 암호 및 민감한 설정값을 포함할 수 있으므로 Git 추적 금지
+*.tfplan
+*.tfstate
+*.tfstate.*
+terraform-plan*.json
+.architecture/terraform-plan*.json
+# 환경 변수와 서비스 자격증명
+.env
+.env.*
+!.env.example
+*.pem

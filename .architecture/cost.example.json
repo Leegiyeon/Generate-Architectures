@@ -1,0 +1,25 @@
+{
+  "region": "ap-northeast-2",
+  "items": [
+    {
+      "id": "lambda_requests",
+      "quantity": 1000000,
+      "unit": "Requests",
+      "rate": {
+        "kind": "aws_price_list",
+        "service_code": "AWSLambda",
+        "filters": {
+          "group": "AWS-Lambda-Requests"
+        }
+      }
+    },
+    {
+      "id": "other_services",
+      "quantity": 1,
+      "unit": "Count",
+      "rate": {
+        "kind": "unknown"
+      }
+    }
+  ]
+}

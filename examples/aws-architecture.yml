@@ -35,6 +35,12 @@ jobs:
           # AI 보조 검토는 기본 비활성화입니다. 코드 메타데이터 외부 전송에 동의하는 경우에만 활성화하세요.
           # enable_ai: "true"
           # ai_model: gpt-6-luna
+          # 비기밀 비용 시나리오 입력 파일이 있다면 지정합니다.
+          # cost_input: .architecture/cost.json
+          # AWS 가격표 실시간 조회는 임시 자격증명을 별도로 구성한 경우에만 허용
+          # live_pricing: "true"
+          # 민감한 Terraform plan JSON을 Git 커밋으로 전달하지 마세요.
+          # terraform_plan: .architecture/terraform-plan.json
         # enable_ai 활성화 시 GitHub Secrets의 OPENAI_API_KEY를 환경변수로 별도 전달합니다.
         # env:
         #   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
