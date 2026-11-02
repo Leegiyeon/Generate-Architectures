@@ -54,3 +54,15 @@
 ## 향후 개선 시 지킬 원칙
 
 실제 코드 간 호출 연결은 AST/언어별 분석기로 파일·함수 단위 근거를 추출한 후 검증합니다. LLM은 후보 생성과 사용자 질문 정리에만 활용하고, AWS 비용·보안은 공식 가격 데이터와 정책 엔진/실제 테스트를 통해 판정해야 합니다. 외부 API 전송 전에는 비밀/민감정보 제거와 명시적인 사용자 동의가 필요합니다.
+
+## P0 애플리케이션 AST 그래프 (구현)
+
+`application_graph.py`는 Python 소스를 표준 라이브러리 `ast`로 분석하고, `scripts/js_analyzer/analyze.cjs`는 Babel의 TypeScript/JavaScript AST를 사용합니다. Babel은 **파싱만 하며** 대상 저장소 코드를 실행하지 않습니다.
+
+기본 노드: `module`, `function`, `route`, `model`. 연결: `defines`(정의), `imports`(로컬 참조), `handles`(라우트 핸들러), `calls`(정적 심볼로 확인한 직접 호출). 모든 노드와 간선은 근거 경로 및 행 번호를 가지며, 식별자는 파일 상대 경로를 포함해 중복을 방지합니다.
+
+`application-graph.json`을 원본 데이터로 사용하고 `render_application_graph.py`가 별도 SVG/PNG/DOT을 만듭니다. 기존 AWS 참조 설계(`architecture.json` 및 서비스 아이콘 그림)는 **제안**이고, 이 애플리케이션 그래프는 **정적 분석 근거**입니다.
+
+일부 파일을 분석하지 못하면 `errors`에 이유를 기록하고, 소스 파일과 결과 노드/간선의 최대 수를 제한합니다. JS/TS의 동적 import, 런타임 DI, path alias, 복잡한 ORM 관계, Go·Java 함수 호출 추적은 아직 지원하지 않습니다. AST에서 찾은 API가 실제 운영 라우팅/인가 정책을 증명하는 것은 아닙니다.
+
+개선된 파이프라인: 저장소 메타데이터 수집 → **코드 AST 분석** → 검증된 API 단서를 설계 판단에 반영 → 한국어 설계 검토 → AWS 후보 다이어그램 + 별도의 실제 코드 구조 다이어그램 → Artifact.
