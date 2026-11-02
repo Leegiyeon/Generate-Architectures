@@ -79,10 +79,10 @@ def decide(profile, requirements):
         preferred = "mobile"
     elif signals["serverless_config"] and feasible["serverless"]:
         preferred = "serverless"
-    elif signals["docker"] or relational or signals["nextjs"]:
-        preferred = "containers"
     elif can_static:
         preferred = "static"
+    elif signals["docker"] or relational or signals["nextjs"]:
+        preferred = "containers"
     elif workload == "backend":
         preferred = "serverless" if feasible["serverless"] else "containers"
     else:
