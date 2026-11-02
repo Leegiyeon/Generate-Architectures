@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Install Graphviz for rendering tests
+        run: sudo apt-get update -qq && sudo apt-get install -y graphviz
       - name: Install render test dependencies
         run: python3 -m pip install --disable-pip-version-check -r requirements-diagrams.txt
       - name: Test analyzer and icon rendering
