@@ -124,3 +124,13 @@ validation.json / validation.md / decision-record.md
 검사 자체가 선택된 AWS 서비스를 추가·삭제하거나 AI가 제안한 대안으로 전환하는 동작은 없습니다. 모델이 위험을 찾아도 독립 정책/실측 확인 없이 통과시키지 않습니다. ADR은 확정사항이 아닌 사람이 검토할 수 있는 결정 기록의 **초안**입니다.
 
 향후 단계에서는 실제 Terraform/CDK/CloudFormation 파일에 대한 읽기 전용 정책 검사 결과를 별도 provenance 필드와 함께 수집해야 하며, 이후 비용/보안/신뢰성 검사에서 미수행과 위반을 분리해야 합니다.
+
+## 비용 및 IaC 정책 검토 (확장)
+
+- `scripts/cost_estimator.py`: 사용자에게서 받은 리전/사용량/상품 조회 조건으로 보수적인 비용 시나리오를 생성합니다. `manual_quote` 출처는 공식 AWS URL과 기준일이 필요합니다. 선택적으로 인증된 Price List GetProducts를 호출하되, **단일 상품·단일 비계층 요금**인 경우에만 비용에 반영합니다. 모든 항목에 단가가 없으면 총액은 `null`입니다.
+- `scripts/iac_policy_validator.py`: 사용자가 **일시적으로 생성한 Terraform plan JSON**의 `resource_changes[].change.after`를 읽어 S3 공개 접근, 관리자 포트 공개, RDS 공개·암호화 해제, IAM 광범위 허용 등의 **명시적 일부 설정**만 검사합니다. 이 분석기가 Terraform을 실행하지는 않습니다.
+- 입력 원본 Terraform JSON, 자원 주소, 정책 원문 또는 암호 값은 저장하지 않습니다. `R0001` 등의 익명 자원 식별자와 규칙·권장 조치만 보고합니다.
+- 비용/API는 기본 비활성화이며, 입력·실제 권한이 제공되지 않으면 `needs_input`, `not_scanned` 상태로 남습니다. `cost-estimate.json/md`, `iac-policy.json/md`는 `architecture.json`에서 파일/상태만 참조합니다.
+- Terraform 계획 검사 결과의 `limited_checks_no_findings`는 **지원한 소수 규칙에서 명시적 위험을 찾지 못했다**는 의미만 갖습니다. 보안 통과를 뜻하지 않으며 `production_ready`는 항상 `false`입니다.
+
+실제 운영의 보안/가격 검증 및 IAM 권한, 유지보수는 [COST_SECURITY_OPERATIONS.md](COST_SECURITY_OPERATIONS.md)에 기술합니다.
