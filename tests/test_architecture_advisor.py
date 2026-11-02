@@ -69,6 +69,25 @@ class AdvisorTests(unittest.TestCase):
             self.assertEqual(result["option_id"], "containers")
             self.assertTrue(result["decision"]["warnings"])
 
+    def test_mongodb_is_not_mistaken_for_relational_db(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.make_repo(tmp, {
+                "Dockerfile": "FROM node:22",
+                "package.json": json.dumps({"dependencies": {"mongoose": "*"}}),
+            })
+            profile = inspect_repository(root)
+            self.assertFalse(profile["signals"]["relational_database"])
+            self.assertTrue(profile["signals"]["document_database"])
+            result = decide(profile, parse_requirements(None, root))
+            self.assertEqual(result["option_id"], "containers")
+            self.assertNotIn("Amazon RDS", result["nodes"])
+
+    def test_unknown_database_not_drawn_as_real_resource(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.make_repo(tmp, {"Dockerfile": "FROM python:3.12"})
+            result = decide(inspect_repository(root), parse_requirements(None, root))
+            self.assertNotIn("Amazon RDS", result["nodes"])
+
     def test_api_route_prevents_static(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = self.make_repo(tmp, {
