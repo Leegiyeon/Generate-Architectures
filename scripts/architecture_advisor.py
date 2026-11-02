@@ -114,6 +114,25 @@ def decide(profile, requirements):
     if profile["scan_truncated"]:
         blockers.append("저장소 파일 검색이 상한에 도달해 일부 파일을 검사하지 못했습니다.")
 
+    reasons = []
+    if signals["mobile"]:
+        reasons.append("Expo/Flutter 관련 설정이 발견되어 모바일 백엔드 후보를 검토했습니다.")
+    if signals["docker"]:
+        reasons.append("Docker 관련 파일이 발견되어 컨테이너 실행 대안을 고려했습니다.")
+    if signals["nextjs"] and not signals["next_static_export"]:
+        reasons.append("Next.js 사용은 확인되나 정적 내보내기 근거가 없어 SSR 가능성을 유지했습니다.")
+    if can_static:
+        reasons.append("현재 확인된 설정·파일 경로에서 정적 배포 후보 조건을 충족했습니다.")
+    if relational:
+        reasons.append("관계형 DB 단서 또는 명시적 요구사항이 있어 관계형 저장소 검토가 필요합니다.")
+    if document_db:
+        reasons.append("문서형 DB 의존성이 발견되어 지원하지 않는 DB 전환을 자동 제안하지 않았습니다.")
+    if signals["serverless_config"]:
+        reasons.append("서버리스 설정 파일이 확인되어 관리형 실행 대안을 검토했습니다.")
+    if preference != "auto" and feasible.get(preference, False):
+        reasons.append("사용자가 지정한 배포 선호(" + preference + ")를 대안 선택에 반영했습니다.")
+    if not reasons:
+        reasons.append("설정 근거가 제한적이므로 기본 참조 아키텍처를 검토용으로 선택했습니다.")
     options = []
     for name in ("static", "serverless", "containers", "mobile"):
         template = TEMPLATES[name]
@@ -152,8 +171,7 @@ def decide(profile, requirements):
         "repository_analysis": profile,
         "decision": {
             "status": "검토용 초안",
-            "rationale": [
-                "파일 경로 및 알려진 의존성에 근거한 규칙 기반 참조 설계입니다.",
+            "rationale": reasons + [
                 "현재 선택: " + selected["pattern"],
                 "실제 가용성, 비용 및 보안은 확인하지 않았습니다.",
             ],
@@ -197,7 +215,13 @@ def markdown_report(result):
         lines.append("- 지원하는 설정 파일을 발견하지 못했습니다.")
     lines += [
         "",
-        "## 3. 아키텍처 대안 비교",
+        "## 3. 선택 근거",
+        "",
+    ]
+    lines.extend("- " + rationale for rationale in decision["rationale"])
+    lines += [
+        "",
+        "## 4. 아키텍처 대안 비교",
         "",
         "| 대안 | 검토 가능 여부 | 장점 | 주의점 |",
         "| --- | --- | --- | --- |",
@@ -207,17 +231,17 @@ def markdown_report(result):
                      " | " + ("가능" if option["applicable"] else "현재 근거상 부적합") + " | " +
                      esc(" ".join(option["advantages"])) + " | " +
                      esc(" ".join(option["tradeoffs"])) + " |")
-    lines += ["", "## 4. 주요 위험·미확인 항목", ""]
+    lines += ["", "## 5. 주요 위험·미확인 항목", ""]
     lines.extend("- " + warning for warning in decision["warnings"])
     if not decision["warnings"]:
         lines.append("- 명시적으로 차단된 패턴은 없지만, 아직 검증 전입니다.")
-    lines += ["", "## 5. AWS Well-Architected 검토 체크리스트", ""]
+    lines += ["", "## 6. AWS Well-Architected 검토 체크리스트", ""]
     for item in result["well_architected_review"]:
         lines.append("- **" + item["pillar"] + " (검증 전)**: " + item["required_check"])
-    lines += ["", "## 6. 설계 확정 전 확인 질문", ""]
+    lines += ["", "## 7. 설계 확정 전 확인 질문", ""]
     lines.extend("- " + question for question in result["questions"])
     lines += [
-        "", "## 7. 다이어그램과 제한사항", "",
+        "", "## 8. 다이어그램과 제한사항", "",
         "- `architecture.svg`: AWS 서비스 아이콘이 내장된 SVG",
         "- `architecture.png`: 이미지",
         "- `architecture.dot`: Graphviz 원본",
