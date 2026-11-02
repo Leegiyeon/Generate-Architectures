@@ -175,3 +175,19 @@ Architecture Validator는 AI 추천의 정확성을 보증하는 도구가 아�
 **AI 보조 의견은 승인되지 않습니다.** `ai-review.json`은 검증 엔진에 상태만 전달하며, AI 추천에 따라 다이어그램·설계·배포 대상을 자동으로 변경하지 않습니다. GitHub Actions는 외부 API 키 없이도 검증을 수행합니다.
 
 테스트: `python3 -m unittest discover -s tests -v`. 검증 규칙은 [시스템 설계 문서](docs/ARCHITECTURE.md)에 정리했습니다. 향후 별도 IaC 검사기(AWS CloudFormation Guard, Checkov 등)를 추가하더라도 실제 검증 결과와 정적 초안 검토는 구분해야 합니다.
+
+## 12. AWS 비용 시나리오 및 Terraform IaC 보안 검사 (이번 개발)
+
+**실제 AWS 요금·인프라 적합성을 보증하지 않습니다.** 비용/보안 입력이 없다면 각각 `needs_input` / `not_scanned` 상태를 출력하며 **0원 또는 보안 통과로 표시하지 않습니다**.
+
+| 새 산출물 | 목적 |
+| --- | --- |
+| `cost-estimate.json`, `cost-estimate.md` | 입력한 사용량·검증된 단가 출처 기반 비용 시나리오 (불완전한 요금은 전체 총액 미표시) |
+| `iac-policy.json`, `iac-policy.md` | Terraform plan JSON에서 **명시적으로 확인된 일부 위험 설정**을 R0001 등의 익명 식별자로 기록 |
+| `recommendation.md` | 비용·IaC 점검 상태, 미검증 범위 안내 |
+
+비용 입력은 [`.architecture/cost.example.json`](.architecture/cost.example.json)을 참고하세요. Price List 조회는 `--live-pricing` / `live_pricing=true`를 **명시적으로** 지정한 경우에만 수행하며, 별도의 AWS `pricing:GetProducts` 권한이 필요합니다. 단가와 가격 구간이 명확하지 않으면 추정하지 않습니다.
+
+Terraform 보안 검사는 `--terraform-plan .architecture/terraform-plan.json` 옵션을 통해 실행합니다. **원본 Terraform plan에는 비밀정보가 포함될 수 있으므로 Git에 올리지 마세요.** 이 도구는 Terraform을 실행하거나 AWS 계정을 조회하지 않으며 일부 리소스의 명시적 정책만 검사합니다.
+
+설치·비용·보안·유지보수 체크리스트는 **[비용·보안·운영 관리 가이드](docs/COST_SECURITY_OPERATIONS.md)** 를 참고하세요.
