@@ -1,33 +1,46 @@
-# AWS 아키텍처 추천 시스템
+# Generate Architectures
 
-## 1. 서비스 소개 및 기능 안내
-AWS 아키텍처 추천 시스템은 **AWS 클라우드 아키텍처 설계**를 자동화하고 최적화하는 도구입니다. 사용자가 제공한 프로젝트 유형, 규모, 성능 요구 사항, 예산 및 기술 스택을 기반으로, AWS 서비스를 적절하게 구성하여 최적의 아키텍처 다이어그램을 생성합니다. 이 시스템은 GitHub Actions를 통해 CI/CD 워크플로우와 통합되어, 코드 변경 시 자동으로 분석하여 AWS 아키텍처 다이어그램을 생성하고 업로드하는 기능을 제공합니다.
+A runnable, **review-only** AWS architecture recommender. The original workflow was a prototype (no observed Actions runs, deprecated upload-artifact v3, unbounded OpenAI inference from filenames and an unchecked diagram-generation path). The new implementation is deterministic and does not require an API key.
 
-### 주요 기능:
-- **OpenAI API를 활용한 레포지토리 분석**: 프로젝트 유형, 규모, 기술 스택 등을 자동으로 추출합니다.
-- **AWS 아키텍처 다이어그램 생성**: 추출된 정보를 바탕으로 다이어그램을 자동으로 생성합니다.
-- **자동 다이어그램 업로드**: 생성된 다이어그램을 GitHub Actions 아티팩트로 업로드합니다.
+## Architecture Action
+1. Checks out target repository.
+2. Detects supported manifest filenames (Node, Next.js, Vite, Python, Go, Java, Docker, Expo, Flutter, Terraform).
+3. Selects a conservative reference pattern and documents evidence and limitations.
+4. Generates Graphviz SVG, PNG, DOT, JSON and Markdown.
+5. Uploads an Actions artifact. The repository workflow also comments on same-repository PRs.
 
-## 2. 동작 원리 설명
-본 시스템은 GitHub Actions 워크플로우와 Python 스크립트를 통해 동작합니다. 다음과 같은 과정을 거칩니다:
-1. **레포지토리 분석**: OpenAI API를 사용하여 프로젝트의 구조와 설정 파일을 분석합니다. 이 과정에서 프로젝트 유형(예: 웹, 모바일), 규모, 사용된 기술 스택, 예상 예산, 성능 요구 사항 등이 추출됩니다.
-2. **AWS 아키텍처 설계**: 분석된 정보와 사용자 지정 입력값을 기반으로 최적화된 AWS 서비스 구성을 생성합니다.
-3. **아키텍처 다이어그램 생성**: Python의 `Diagrams` 라이브러리를 사용하여 다이어그램을 생성합니다.
-4. **다이어그램 파일 생성 확인 및 업로드**: 생성된 다이어그램 파일이 올바르게 생성되었는지 확인 후, 이를 GitHub Actions 아티팩트로 업로드합니다.
-5. **PR 코멘트 자동 생성**: PR에 다이어그램 생성 결과 및 로그 정보를 포함한 코멘트를 자동으로 추가합니다.
+No AWS resources are created; costs, scale and security are **not verified**. Next.js SSR workloads require manual review before using the static hosting design.
 
-## 3. 사용 가이드
-### 1) 사전 준비
-- **Python 3.x** 및 **Graphviz**가 설치된 환경에서 동작합니다.
-- **OpenAI API 키**를 GitHub Secrets에 설정해야 합니다.
+### Run here
+Actions > AWS Architecture Recommendation > Run workflow (after merging PR). Reports are downloadable from the workflow run.
 
-### 2) GitHub Actions 설정
-GitHub 리포지토리 내에서 `aws-architecture-recommendation.yml` 파일을 설정하여 워크플로우를 구성합니다.
+### Use in other repositories
+Copy **examples/aws-architecture.yml** to the target repository as **.github/workflows/aws-architecture.yml**. It checks out that repo, invokes the published composite Action and uploads the output. The Action reference points at `@main`, so **merge this PR before using the template**. For stronger supply-chain security, pin `uses:` to the verified commit SHA. The target default branch must match the pull_request branch filter.
 
-```yaml
-# 주요 구성 내용은 파일을 참조해주세요
-- name: Graphviz 설치
-- name: Python 패키지 설치
-- name: OpenAI API를 사용하여 레포지토리 분석
-- name: AWS 아키텍처 다이어그램 생성
-- name: 아키텍처 다이어그램 업로드
+### Self-hosted GitHub App (optional multi-repository trigger)
+The `app/server.py` webhook server is a **deployable scaffold**, not an already registered/installed GitHub App. It handles signed `pull_request` events and dispatches the installed template workflow in selected repositories. It does not itself analyze code. Every target repo must contain **.github/workflows/aws-architecture.yml** on its default branch.
+
+1. Register a GitHub App in GitHub Developer settings (name of your choice).
+2. Repository permissions: **Actions: Read and write**, **Contents: Read-only**, **Pull requests: Read-only**, **Metadata: Read-only**. Subscribe to **Pull request** events.
+3. Set Webhook URL to `https://YOUR_HOST/webhook`, create a long random webhook secret, download your App private key.
+4. Deploy the container from repository root using `docker build -f app/Dockerfile -t architecture-github-app .`. Run it behind HTTPS with `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY` and `GITHUB_WEBHOOK_SECRET` environment variables. Keep all three confidential; supply the PEM private key as an environment variable with newlines or escaped `\\n`.
+5. Install the App on selected repositories and add the example workflow to each default branch.
+6. Open a PR in a selected repository. A webhook with a valid signature triggers its `workflow_dispatch` workflow, which generates downloadable artifacts.
+
+**Note:** If using both the example template's `pull_request` trigger and the App webhook, a PR may produce two runs. For App-driven mode, remove the template's `pull_request` trigger. For pure Actions mode, no GitHub App or server is necessary. Neither mode provisions AWS resources.
+
+### Local quick start
+Install Python 3.10+ and Graphviz (with `dot` on PATH), then run:
+
+```bash
+python3 -m unittest discover -s tests -v
+python3 scripts/recommend_architecture.py --repo . --output architecture-output
+```
+
+## Outputs and boundaries
+- `architecture.svg` / `architecture.png`: conceptual architecture diagram
+- `architecture.dot`: Graphviz source
+- `architecture.json`: detected evidence, components and assumptions
+- `recommendation.md`: concise rationale, evidence and limits
+
+No project source contents are sent to OpenAI or any model. Filesystem filename-based detection is deliberately limited; validate feasibility, runtime, networking, security, data residency, availability and actual AWS costs before using a proposal in production.
