@@ -15,7 +15,7 @@ OPTIONAL_NUMBERS = {
     "rto_minutes": (0, 525600),
     "rpo_minutes": (0, 525600),
 }
-OPTIONAL_BOOL = {"requires_authentication", "requires_relational_database"}
+OPTIONAL_BOOL = {"requires_authentication", "requires_relational_database", "requires_persistent_storage"}
 OPTIONAL_STRINGS = {"region"}
 KNOWN = set(FIELDS) | set(OPTIONAL_NUMBERS) | OPTIONAL_BOOL | OPTIONAL_STRINGS
 
