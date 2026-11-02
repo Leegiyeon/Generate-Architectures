@@ -33,11 +33,19 @@ on:
         type: string
         required: false
         default: gpt-6-luna
+      cost_input:
+        description: "선택: 저장소 안 비기밀 월 사용량 JSON (미입력은 미산정)"
+        type: string
+        required: false
+      live_pricing:
+        description: "선택: AWS Price List Query API 조회 (권한 필요, 기본 비활성화)"
+        type: boolean
+        required: true
+        default: false
 
-# 2. 권한: 소스는 읽기 전용, 같은 저장소 PR에만 결과 댓글 허용
+# 2. 기본 권한: 소스 분석/테스트 작업은 읽기 전용만 허용
 permissions:
   contents: read
-  pull-requests: write
 
 # 3. 작업 흐름: 준비 -> 테스트 -> 분석 -> 파일 보관 -> PR 알림
 jobs:
@@ -78,6 +86,9 @@ jobs:
           # PR/push 자동 실행에서는 항상 AI 사용 안 함: 사용자 동의 없이 외부 정보 전송 금지
           enable_ai: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_ai || false }}
           ai_model: ${{ inputs.ai_model || 'gpt-6-luna' }}
+          # 비용 산정은 사용자가 입력한 사용량만 활용하며 누락 단가는 추정하지 않습니다.
+          cost_input: ${{ inputs.cost_input || '' }}
+          live_pricing: ${{ github.event_name == 'workflow_dispatch' && inputs.live_pricing || false }}
         env:
           # Secrets는 수동 실행에서 동의한 경우에만 노출; 일반 PR은 비활성화
           OPENAI_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_ai && secrets.OPENAI_API_KEY || '' }}
@@ -91,20 +102,28 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      # 3-8. 같은 저장소 PR에만 링크를 남기고 기존 자동 댓글을 갱신
-      # 외부 Fork PR은 권한 및 보안상 댓글을 작성하지 않음
-      - name: PR 결과 댓글 갱신
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+# 4. PR 결과 댓글은 별도의 최소 권한 작업에서 처리. 이 작업은 PR 소스를 실행하지 않습니다.
+  comment:
+    needs: recommend
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # 4-1. 별도 job에만 쓰기 권한 제공: 테스트하는 PR 코드에는 쓰기 토큰 미전달
+      - name: PR 설계 결과 댓글 갱신
         uses: actions/github-script@v7
         with:
           script: |
             const {owner, repo} = context.repo;
             const issue_number = context.issue.number;
             const marker = '<!-- aws-architecture-recommendation -->';
-            const body = marker + '\nAWS 아키텍처 검토용 초안 생성 완료. ' +
+            const body = marker + '\\nAWS 아키텍처 검토용 초안 생성 완료. ' +
               '[설계 보고서 및 PNG/SVG 확인](' + context.serverUrl + '/' + owner + '/' + repo +
-              '/actions/runs/' + context.runId + ').\n' +
-              '주의: 실제 AWS 배포·비용 산정·보안 적합성 검증은 수행하지 않았습니다.';
+              '/actions/runs/' + context.runId + ').\\n' +
+              '주의: 실제 AWS 배포·비용·보안·성능 검증을 수행한 것으로 간주하지 마세요.';
             const comments = await github.paginate(github.rest.issues.listComments, {owner, repo, issue_number, per_page: 100});
             const previous = comments.find(c => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker));
             if (previous) await github.rest.issues.updateComment({owner, repo, comment_id: previous.id, body});
