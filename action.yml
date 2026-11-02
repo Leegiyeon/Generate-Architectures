@@ -37,7 +37,15 @@ runs:
         REQUIREMENTS_FILE: ${{ github.action_path }}/requirements-diagrams.txt
       run: python3 -m pip install --disable-pip-version-check -r "$REQUIREMENTS_FILE"
 
-    # 2-3. GitHub Actions 변수는 환경변수로 전달하여 셸 코드 주입을 방지
+    # 2-3. Node.js는 대상 저장소의 코드를 실행하지 않으며 파서 패키지만 설치합니다.
+    # --ignore-scripts로 npm 의존성의 설치 스크립트 실행을 방지합니다.
+    - name: TypeScript·JavaScript AST 파서 설치
+      shell: bash
+      env:
+        PARSER_DIR: ${{ github.action_path }}/scripts/js_analyzer
+      run: npm install --prefix "$PARSER_DIR" --ignore-scripts --no-audit --no-fund --package-lock=false
+
+    # 2-4. GitHub Actions 변수는 환경변수로 전달하여 셸 코드 주입을 방지
     - name: 저장소 분석 및 아키텍처 보고서 생성
       shell: bash
       env:

@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "name": "generate-architectures-js-analyzer",
+  "version": "0.1.0",
+  "description": "AST-only TypeScript/JavaScript analyzer - never executes repository code",
+  "dependencies": {
+    "@babel/parser": "7.28.5"
+  }
+}

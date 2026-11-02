@@ -49,11 +49,16 @@ jobs:
       - name: 렌더링 의존성 설치
         run: python3 -m pip install --disable-pip-version-check -r requirements-diagrams.txt
 
-      # 3-4. 설계 규칙·요구사항 검증·AWS 아이콘 생성 테스트
+      # 3-4. 함수 호출과 API 경로를 AST로 분석하는 TypeScript/JavaScript 파서
+      # 대상 프로젝트 코드는 실행하지 않으며 설치 시 후크도 차단합니다.
+      - name: 코드 구조 분석용 Babel 파서 설치
+        run: npm install --prefix scripts/js_analyzer --ignore-scripts --no-audit --no-fund --package-lock=false
+
+      # 3-5. 설계 규칙·코드 그래프·요구사항 검증·AWS 아이콘 생성 테스트
       - name: 자동 테스트
         run: python3 -m unittest discover -s tests -v
 
-      # 3-5. 동일한 Action을 사용하므로 외부 저장소와 실행 방식 일치
+      # 3-6. 동일한 Action을 사용하므로 외부 저장소와 실행 방식 일치
       - name: 설계 분석 및 다이어그램 생성
         uses: ./
         with:
@@ -61,7 +66,7 @@ jobs:
           requirements_file: ${{ inputs.requirements_file || '' }}
           monthly_budget_usd: ${{ inputs.monthly_budget_usd || '' }}
 
-      # 3-6. 구조화된 근거/한국어 보고서/PNG/SVG/DOT 파일 업로드
+      # 3-7. 구조화된 근거/한국어 보고서/PNG/SVG/DOT 파일 업로드
       - name: 생성 파일 업로드
         uses: actions/upload-artifact@v4
         with:
@@ -70,7 +75,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      # 3-7. 같은 저장소 PR에만 링크를 남기고 기존 자동 댓글을 갱신
+      # 3-8. 같은 저장소 PR에만 링크를 남기고 기존 자동 댓글을 갱신
       # 외부 Fork PR은 권한 및 보안상 댓글을 작성하지 않음
       - name: PR 결과 댓글 갱신
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository

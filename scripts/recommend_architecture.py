@@ -7,10 +7,14 @@ if __package__:
     from .repository_analyzer import inspect_repository
     from .requirements_model import parse_requirements
     from .architecture_advisor import decide, markdown_report
+    from .application_graph import build_application_graph
+    from .render_application_graph import render_application_diagram
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
     from architecture_advisor import decide, markdown_report
+    from application_graph import build_application_graph
+    from render_application_graph import render_application_diagram
 
 
 def scan(root):
@@ -53,12 +57,33 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None):
         raise ValueError("분석 대상 저장소가 존재하지 않습니다.")
     requirements = parse_requirements(requirements_file, root, budget, workload)
     profile = inspect_repository(root)
+    # 실행 없이 구문만 파싱: 함수·API·모델의 근거 있는 구조 관계를 별도 그래프로 관리.
+    graph = build_application_graph(root)
+    actual_routes = [n for n in graph["nodes"] if n["type"] == "route"]
+    if actual_routes:
+        profile["signals"]["api_routes"] = True
+        profile["static_candidate"] = False
+        profile["evidence"]["ast_api_routes"] = [
+            {"path": n["path"], "line": n["line"], "route": n["name"]}
+            for n in actual_routes[:20]
+        ]
     result = decide(profile, requirements)
+    result["application_graph"] = {
+        "file": "application-graph.json",
+        "source_files": graph["scanned_source_files"],
+        "nodes": graph["counts"]["nodes"],
+        "edges": graph["counts"]["edges"],
+        "parser_errors": len(graph["errors"]),
+        "incomplete": graph["scan_truncated"] or bool(graph["errors"]),
+    }
     out = Path(output).resolve()
     if out == root or out == root.parent:
         raise ValueError("보고서 경로는 저장소 루트 또는 상위 폴더일 수 없습니다.")
     out.mkdir(parents=True, exist_ok=True)
+    diagram_info = render_application_diagram(graph, out)
+    result["application_graph"]["diagram"] = diagram_info
     for name, value in (
+        ("application-graph.json", graph),
         ("repository-analysis.json", profile),
         ("requirements-used.json", requirements),
         ("architecture.json", result),
@@ -66,6 +91,18 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None):
         (out / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n",
                                 encoding="utf-8")
     report = markdown_report(result)
+    report += "\n## 9. 코드 기반 애플리케이션 그래프 (추가 산출물)\n\n"
+    report += "- 분석 파일 수: " + str(graph["scanned_source_files"]) + "\n"
+    report += "- API: " + str(graph["counts"]["nodes"].get("route", 0))
+    report += " / 함수·메서드: " + str(graph["counts"]["nodes"].get("function", 0))
+    report += " / 데이터 모델 정의: " + str(graph["counts"]["nodes"].get("model", 0)) + "\n"
+    report += "- 확인된 호출 연결: " + str(graph["counts"]["edges"].get("calls", 0)) + "\n"
+    report += "- 산출물: `application-graph.json`, `application-graph.svg`, `application-graph.png`, `application-graph.dot`\n"
+    if graph["errors"]:
+        report += "- **일부 소스 미분석**: " + str(len(graph["errors"])) + "건. JSON의 errors 필드를 확인해주세요.\n"
+    if diagram_info["visualization_truncated"]:
+        report += "- **그림 크기 제한**: 일부 관계는 그림에서 생략되었습니다. 전체 근거는 JSON을 확인하세요.\n"
+    report += "\n> 이 그림은 코드 구문에서 확인된 의존 관계이며 운영 환경의 실제 네트워크 흐름을 증명하지 않습니다.\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:

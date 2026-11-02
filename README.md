@@ -115,3 +115,18 @@ SVG는 디지털 문서용, PNG는 프레젠테이션용으로 사용할 수 있
 - **장기 목표:** 인간 승인 필수인 IaC 제안 PR, GitHub App 운영 안정화, 멀티 클라우드 비교.
 
 자세한 결정 기준은 [설계 문서](docs/ARCHITECTURE.md) 및 [로드맵](docs/ROADMAP.md)을 참고하세요. 과거 `generate_aws_architectures.py`는 레거시 실험용 스크립트이며 현재 Action 실행 경로에는 포함되지 않습니다.
+
+## 9. P0 — 실제 소스코드 AST 기반 Application Graph (이번 개선)
+
+이제 단순히 파일 이름만 탐지하는 데 그치지 않고, **Python AST + JavaScript/TypeScript Babel AST**로 함수·메서드·API Route·import·명시적 호출 관계를 분석합니다. 대상 저장소의 함수를 실행하지 않으며 원문·비밀키를 외부 AI API에 전달하지 않습니다.
+
+산출물: `application-graph.json`(노드/간선·근거 파일 및 행·파싱 오류), `application-graph.svg`, `application-graph.png`, `application-graph.dot`. 기존 AWS 아이콘 기반 설계 제안도(`architecture.svg`)와 **구분**됩니다.
+
+- **확인된 구조:** 정적 API 엔드포인트, 함수/메서드, 모듈 import, 확인된 직접 호출, Python SQLAlchemy/Django 계열 모델 후보, Prisma 모델 정의.
+- **미확인 구조:** 동적 import, DI 주입 대상, 실제 네트워크·DB 호출, ORM 관계 전체, tsconfig alias, 런타임 리플렉션, Go/Java AST. 근거가 없으면 연결선을 그리지 않습니다.
+- **보안/자원 상한:** 소스코드 실행 없음, 설치 스크립트 차단(`npm --ignore-scripts`), 최대 300개 소스 파일 및 파일당 64KB, 출력 노드/간선 수 제한. 다이어그램 표시량이 초과되면 JSON에 전체 추출 범위를 보존한 채 표시 제한 여부를 기록합니다.
+- **실패 처리:** 일부 파일 구문 오류 또는 Node 파서 부재 시 `errors`에 명시하고, 가능한 다른 언어의 분석은 계속합니다. 파서 실패를 '연결 관계 없음'으로 해석하지 않습니다.
+
+**직접 실행 준비:** Python, Node.js, Graphviz, `diagrams`를 설치한 뒤 `npm install --prefix scripts/js_analyzer --ignore-scripts --no-audit --no-fund --package-lock=false`를 먼저 실행합니다. GitHub Actions와 재사용 Action은 해당 설치를 자동 수행합니다. Node 또는 Babel을 설치할 수 없다면 Python AST만 분석하며 누락 사유를 결과 JSON에 기록합니다.
+
+다이어그램은 구문 분석 결과를 이해하기 위한 참고 자료이며, AWS 설계 적합성이나 운영상의 호출/성능을 검증한 것으로 간주할 수 없습니다.
