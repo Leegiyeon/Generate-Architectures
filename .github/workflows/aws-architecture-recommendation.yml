@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Test analyzer
+        run: python3 -m unittest discover -s tests -v
       - name: Generate report using composite Action
         uses: ./
       - uses: actions/upload-artifact@v4
