@@ -11,6 +11,8 @@ if __package__:
     from .application_graph import build_application_graph
     from .render_application_graph import render_application_diagram
     from .ai_architecture_agent import review_architecture, markdown_ai_review
+    from .cost_estimator import read_cost_inputs, estimate_costs, markdown_cost
+    from .iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from .architecture_validator import validate_architecture, markdown_validation, markdown_adr
 else:
     from repository_analyzer import inspect_repository
@@ -19,6 +21,8 @@ else:
     from application_graph import build_application_graph
     from render_application_graph import render_application_diagram
     from ai_architecture_agent import review_architecture, markdown_ai_review
+    from cost_estimator import read_cost_inputs, estimate_costs, markdown_cost
+    from iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from architecture_validator import validate_architecture, markdown_validation, markdown_adr
 
 
@@ -56,7 +60,8 @@ def design(found, kind, budget):
 
 
 def run(repo, output, workload="auto", budget=None, requirements_file=None,
-        ai_enabled=False, ai_model="gpt-6-luna"):
+        ai_enabled=False, ai_model="gpt-6-luna", cost_input=None,
+        live_pricing=False, terraform_plan=None):
     """구현 범위: 읽기 전용 정적 분석 및 검토용 AWS 참조 설계 생성."""
     root = Path(repo).resolve()
     if not root.is_dir():
@@ -93,6 +98,20 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         "blockers": validation["counts"]["blocker"],
         "review_required": validation["counts"]["review_required"],
     }
+    # 비용은 요금 출처와 사용량이 명시된 경우만 계산하며, 누락 단가는 0으로 처리하지 않음.
+    cost_report = estimate_costs(read_cost_inputs(root, cost_input), live=live_pricing)
+    # Terraform plan 파일은 민감 원문을 포함할 수 있어 결과에는 익명화된 위험만 기록.
+    iac_report = inspect_terraform_plan(read_terraform_plan(root, terraform_plan))
+    result["cost_estimate"] = {
+        "file": "cost-estimate.json",
+        "status": cost_report["status"], "monthly_total_usd": cost_report["monthly_total_usd"],
+        "complete": cost_report["complete"],
+    }
+    result["iac_review"] = {
+        "file": "iac-policy.json",
+        "status": iac_report["status"], "critical_findings": iac_report["counts"]["critical"],
+        "production_ready": False,
+    }
     result["application_graph"] = {
         "file": "application-graph.json",
         "source_files": graph["scanned_source_files"],
@@ -110,6 +129,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     for name, value in (
         ("application-graph.json", graph),
         ("ai-review.json", ai_review),
+        ("cost-estimate.json", cost_report),
+        ("iac-policy.json", iac_report),
         ("validation.json", validation),
         ("repository-analysis.json", profile),
         ("requirements-used.json", requirements),
@@ -118,6 +139,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         (out / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n",
                                 encoding="utf-8")
     (out / "ai-review.md").write_text(markdown_ai_review(ai_review), encoding="utf-8")
+    (out / "cost-estimate.md").write_text(markdown_cost(cost_report), encoding="utf-8")
+    (out / "iac-policy.md").write_text(markdown_iac(iac_report), encoding="utf-8")
     (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
     (out / "decision-record.md").write_text(markdown_adr(result, validation), encoding="utf-8")
     report = markdown_report(result)
@@ -143,6 +166,11 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- 수동 확인 항목: " + str(validation["counts"]["review_required"]) + "\n"
     report += "- 상세: `validation.json`, `validation.md`, `decision-record.md`\n"
     report += "- 모든 Well-Architected 항목은 실환경 검증 전이며 운영 적합성을 보증하지 않습니다.\n"
+    report += "\n## 12. 비용 시나리오 및 IaC 보안 검토 (별도 산출물)\n\n"
+    report += "- 비용 산정: " + cost_report["status"] + " (cost-estimate.json/md)\n"
+    report += "- Terraform 계획 검사: " + iac_report["status"] + " (iac-policy.json/md)\n"
+    report += "- IaC 명시적 보안 위험: " + str(iac_report["counts"]["critical"]) + "건\n"
+    report += "- 비용·보안 검사 미실행을 통과로 표시하지 않습니다.\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:
@@ -164,10 +192,14 @@ def main():
     parser.add_argument("--enable-ai", action="store_true",
                         help="외부 OpenAI API로 비기밀 구조화 분석 근거를 전송합니다 (명시적 동의 필요)")
     parser.add_argument("--ai-model", default="gpt-6-luna", help="지원되는 Responses API 모델 ID")
+    parser.add_argument("--cost-input", default=None, help="비기밀 월 사용량과 단가 출처 JSON (선택)")
+    parser.add_argument("--live-pricing", action="store_true", help="AWS Price List API 실시간 조회 (명시적 활성화, 읽기 권한 필요)")
+    parser.add_argument("--terraform-plan", default=None, help="terraform show -json으로 만든 로컬 plan JSON 파일 (민감 정보 포함 주의)")
     args = parser.parse_args()
     try:
         run(args.repo, args.output, args.workload, args.budget, args.requirements,
-            args.enable_ai, args.ai_model)
+            args.enable_ai, args.ai_model, args.cost_input,
+            args.live_pricing, args.terraform_plan)
     except (ValueError, OSError) as exc:
         parser.error(str(exc))
 
