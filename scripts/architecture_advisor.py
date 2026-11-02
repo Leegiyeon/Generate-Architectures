@@ -2,7 +2,10 @@
 
 LLM이 아닌 재현 가능한 규칙입니다. 점수, 실제 청구액 또는 적합성 보증을 생성하지 않습니다.
 """
-from requirements_model import review_requirements
+try:
+    from .requirements_model import review_requirements
+except ImportError:
+    from requirements_model import review_requirements
 
 
 TEMPLATES = {
