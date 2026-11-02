@@ -52,12 +52,12 @@ def read_terraform_plan(root, path):
 
 
 def _all_access(from_port, to_port, protocol):
+    if str(protocol) == "-1":
+        return True
     try:
         low, high = int(from_port), int(to_port)
     except (TypeError, ValueError):
         return False
-    if protocol == "-1":
-        return True
     if str(protocol).lower() not in ("tcp", "6"):
         return False
     return (low <= 22 <= high or low <= 3389 <= high)
@@ -139,7 +139,7 @@ def inspect_terraform_plan(document):
                     continue
                 if typ == "aws_security_group_rule" and rule.get("type") != "ingress":
                     continue
-                cidrs = (rule.get("cidr_blocks") or []) + (rule.get("ipv6_cidr_blocks") or [])
+                cidrs = list(rule.get("cidr_blocks") or []) + list(rule.get("ipv6_cidr_blocks") or [])
                 if typ == "aws_vpc_security_group_ingress_rule":
                     cidrs += [rule.get("cidr_ipv4"), rule.get("cidr_ipv6")]
                 if any(_cidr_public(x) for x in cidrs):
