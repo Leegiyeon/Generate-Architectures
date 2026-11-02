@@ -25,7 +25,7 @@ class IconRendererTests(unittest.TestCase):
                     svg = outputs["svg"].read_text(encoding="utf-8")
                     png = outputs["png"].read_bytes()
                     self.assertIn("data:image/png;base64,", svg)
-                    self.assertTrue(png.startswith(b"\\x89PNG\\r\\n\\x1a\\n"))
+                    self.assertTrue(png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10])))
                     self.assertTrue(all(x.stat().st_size > 100 for x in outputs.values()))
                     for node in expected:
                         self.assertIn(node, AWS_ICONS)
