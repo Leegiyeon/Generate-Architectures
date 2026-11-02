@@ -1,7 +1,7 @@
 # Generate-Architectures 자체 CI: 코드 변경 시 품질검사 후 설계 산출물 생성
 name: AWS 아키텍처 검토 자동화
 
-# 1. 트리거: 기본 브랜치 변경, PR, 수동 실행, 외부 워크플로 재사용
+# 1. 트리거: 기본 브랜치 변경, PR, 수동 실행 (외부 저장소는 action.yml 사용)
 on:
   push:
     branches: [main]
@@ -22,20 +22,6 @@ on:
       monthly_budget_usd:
         description: "선택: 월 예산 입력(USD, 실측 비용 아님)"
         type: string
-        required: false
-  workflow_call:
-    inputs:
-      workload:
-        type: string
-        default: auto
-        required: false
-      requirements_file:
-        type: string
-        default: ""
-        required: false
-      monthly_budget_usd:
-        type: string
-        default: ""
         required: false
 
 # 2. 권한: 소스는 읽기 전용, 같은 저장소 PR에만 결과 댓글 허용
