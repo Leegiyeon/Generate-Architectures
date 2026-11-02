@@ -66,11 +66,14 @@ def decide(profile, requirements):
         workload = "mobile" if signals["mobile"] else "web" if "web" in categories else "backend"
 
     relational = requirements.get("requires_relational_database", signals["relational_database"])
+    document_db = signals.get("document_database", False)
+    needs_storage = requirements.get("requires_persistent_storage", relational or document_db)
     preference = requirements["deployment_preference"]
-    can_static = profile["static_candidate"] and not relational and workload == "web"
+    can_static = profile["static_candidate"] and not needs_storage and not relational and workload == "web"
     feasible = {
         "static": can_static,
-        "serverless": workload != "mobile" and not relational,
+        "serverless": workload != "mobile" and not relational and not document_db and
+                      (not signals["nextjs"] or signals["serverless_config"] or profile["static_candidate"]),
         "containers": workload != "mobile",
         "mobile": workload == "mobile",
     }
@@ -81,7 +84,7 @@ def decide(profile, requirements):
         preferred = "serverless"
     elif can_static:
         preferred = "static"
-    elif signals["docker"] or relational or signals["nextjs"]:
+    elif signals["docker"] or relational or document_db or signals["nextjs"]:
         preferred = "containers"
     elif workload == "backend":
         preferred = "serverless" if feasible["serverless"] else "containers"
@@ -100,6 +103,12 @@ def decide(profile, requirements):
         blockers.append("Next.js의 SSR/서버 액션 사용 여부를 확인할 때까지 정적 배포를 확정할 수 없습니다.")
     if relational and preferred == "containers":
         blockers.append("RDS는 후보 서비스일 뿐입니다. 기존 관계형 DB 사용 여부와 실제 엔진을 확인해야 합니다.")
+    if document_db:
+        blockers.append("문서형 DB 사용 단서가 있습니다. RDS/DynamoDB로 자동 마이그레이션하지 않고 기존 DB 엔진을 확인해야 합니다.")
+    if requirements.get("requires_relational_database") and requirements.get("requires_persistent_storage") is False:
+        blockers.append("영속 저장 불필요와 관계형 DB 필수 요구사항이 충돌합니다.")
+    if requirements.get("data_classification") == "sensitive":
+        blockers.append("민감 데이터 처리 시 보안·암호화·접근 통제와 규제 요건 검증이 필요합니다.")
     if not profile["manifests"]:
         blockers.append("분석 가능한 기술 설정 파일이 없어 아키텍처 추천의 근거가 부족합니다.")
     if profile["scan_truncated"]:
@@ -117,6 +126,15 @@ def decide(profile, requirements):
             "cost_status": "미산정: 실제 리전·사용량·가격표가 필요합니다.",
         })
     selected = TEMPLATES[preferred]
+    # 발견된 DB 근거 없이 임의의 RDS/DynamoDB를 실제 설계처럼 표시하지 않습니다.
+    nodes = list(selected["nodes"])
+    if preferred == "containers" and not relational:
+        nodes.remove("Amazon RDS")
+    if preferred in ("serverless", "mobile") and (not needs_storage or document_db):
+        nodes.remove("DynamoDB")
+    if preferred == "mobile" and requirements.get("requires_authentication") is False:
+        nodes.remove("Amazon Cognito")
+    edges = [edge for edge in selected["edges"] if edge[0] in nodes and edge[1] in nodes]
     questions = list(dict.fromkeys(profile["questions"] + review_requirements(requirements)))
     if not signals["api_routes"] and workload in ("web", "backend"):
         questions.append("실제 API 서버, 백그라운드 작업 또는 서버 측 렌더링이 있나요?")
@@ -129,7 +147,7 @@ def decide(profile, requirements):
         "input_budget_usd_month": requirements.get("monthly_budget_usd"),
         "detected_technologies": profile["technologies"],
         "evidence": profile["manifests"],
-        "nodes": selected["nodes"], "edges": selected["edges"],
+        "nodes": nodes, "edges": edges,
         "requirements": requirements,
         "repository_analysis": profile,
         "decision": {
