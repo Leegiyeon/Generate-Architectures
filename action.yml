@@ -20,6 +20,14 @@ inputs:
     description: "생성 보고서와 다이어그램을 저장할 위치"
     required: false
     default: architecture-output
+  enable_ai:
+    description: "명시적 동의 시에만 비기밀 집계 단서를 외부 OpenAI API로 전송 (기본 꺼짐)"
+    required: false
+    default: "false"
+  ai_model:
+    description: "Responses API 모델 이름 (API 키는 GitHub Secrets OPENAI_API_KEY로 전달)"
+    required: false
+    default: gpt-6-luna
 
 # 2. 실행: 수집된 데이터를 외부 AI 서비스로 송신하지 않는 읽기 전용 분석
 runs:
@@ -53,6 +61,8 @@ runs:
         INPUT_BUDGET: ${{ inputs.monthly_budget_usd }}
         INPUT_REQUIREMENTS: ${{ inputs.requirements_file }}
         INPUT_OUTPUT_DIR: ${{ inputs.output_dir }}
+        INPUT_AI_ENABLED: ${{ inputs.enable_ai }}
+        INPUT_AI_MODEL: ${{ inputs.ai_model }}
         ACTION_SCRIPT: ${{ github.action_path }}/scripts/recommend_architecture.py
       run: |
         set -euo pipefail
@@ -63,4 +73,10 @@ runs:
         if [[ -n "$INPUT_REQUIREMENTS" ]]; then
           set -- "$@" --requirements "$INPUT_REQUIREMENTS"
         fi
+        # 명시적으로 true가 지정된 경우에만 외부 AI 검토 허용
+        case "$INPUT_AI_ENABLED" in
+          true) set -- "$@" --enable-ai --ai-model "$INPUT_AI_MODEL" ;;
+          false) ;;
+          *) echo "enable_ai 입력은 true 또는 false만 허용합니다." >&2; exit 2 ;;
+        esac
         python3 "$ACTION_SCRIPT" "$@"

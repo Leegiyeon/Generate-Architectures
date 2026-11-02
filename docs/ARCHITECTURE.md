@@ -66,3 +66,32 @@
 일부 파일을 분석하지 못하면 `errors`에 이유를 기록하고, 소스 파일과 결과 노드/간선의 최대 수를 제한합니다. JS/TS의 동적 import, 런타임 DI, path alias, 복잡한 ORM 관계, Go·Java 함수 호출 추적은 아직 지원하지 않습니다. AST에서 찾은 API가 실제 운영 라우팅/인가 정책을 증명하는 것은 아닙니다.
 
 개선된 파이프라인: 저장소 메타데이터 수집 → **코드 AST 분석** → 검증된 API 단서를 설계 판단에 반영 → 한국어 설계 검토 → AWS 후보 다이어그램 + 별도의 실제 코드 구조 다이어그램 → Artifact.
+
+## AI 설계 검토 Agent — 선택적 판단 분기
+
+`scripts/ai_architecture_agent.py`는 기존 규칙 기반 `architecture_advisor.py`의 **후단**에 연결합니다. 기본적으로 외부 전송은 발생하지 않으며, 수동 실행에서 `enable_ai`를 명시하고 `OPENAI_API_KEY`가 있을 때만 모델을 호출합니다.
+
+```text
+소스 파일 + 요구사항
+  → Repository Analyzer / AST Graph (로컬, 실행 없음)
+  → Rule-Based Architecture Advisor (기존 설계도 확정 아님)
+  → [사용자 동의 및 API 키 존재 시] 최소 정보 집계
+  → Evidence ID 부여 (E001, E002 ...)
+  → OpenAI Responses API / 구조화된 JSON / store=false
+  → 로컬 검증: 참조 ID 실재 여부, 대안 적용 가능성, 문자열 및 배열 상한
+  → ai-review.json + ai-review.md (검증 전 보조 의견)
+  └─ 기존 architecture.json의 선택 및 SVG/PNG는 변경하지 않음
+```
+
+### 데이터 계약
+
+- **관찰(observed):** 정적 분석에서 감지한 참인 기술 신호와 AST 노드 개수. 없음/미탐지는 부재 증명이 아닙니다.
+- **요구(requirement):** 등록된 데이터 분류·워크로드·SLO/RTO/RPO/예산 등의 검증된 입력값.
+- **제안(proposal):** LLM의 대안 ID·근거 ID·위험 설명·추가 질문. 참고 의견이며 **검증 전**입니다.
+- **검증(validation):** 앱은 출력 구조/ID/허용 대안만 검증합니다. AWS 리소스/비용/정책 통과 여부는 검증하지 않습니다.
+
+모델 프롬프트에는 저장소 이름, 소스 내용, 파일·함수명, URL, 원본 AST 노드·호출 그래프를 포함하지 않습니다. 외부 전송은 집계 수치·허용된 요구사항 필드 및 근거 ID로 제한됩니다. 사용자 제어 Secrets는 출력 로그/Artifact에 넣지 않습니다. 인증 오류/타임아웃 시 API 응답 본문은 저장하지 않습니다.
+
+요청에는 `store: false`를 지정하며, 이것이 모든 데이터 처리·보존 정책을 없애는 의미는 아닙니다. 사용자의 조직 보안 정책을 우선 적용해야 합니다.
+
+이 엔진은 GitHub 자동 PR 이벤트에서 호출하지 않습니다. Actions 수동 실행만 허용하며, 타 저장소 재사용 시 이용자가 명시적으로 전달해야 합니다. AI 모델은 아키텍처를 수정·배포할 권한이 없습니다.
