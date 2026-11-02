@@ -1,21 +1,42 @@
-name: AWS Architecture Proposal
+# 대상 프로젝트에 복사: .github/workflows/aws-architecture.yml
+name: AWS 아키텍처 자동 검토
+
+# 1. 트리거: PR이 생성/변경되거나 사용자가 수동 실행할 때 검토
+# GitHub App 웹훅을 사용할 경우 중복 실행 방지를 위해 pull_request를 제거하세요.
 on:
   workflow_dispatch:
   pull_request:
     branches: [main]
+
+# 2. 권한: 코드 읽기만 허용. 이 워크플로는 AWS를 배포하지 않음
 permissions:
   contents: read
-  pull-requests: write
+
+# 3. 대상 저장소를 분석한 뒤 산출물을 다운로드 가능한 Artifact로 저장
 jobs:
   recommendation:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      # 3-1. 현재 저장소 파일을 분석 대상으로 체크아웃
+      - name: 분석할 저장소 체크아웃
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: Leegiyeon/Generate-Architectures@main
-      - uses: actions/upload-artifact@v4
+
+      # 3-2. 재사용 Action 실행 (운영 시에는 @main 대신 검증된 SHA/릴리스 태그 고정 권장)
+      # 3-2-1. 요구사항 JSON이 없다면 requirements_file 항목을 제거해도 됩니다.
+      - name: 설계 검토 및 AWS 아이콘 다이어그램 생성
+        uses: Leegiyeon/Generate-Architectures@main
+        with:
+          workload: auto
+          requirements_file: .architecture/requirements.json
+
+      # 3-3. 한국어 보고서, 설정 근거 JSON, 다이어그램 PNG/SVG 등 저장
+      - name: 설계 결과 파일 보관
+        uses: actions/upload-artifact@v4
         with:
           name: aws-architecture-recommendation
           path: architecture-output/
           if-no-files-found: error
+          retention-days: 30
