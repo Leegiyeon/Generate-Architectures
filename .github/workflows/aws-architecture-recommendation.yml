@@ -23,6 +23,16 @@ on:
         description: "선택: 월 예산 입력(USD, 실측 비용 아님)"
         type: string
         required: false
+      enable_ai:
+        description: "외부 OpenAI API로 비기밀 집계 단서를 전송하고 AI 보조 검토 실행 (명시 동의)"
+        type: boolean
+        required: true
+        default: false
+      ai_model:
+        description: "AI 모델 (OPENAI_API_KEY Secret 필요)"
+        type: string
+        required: false
+        default: gpt-6-luna
 
 # 2. 권한: 소스는 읽기 전용, 같은 저장소 PR에만 결과 댓글 허용
 permissions:
@@ -65,6 +75,12 @@ jobs:
           workload: ${{ inputs.workload || 'auto' }}
           requirements_file: ${{ inputs.requirements_file || '' }}
           monthly_budget_usd: ${{ inputs.monthly_budget_usd || '' }}
+          # PR/push 자동 실행에서는 항상 AI 사용 안 함: 사용자 동의 없이 외부 정보 전송 금지
+          enable_ai: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_ai || false }}
+          ai_model: ${{ inputs.ai_model || 'gpt-6-luna' }}
+        env:
+          # Secrets는 수동 실행에서 동의한 경우에만 노출; 일반 PR은 비활성화
+          OPENAI_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_ai && secrets.OPENAI_API_KEY || '' }}
 
       # 3-7. 구조화된 근거/한국어 보고서/PNG/SVG/DOT 파일 업로드
       - name: 생성 파일 업로드
