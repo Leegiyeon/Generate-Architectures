@@ -19,6 +19,11 @@ runs:
     - name: Install Graphviz
       shell: bash
       run: sudo apt-get update -qq && sudo apt-get install -y graphviz
+    - name: Install icon rendering library
+      shell: bash
+      env:
+        REQUIREMENTS_FILE: ${{ github.action_path }}/requirements-diagrams.txt
+      run: python3 -m pip install --disable-pip-version-check -r "$REQUIREMENTS_FILE"
     - name: Generate recommendation
       shell: bash
       env:
