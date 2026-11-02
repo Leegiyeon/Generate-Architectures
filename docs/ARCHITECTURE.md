@@ -95,3 +95,32 @@
 요청에는 `store: false`를 지정하며, 이것이 모든 데이터 처리·보존 정책을 없애는 의미는 아닙니다. 사용자의 조직 보안 정책을 우선 적용해야 합니다.
 
 이 엔진은 GitHub 자동 PR 이벤트에서 호출하지 않습니다. Actions 수동 실행만 허용하며, 타 저장소 재사용 시 이용자가 명시적으로 전달해야 합니다. AI 모델은 아키텍처를 수정·배포할 권한이 없습니다.
+
+## Architecture Validator v1 — 설계 결정에 대한 정적 제약 검사
+
+분석/설계/AI 보조 검토 뒤, 배포나 AWS 계정 변경 없이 `scripts/architecture_validator.py`가 정적 제약 검사를 실행합니다.
+
+```text
+코드 분석의 명시적 근거 + 사용자 JSON 요구사항
+             ↓
+규칙 기반 AWS 참조 패턴 선택 + (옵션) AI 보조 검토
+             ↓
+Architecture Validator (AI 응답으로 룰을 변경하지 않음)
+  ├── ARC-* 다이어그램 노드/간선과 템플릿 정합성 검사
+  ├── REQ-* 명시 요구사항 충돌 검사
+  ├── PAT-* 설계 패턴과 API/DB 구조 간의 명시적 충돌
+  ├── EVD-* AST 파일 누락/오류에 대한 불확실성 기록
+  └── SEC/REL/OPS/PERF/COST-* 실제 검증이 필요한 조건
+             ↓
+validation.json / validation.md / decision-record.md
+             ↓
+사용자 최종 검토 및 승인 (자동 승인·실제 배포 없음)
+```
+
+모든 Finding에는 `rule_id`, `pillar`, `severity`, `title`, `detail`, `evidence`, `recommended_action`이 들어갑니다. 근거는 `requirements.requires_...`, `repository.signals...`, `architecture.nodes` 등의 **기존 구조 필드**를 참조합니다. 실제 AWS 리소스가 점검되었다는 의미로 쓰지 않습니다.
+
+**결과 계약:** `decision_gate=blocked`는 이 참조안의 **자동 적용 제한**이고 `decision_gate=review_required`는 추가 증거 부족입니다. 두 상태 모두 `production_ready=false`, `aws_account_checked=false`, `cost_estimated=false`, `security_compliance_verified=false`, `performance_tested=false`입니다. Well-Architected 여섯 원칙은 모두 `검증 전`으로 남습니다.
+
+검사 자체가 선택된 AWS 서비스를 추가·삭제하거나 AI가 제안한 대안으로 전환하는 동작은 없습니다. 모델이 위험을 찾아도 독립 정책/실측 확인 없이 통과시키지 않습니다. ADR은 확정사항이 아닌 사람이 검토할 수 있는 결정 기록의 **초안**입니다.
+
+향후 단계에서는 실제 Terraform/CDK/CloudFormation 파일에 대한 읽기 전용 정책 검사 결과를 별도 provenance 필드와 함께 수집해야 하며, 이후 비용/보안/신뢰성 검사에서 미수행과 위반을 분리해야 합니다.

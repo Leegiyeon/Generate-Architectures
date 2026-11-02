@@ -82,7 +82,7 @@ jobs:
           # Secrets는 수동 실행에서 동의한 경우에만 노출; 일반 PR은 비활성화
           OPENAI_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_ai && secrets.OPENAI_API_KEY || '' }}
 
-      # 3-7. 구조화된 근거/한국어 보고서/PNG/SVG/DOT 파일 업로드
+      # 3-7. 정적 설계 제약 검사(validation.json/md), ADR, 한글 보고서 및 PNG/SVG/DOT 업로드
       - name: 생성 파일 업로드
         uses: actions/upload-artifact@v4
         with:

@@ -11,6 +11,7 @@ if __package__:
     from .application_graph import build_application_graph
     from .render_application_graph import render_application_diagram
     from .ai_architecture_agent import review_architecture, markdown_ai_review
+    from .architecture_validator import validate_architecture, markdown_validation, markdown_adr
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -18,6 +19,7 @@ else:
     from application_graph import build_application_graph
     from render_application_graph import render_application_diagram
     from ai_architecture_agent import review_architecture, markdown_ai_review
+    from architecture_validator import validate_architecture, markdown_validation, markdown_adr
 
 
 def scan(root):
@@ -82,6 +84,15 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         "status": ai_review["status"], "file": "ai-review.json",
         "authoritative": False,
     }
+    # 모델의 의견을 자동 적용하지 않고 규칙 기반 참조안과 사용자 요구를 독립적으로 검사.
+    validation = validate_architecture(result, profile, requirements, graph, ai_review)
+    result["validation"] = {
+        "file": "validation.json",
+        "decision_gate": validation["decision_gate"],
+        "production_ready": False,
+        "blockers": validation["counts"]["blocker"],
+        "review_required": validation["counts"]["review_required"],
+    }
     result["application_graph"] = {
         "file": "application-graph.json",
         "source_files": graph["scanned_source_files"],
@@ -99,6 +110,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     for name, value in (
         ("application-graph.json", graph),
         ("ai-review.json", ai_review),
+        ("validation.json", validation),
         ("repository-analysis.json", profile),
         ("requirements-used.json", requirements),
         ("architecture.json", result),
@@ -106,6 +118,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         (out / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n",
                                 encoding="utf-8")
     (out / "ai-review.md").write_text(markdown_ai_review(ai_review), encoding="utf-8")
+    (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
+    (out / "decision-record.md").write_text(markdown_adr(result, validation), encoding="utf-8")
     report = markdown_report(result)
     report += "\n## 9. 코드 기반 애플리케이션 그래프 (추가 산출물)\n\n"
     report += "- 분석 파일 수: " + str(graph["scanned_source_files"]) + "\n"
@@ -123,6 +137,12 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- 상태: " + ai_review["status"] + "\n"
     report += "- 상세: `ai-review.md`, `ai-review.json` (AI를 사용하지 않아도 상태 파일 생성)\n"
     report += "- AI가 제안한 대안은 기본 설계도와 분리되며 자동 승인·반영되지 않습니다.\n"
+    report += "\n## 11. 아키텍처 정적 제약 검토와 결정 기록\n\n"
+    report += "- 검토 상태: " + validation["decision_gate"] + "\n"
+    report += "- 차단 항목: " + str(validation["counts"]["blocker"]) + "\n"
+    report += "- 수동 확인 항목: " + str(validation["counts"]["review_required"]) + "\n"
+    report += "- 상세: `validation.json`, `validation.md`, `decision-record.md`\n"
+    report += "- 모든 Well-Architected 항목은 실환경 검증 전이며 운영 적합성을 보증하지 않습니다.\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:
