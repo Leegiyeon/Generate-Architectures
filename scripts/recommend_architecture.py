@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import subprocess
 
 SKIP = {".git", "node_modules", ".next", "dist", "build", ".venv", "venv", "__pycache__", "coverage", "vendor"}
 SIGNALS = {
@@ -73,15 +72,12 @@ def main():
     evidence="\n".join("- "+e["path"]+": "+e["technology"] for e in result["evidence"]) or "- No supported manifests found"
     report="# AWS Architecture Recommendation\n\nPattern: "+result["pattern"]+"\n\nDetected stack: "+(", ".join(result["detected_technologies"]) or "unknown")+"\n\n"
     report+="Budget input: "+(str(args.budget)+" USD/month" if args.budget is not None else "not provided")+" (not a price quote)\n\n## Evidence\n"+evidence+"\n\n## Limitations\n"
-    report+="\n".join("- "+x for x in result["limitations"])+"\n\nSee architecture.svg, architecture.png and architecture.json.\n"
+    report+="\n".join("- "+x for x in result["limitations"])+"\n\nSee architecture.svg (self-contained service icons), architecture.png, architecture.dot and architecture.json.\nSolid arrows show request/data flows; dashed lines show security associations and dotted lines show telemetry.\n"
     (out/"recommendation.md").write_text(report,encoding="utf-8")
-    graph=['digraph AWS {','graph [rankdir=LR];','node [shape=box,style="rounded,filled",fillcolor="#EAF4FF"];']
-    graph += [json.dumps(node)+";" for node in result["nodes"]]
-    graph += [json.dumps(a)+" -> "+json.dumps(b)+";" for a,b in result["edges"]]
-    graph += ["}"]
-    (out/"architecture.dot").write_text("\n".join(graph),encoding="utf-8")
-    for fmt in ["png","svg"]:
-        subprocess.run(["dot","-T"+fmt,str(out/"architecture.dot"),"-o",str(out/("architecture."+fmt))],check=True,timeout=30)
+    # Service-branded icon rendering with grouped AWS architecture boundaries.
+    # Import here to let the metadata-only analyzer run independently in unit tests.
+    from render_aws_icons import render_icon_diagram
+    render_icon_diagram(result, out)
     print(report)
 
 if __name__=="__main__":
