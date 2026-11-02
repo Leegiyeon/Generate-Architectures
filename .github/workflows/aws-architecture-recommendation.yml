@@ -57,7 +57,7 @@ jobs:
 
       # 3-2. 단위 테스트에도 다이어그램 엔진이 필요
       - name: Graphviz 설치
-        run: sudo apt-get update -qq && sudo apt-get install -y graphviz
+        run: sudo apt-get update -qq && sudo apt-get install -y graphviz fonts-noto-cjk
 
       # 3-3. AWS 서비스 아이콘 생성에 필요한 고정 버전의 라이브러리 설치
       - name: 렌더링 의존성 설치
