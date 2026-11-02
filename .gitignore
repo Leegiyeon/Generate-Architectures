@@ -4,7 +4,6 @@ node_modules/
 __pycache__/
 *.pyc
 .terraform/
-.terraform.lock.hcl
 # Terraform plan 은 암호 및 민감한 설정값을 포함할 수 있으므로 Git 추적 금지
 *.tfplan
 *.tfstate
