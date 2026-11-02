@@ -32,6 +32,12 @@ jobs:
           workload: auto
           # 요구사항 파일을 만든 경우에만 아래 항목의 주석을 해제하세요.
           # requirements_file: .architecture/requirements.json
+          # AI 보조 검토는 기본 비활성화입니다. 코드 메타데이터 외부 전송에 동의하는 경우에만 활성화하세요.
+          # enable_ai: "true"
+          # ai_model: gpt-6-luna
+        # enable_ai 활성화 시 GitHub Secrets의 OPENAI_API_KEY를 환경변수로 별도 전달합니다.
+        # env:
+        #   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       # 3-3. 한국어 보고서, 설정 근거 JSON, 다이어그램 PNG/SVG 등 저장
       - name: 설계 결과 파일 보관
