@@ -11,7 +11,7 @@ class IconRendererTests(unittest.TestCase):
         examples = [
             ([], "backend", {"API Gateway", "Lambda", "DynamoDB", "CloudWatch"}),
             ([], "mobile", {"Amazon Cognito", "Lambda", "DynamoDB"}),
-            ([{"path": "next.config.js", "technology": "Next.js", "category": "web"}],
+            ([{"path": "vite.config.ts", "technology": "Vite", "category": "web"}],
              "web", {"CloudFront", "S3", "AWS WAF"}),
             ([{"path": "Dockerfile", "technology": "Docker", "category": "containers"}],
              "web", {"Application Load Balancer", "ECS Fargate", "Amazon RDS"}),
