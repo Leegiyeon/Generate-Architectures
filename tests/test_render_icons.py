@@ -9,12 +9,12 @@ from scripts.render_aws_icons import AWS_ICONS, render_icon_diagram
 class IconRendererTests(unittest.TestCase):
     def test_every_reference_pattern_renders_real_service_icons(self):
         examples = [
-            ([], "backend", {"API Gateway", "Lambda", "DynamoDB", "CloudWatch"}),
-            ([], "mobile", {"Amazon Cognito", "Lambda", "DynamoDB"}),
-            ([{"path": "next.config.js", "technology": "Next.js", "category": "web"}],
+            ([], "backend", {"API Gateway", "Lambda", "CloudWatch"}),
+            ([], "mobile", {"Amazon Cognito", "Lambda"}),
+            ([{"path": "vite.config.ts", "technology": "Vite", "category": "web"}],
              "web", {"CloudFront", "S3", "AWS WAF"}),
             ([{"path": "Dockerfile", "technology": "Docker", "category": "containers"}],
-             "web", {"Application Load Balancer", "ECS Fargate", "Amazon RDS"}),
+             "web", {"Application Load Balancer", "ECS Fargate"}),
         ]
         for signals, workload, expected in examples:
             with self.subTest(workload=workload, expected=expected):

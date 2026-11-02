@@ -1,0 +1,14 @@
+{
+  "workload": "auto",
+  "deployment_preference": "auto",
+  "environment": "dev",
+  "data_classification": "internal",
+  "region": "ap-northeast-2",
+  "monthly_budget_usd": 200,
+  "expected_monthly_requests": 100000,
+  "availability_target_percent": 99.9,
+  "rto_minutes": 240,
+  "rpo_minutes": 60,
+  "requires_authentication": true,
+  "requires_relational_database": true
+}

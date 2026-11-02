@@ -103,16 +103,16 @@ def render_icon_diagram(architecture, output_dir):
         "nodesep": "0.55",
         "ranksep": "1.0",
         "splines": "spline",
-        "fontname": "DejaVu Sans",
+        "fontname": "Noto Sans CJK KR",
         "fontsize": "17",
         "fontcolor": "#18263A",
     }
-    node_attrs = {"fontname": "DejaVu Sans", "fontsize": "11", "fontcolor": "#243348"}
+    node_attrs = {"fontname": "Noto Sans CJK KR", "fontsize": "11", "fontcolor": "#243348"}
     edge_attrs = {"color": "#64748B", "penwidth": "1.6", "arrowsize": "0.8"}
     cluster_attrs = {
         "bgcolor": "#F8FAFC",
         "color": "#CBD5E1",
-        "fontname": "DejaVu Sans",
+        "fontname": "Noto Sans CJK KR",
         "fontcolor": "#475569",
         "fontsize": "13",
         "style": "rounded",

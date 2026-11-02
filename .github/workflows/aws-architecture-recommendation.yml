@@ -1,37 +1,78 @@
-name: AWS Architecture Recommendation
+# Generate-Architectures 자체 CI: 코드 변경 시 품질검사 후 설계 산출물 생성
+name: AWS 아키텍처 검토 자동화
+
+# 1. 트리거: 기본 브랜치 변경, PR, 수동 실행 (외부 저장소는 action.yml 사용)
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
-  workflow_call:
+    inputs:
+      workload:
+        description: "분석할 워크로드 유형"
+        type: choice
+        required: true
+        options: [auto, web, backend, mobile]
+        default: auto
+      requirements_file:
+        description: "선택: 저장소 내부 요구사항 JSON 파일 경로"
+        type: string
+        required: false
+      monthly_budget_usd:
+        description: "선택: 월 예산 입력(USD, 실측 비용 아님)"
+        type: string
+        required: false
+
+# 2. 권한: 소스는 읽기 전용, 같은 저장소 PR에만 결과 댓글 허용
 permissions:
   contents: read
   pull-requests: write
+
+# 3. 작업 흐름: 준비 -> 테스트 -> 분석 -> 파일 보관 -> PR 알림
 jobs:
   recommend:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      # 3-1. 분석 대상 저장소 체크아웃 (Git 자격정보를 남기지 않음)
+      - name: 소스 체크아웃
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Install Graphviz for rendering tests
-        run: sudo apt-get update -qq && sudo apt-get install -y graphviz
-      - name: Install render test dependencies
+
+      # 3-2. 단위 테스트에도 다이어그램 엔진이 필요
+      - name: Graphviz 설치
+        run: sudo apt-get update -qq && sudo apt-get install -y graphviz fonts-noto-cjk
+
+      # 3-3. AWS 서비스 아이콘 생성에 필요한 고정 버전의 라이브러리 설치
+      - name: 렌더링 의존성 설치
         run: python3 -m pip install --disable-pip-version-check -r requirements-diagrams.txt
-      - name: Test analyzer and icon rendering
+
+      # 3-4. 설계 규칙·요구사항 검증·AWS 아이콘 생성 테스트
+      - name: 자동 테스트
         run: python3 -m unittest discover -s tests -v
-      - name: Generate report using composite Action
+
+      # 3-5. 동일한 Action을 사용하므로 외부 저장소와 실행 방식 일치
+      - name: 설계 분석 및 다이어그램 생성
         uses: ./
-      - uses: actions/upload-artifact@v4
+        with:
+          workload: ${{ inputs.workload || 'auto' }}
+          requirements_file: ${{ inputs.requirements_file || '' }}
+          monthly_budget_usd: ${{ inputs.monthly_budget_usd || '' }}
+
+      # 3-6. 구조화된 근거/한국어 보고서/PNG/SVG/DOT 파일 업로드
+      - name: 생성 파일 업로드
+        uses: actions/upload-artifact@v4
         with:
           name: aws-architecture-recommendation
           path: architecture-output/
           if-no-files-found: error
           retention-days: 30
-      - name: Comment on PR
+
+      # 3-7. 같은 저장소 PR에만 링크를 남기고 기존 자동 댓글을 갱신
+      # 외부 Fork PR은 권한 및 보안상 댓글을 작성하지 않음
+      - name: PR 결과 댓글 갱신
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
@@ -39,7 +80,10 @@ jobs:
             const {owner, repo} = context.repo;
             const issue_number = context.issue.number;
             const marker = '<!-- aws-architecture-recommendation -->';
-            const body = marker + ' AWS architecture recommendation generated: ' + context.serverUrl + '/' + owner + '/' + repo + '/actions/runs/' + context.runId;
+            const body = marker + '\nAWS 아키텍처 검토용 초안 생성 완료. ' +
+              '[설계 보고서 및 PNG/SVG 확인](' + context.serverUrl + '/' + owner + '/' + repo +
+              '/actions/runs/' + context.runId + ').\n' +
+              '주의: 실제 AWS 배포·비용 산정·보안 적합성 검증은 수행하지 않았습니다.';
             const comments = await github.paginate(github.rest.issues.listComments, {owner, repo, issue_number, per_page: 100});
             const previous = comments.find(c => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker));
             if (previous) await github.rest.issues.updateComment({owner, repo, comment_id: previous.id, body});
