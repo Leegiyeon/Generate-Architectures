@@ -1,84 +1,95 @@
+"""Generate Architectures: 저장소 분석 → 요구사항 검토 → 설계 대안 → 아이콘 다이어그램."""
 import argparse
 import json
-import os
 from pathlib import Path
 
-SKIP = {".git", "node_modules", ".next", "dist", "build", ".venv", "venv", "__pycache__", "coverage", "vendor"}
-SIGNALS = {
- "package.json": ("Node.js", "web"), "next.config.js": ("Next.js", "web"),
- "next.config.mjs": ("Next.js", "web"), "next.config.ts": ("Next.js", "web"),
- "vite.config.ts": ("Vite", "web"), "requirements.txt": ("Python", "backend"),
- "pyproject.toml": ("Python", "backend"), "go.mod": ("Go", "backend"),
- "pom.xml": ("Java", "backend"), "Dockerfile": ("Docker", "containers"),
- "docker-compose.yml": ("Docker Compose", "containers"),
- "compose.yaml": ("Docker Compose", "containers"),
- "serverless.yml": ("Serverless", "serverless"),
- "app.json": ("Expo", "mobile"), "pubspec.yaml": ("Flutter", "mobile"),
- "main.tf": ("Terraform", "infra")
-}
+if __package__:
+    from .repository_analyzer import inspect_repository
+    from .requirements_model import parse_requirements
+    from .architecture_advisor import decide, markdown_report
+else:
+    from repository_analyzer import inspect_repository
+    from requirements_model import parse_requirements
+    from architecture_advisor import decide, markdown_report
+
+
 def scan(root):
-    found = []
-    for current, dirs, files in os.walk(root):
-        dirs[:] = sorted(d for d in dirs if d not in SKIP and not d.startswith("."))
-        for name in files:
-            if name in SIGNALS:
-                technology, category = SIGNALS[name]
-                found.append({"path": str((Path(current) / name).relative_to(root)), "technology": technology, "category": category})
-                if len(found) >= 200:
-                    return found
-    return found
+    """기존 호출자 호환: 파일별 기술 근거를 반환합니다."""
+    return inspect_repository(root)["manifests"]
+
 
 def design(found, kind, budget):
-    categories = {f["category"] for f in found}
-    technology = {f["technology"] for f in found}
-    if kind == "auto":
-        kind = "mobile" if "mobile" in categories else "web" if "web" in categories else "backend"
-    if kind == "mobile":
-        nodes = ["Mobile App", "Amazon Cognito", "API Gateway", "Lambda", "DynamoDB", "CloudWatch"]
-        edges = [("Mobile App","Amazon Cognito"),("Mobile App","API Gateway"),("API Gateway","Lambda"),("Lambda","DynamoDB"),("Lambda","CloudWatch")]
-        pattern = "Mobile backend"
-    elif kind == "web" and ("Next.js" in technology or "Vite" in technology):
-        nodes = ["User", "Route 53", "CloudFront", "S3", "AWS WAF", "CloudWatch"]
-        edges = [("User","Route 53"),("Route 53","CloudFront"),("CloudFront","S3"),("AWS WAF","CloudFront"),("CloudFront","CloudWatch")]
-        pattern = "Static web (validate SSR requirements)"
-    elif "serverless" in categories or (kind == "backend" and "containers" not in categories):
-        nodes = ["Client", "API Gateway", "Lambda", "DynamoDB", "CloudWatch"]
-        edges = [("Client","API Gateway"),("API Gateway","Lambda"),("Lambda","DynamoDB"),("Lambda","CloudWatch")]
-        pattern = "Serverless API"
-    else:
-        nodes = ["User", "Route 53", "AWS WAF", "Application Load Balancer", "ECS Fargate", "Amazon RDS", "CloudWatch"]
-        edges = [("User","Route 53"),("Route 53","Application Load Balancer"),("AWS WAF","Application Load Balancer"),("Application Load Balancer","ECS Fargate"),("ECS Fargate","Amazon RDS"),("ECS Fargate","CloudWatch")]
-        pattern = "Container web application"
-    return {"workload":kind,"pattern":pattern,"input_budget_usd_month":budget,
-            "detected_technologies":sorted(technology),"evidence":found,"nodes":nodes,"edges":edges,
-            "limitations":["Conceptual reference design only: no AWS provisioning.",
-                           "Manifest-based heuristics do not verify runtime workload or resource needs.",
-                           "Input budget is not an AWS pricing estimate; validate cost, security and availability separately."]}
+    """기존 테스트/호출자 호환: 파일 목록만으로는 정적 Next.js를 확정하지 않습니다."""
+    categories = {entry["category"] for entry in found}
+    techs = sorted({entry["technology"] for entry in found})
+    signals = {
+        "api_routes": False, "nextjs": "Next.js" in techs,
+        "next_static_export": False,
+        "relational_database": False,
+        "authentication_library": False,
+        "background_job_library": False,
+        "docker": "containers" in categories,
+        "serverless_config": "serverless" in categories,
+        "mobile": "mobile" in categories,
+    }
+    profile = {
+        "schema_version": "1.0", "inspected_files": len(found),
+        "scan_truncated": False, "technologies": techs,
+        "manifests": found, "signals": signals,
+        "evidence": {}, "static_candidate": "Vite" in techs and "backend" not in categories,
+        "questions": [], "limitations": ["기술 설정 파일 목록만 제공되어 상세 분석은 수행하지 않았습니다."],
+    }
+    requirements = {"workload": kind, "deployment_preference": "auto",
+                    "data_classification": "unknown", "environment": "dev"}
+    if budget is not None:
+        requirements["monthly_budget_usd"] = budget
+    return decide(profile, requirements)
 
-def main():
-    p=argparse.ArgumentParser()
-    p.add_argument("--repo",default=".")
-    p.add_argument("--output",default="architecture-output")
-    p.add_argument("--workload",choices=["auto","web","backend","mobile"],default="auto")
-    p.add_argument("--budget",type=float)
-    args=p.parse_args()
-    root=Path(args.repo).resolve()
-    if not root.is_dir(): p.error("Repository must be a directory")
-    if args.budget is not None and not (0 <= args.budget <= 10000000): p.error("Budget out of range")
-    out=Path(args.output)
-    out.mkdir(parents=True,exist_ok=True)
-    result=design(scan(root),args.workload,args.budget)
-    (out/"architecture.json").write_text(json.dumps(result,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
-    evidence="\n".join("- "+e["path"]+": "+e["technology"] for e in result["evidence"]) or "- No supported manifests found"
-    report="# AWS Architecture Recommendation\n\nPattern: "+result["pattern"]+"\n\nDetected stack: "+(", ".join(result["detected_technologies"]) or "unknown")+"\n\n"
-    report+="Budget input: "+(str(args.budget)+" USD/month" if args.budget is not None else "not provided")+" (not a price quote)\n\n## Evidence\n"+evidence+"\n\n## Limitations\n"
-    report+="\n".join("- "+x for x in result["limitations"])+"\n\nSee architecture.svg (self-contained service icons), architecture.png, architecture.dot and architecture.json.\nSolid arrows show request/data flows; dashed lines show security associations and dotted lines show telemetry.\n"
-    (out/"recommendation.md").write_text(report,encoding="utf-8")
-    # Service-branded icon rendering with grouped AWS architecture boundaries.
-    # Import here to let the metadata-only analyzer run independently in unit tests.
-    from render_aws_icons import render_icon_diagram
+
+def run(repo, output, workload="auto", budget=None, requirements_file=None):
+    """구현 범위: 읽기 전용 정적 분석 및 검토용 AWS 참조 설계 생성."""
+    root = Path(repo).resolve()
+    if not root.is_dir():
+        raise ValueError("분석 대상 저장소가 존재하지 않습니다.")
+    requirements = parse_requirements(requirements_file, root, budget, workload)
+    profile = inspect_repository(root)
+    result = decide(profile, requirements)
+    out = Path(output).resolve()
+    if out == root or out == root.parent:
+        raise ValueError("보고서 경로는 저장소 루트 또는 상위 폴더일 수 없습니다.")
+    out.mkdir(parents=True, exist_ok=True)
+    for name, value in (
+        ("repository-analysis.json", profile),
+        ("requirements-used.json", requirements),
+        ("architecture.json", result),
+    ):
+        (out / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n",
+                                encoding="utf-8")
+    report = markdown_report(result)
+    (out / "recommendation.md").write_text(report, encoding="utf-8")
+
+    if __package__:
+        from .render_aws_icons import render_icon_diagram
+    else:
+        from render_aws_icons import render_icon_diagram
     render_icon_diagram(result, out)
     print(report)
+    return result
 
-if __name__=="__main__":
+
+def main():
+    parser = argparse.ArgumentParser(description="AWS 아키텍처 분석 및 제안 (배포 없음)")
+    parser.add_argument("--repo", default=".", help="분석할 GitHub 저장소 경로")
+    parser.add_argument("--output", default="architecture-output", help="결과물 출력 디렉터리")
+    parser.add_argument("--workload", choices=["auto", "web", "backend", "mobile"], default="auto")
+    parser.add_argument("--budget", type=float, default=None, help="사용자 입력 월 예산(USD): 비용 추정치 아님")
+    parser.add_argument("--requirements", default=None, help="저장소 내부 JSON 요구사항 파일")
+    args = parser.parse_args()
+    try:
+        run(args.repo, args.output, args.workload, args.budget, args.requirements)
+    except (ValueError, OSError) as exc:
+        parser.error(str(exc))
+
+
+if __name__ == "__main__":
     main()
