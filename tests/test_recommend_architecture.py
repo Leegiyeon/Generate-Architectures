@@ -10,7 +10,7 @@ class ArchitectureTests(unittest.TestCase):
             Path(tmp, "next.config.js").write_text("")
             result = design(scan(Path(tmp)), "auto", None)
             self.assertEqual(result["workload"], "web")
-            self.assertIn("CloudFront", result["nodes"])
+            self.assertIn("ECS Fargate", result["nodes"])  # SSR 여부 미확인: 정적 배포 금지
 
     def test_mobile_detects_expo(self):
         with tempfile.TemporaryDirectory() as tmp:
