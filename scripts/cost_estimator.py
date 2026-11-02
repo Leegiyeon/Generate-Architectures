@@ -7,6 +7,8 @@ AWS Price List Query API(boto3, pricing:GetProducts)에서 지정 SKU 조회.
 from decimal import Decimal, InvalidOperation
 import json
 from pathlib import Path
+from urllib.parse import urlsplit
+from datetime import date
 import re
 
 MAX_FILE_BYTES = 32768
@@ -40,7 +42,7 @@ def read_cost_inputs(root, path):
         if not isinstance(item["id"], str) or not IDENTIFIER.fullmatch(item["id"]) or item["id"] in seen:
             raise ValueError("비용 항목 ID가 올바르지 않거나 중복되었습니다.")
         seen.add(item["id"])
-        if item["unit"] not in ALLOWED_UNITS:
+        if not isinstance(item["unit"], str) or item["unit"] not in ALLOWED_UNITS:
             raise ValueError("지원되지 않는 사용량 단위입니다.")
         try:
             q = Decimal(str(item["quantity"]))
@@ -58,6 +60,15 @@ def read_cost_inputs(root, path):
                 raise ValueError("수동 단가는 금액, 출처, 기준일이 필수입니다.")
             if not isinstance(rate["source"], str) or not 8 <= len(rate["source"]) <= 150:
                 raise ValueError("단가 출처를 명시해야 합니다.")
+            parsed = urlsplit(rate["source"])
+            if parsed.scheme != "https" or parsed.hostname not in {
+                "aws.amazon.com", "calculator.aws", "docs.aws.amazon.com",
+            } or parsed.username or parsed.password or parsed.query or parsed.fragment:
+                raise ValueError("수동 단가 출처는 공식 AWS 가격 링크(쿼리/자격증명 제외)여야 합니다.")
+            try:
+                date.fromisoformat(rate["as_of"])
+            except ValueError:
+                raise ValueError("단가 기준일이 유효하지 않습니다.") from None
             try:
                 cost = Decimal(str(rate["unit_price_usd"]))
             except (InvalidOperation, ValueError):
