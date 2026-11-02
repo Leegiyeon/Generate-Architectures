@@ -186,3 +186,75 @@ def validate_architecture(architecture, profile, requirements, graph=None, ai_re
             "AI 제안은 사실성 검증 없이 자동 승인하거나 배포하지 않습니다.",
         ],
     }
+
+
+def markdown_validation(validation):
+    lines = [
+        "# 아키텍처 정적 제약 검토", "",
+        "> **운영 적합성 검증 전.** AWS 계정·IAM·네트워크·비용·성능·가용성을 검사하지 않았습니다.",
+        "",
+        "**검토 상태:** " + ("자동 채택 차단" if validation["decision_gate"] == "blocked"
+                         else "추가 검토 필요"),
+        "",
+        "- 차단 항목: " + str(validation["counts"]["blocker"]),
+        "- 수동 검토 항목: " + str(validation["counts"]["review_required"]),
+        "- AI 제안 자동 반영: 없음", "",
+        "## 1. 발견된 충돌과 확인 필요 사항", "",
+    ]
+    for item in validation["findings"]:
+        lines += [
+            "### " + item["rule_id"] + " · " +
+            ("자동 채택 차단" if item["severity"] == "blocker" else "수동 검토") +
+            " · " + item["title"], "",
+            item["detail"], "",
+            "- 근거: " + ", ".join(item["evidence"]),
+            "- 권장 조치: " + item["recommended_action"], "",
+        ]
+    if not validation["findings"]:
+        lines.append("- 확인 가능한 충돌 없음. 실환경 적합성은 여전히 검증 전입니다.")
+    lines += ["", "## 2. AWS Well-Architected 6개 원칙", "",
+              "| 원칙 | 상태 | 남은 검토 |", "| --- | --- | --- |"]
+    for item in validation["well_architected"]:
+        lines.append("| " + item["name"] + " | 검증 전 | " + item["review_topic"] + " |")
+    lines += ["", "## 3. 검증 범위의 한계", ""]
+    lines.extend("- " + item for item in validation["limitations"])
+    return "\n".join(lines) + "\n"
+
+
+def markdown_adr(architecture, validation):
+    """요구사항/코드 근거/제안/미승인 상태를 구분한 결정 기록."""
+    decision = architecture["decision"]
+    lines = [
+        "# ADR-0001: AWS 참조 설계 선택 기록", "",
+        "- 상태: **초안 / 승인 전**",
+        "- 제안된 패턴: " + architecture["pattern"],
+        "- 검토 게이트: " + validation["decision_gate"],
+        "- 운영 적합성: **검증 전**", "",
+        "## 1. 저장소에서 관찰된 사실", "",
+    ]
+    for e in architecture["evidence"][:30]:
+        lines.append("- " + e["path"].replace("\n", " ") + ": " + e["technology"])
+    if not architecture["evidence"]:
+        lines.append("- 확인된 기술 설정 파일 없음")
+    lines += ["", "## 2. 사용자가 명시한 요구사항", ""]
+    for key, value in sorted(architecture["requirements"].items()):
+        lines.append("- " + key + ": " + str(value))
+    lines += ["", "## 3. 제안 패턴 선정 근거", ""]
+    lines.extend("- " + reason for reason in decision["rationale"])
+    lines += ["", "## 4. 배포 대안 비교", "",
+              "| 대안 | 검토 후보 | 선택 | 주요 제약 |",
+              "| --- | --- | --- | --- |"]
+    for alt in decision["alternatives"]:
+        lines.append("| " + alt["name"] + " | " +
+                     ("가능" if alt["applicable"] else "현재 규칙상 제한") +
+                     " | " + ("선택" if alt["selected"] else "미선택") + " | " +
+                     " ".join(alt["tradeoffs"]).replace("|", "/") + " |")
+    lines += ["", "## 5. 승인 전 조치", ""]
+    lines.extend("- [" + finding["rule_id"] + "] " + finding["recommended_action"]
+                 for finding in validation["findings"])
+    lines += ["", "## 6. 승인 조건", "",
+              "- 실제 비용·보안·성능·가용성 검토와 담당자 승인 전에는 운영 적합성을 선언하지 않음.",
+              "- AI가 제시한 대안은 사용자의 승인 없이 설계에 자동 반영하지 않음.",
+              "- IaC 생성 또는 AWS 배포를 수행하지 않음.",
+              "", "> 이 기록은 확정 설계가 아닌 검토용 초안입니다.", ""]
+    return "\n".join(lines)
