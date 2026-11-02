@@ -1,0 +1,35 @@
+name: AWS Architecture Recommender
+description: Analyze checkout repo and generate review-only AWS architecture diagrams
+inputs:
+  workload:
+    description: auto, web, backend or mobile
+    required: false
+    default: auto
+  monthly_budget_usd:
+    description: Optional user-provided budget (not a cost calculation)
+    required: false
+    default: ""
+  output_dir:
+    description: Output directory
+    required: false
+    default: architecture-output
+runs:
+  using: composite
+  steps:
+    - name: Install Graphviz
+      shell: bash
+      run: sudo apt-get update -qq && sudo apt-get install -y graphviz
+    - name: Generate recommendation
+      shell: bash
+      env:
+        INPUT_WORKLOAD: ${{ inputs.workload }}
+        INPUT_BUDGET: ${{ inputs.monthly_budget_usd }}
+        INPUT_OUTPUT_DIR: ${{ inputs.output_dir }}
+        ACTION_SCRIPT: ${{ github.action_path }}/scripts/recommend_architecture.py
+      run: |
+        set -euo pipefail
+        args=(--repo . --output "$INPUT_OUTPUT_DIR" --workload "$INPUT_WORKLOAD")
+        if [[ -n "$INPUT_BUDGET" ]]; then
+          args+=(--budget "$INPUT_BUDGET")
+        fi
+        python3 "$ACTION_SCRIPT" "${args[@]}"
