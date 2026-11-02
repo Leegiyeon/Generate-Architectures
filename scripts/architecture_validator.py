@@ -113,3 +113,76 @@ def validate_architecture(architecture, profile, requirements, graph=None, ai_re
             "필수 관계형 DB 서비스 후보를 포함하지 않습니다.",
             ["requirements.requires_relational_database", "architecture.nodes"],
             "데이터 서비스 후보를 보강하세요.")
+
+    # 3. 미측정 조건은 검증 필요로 표시. 안전성 합격을 선언하지 않음.
+    if graph.get("errors") or graph.get("scan_truncated") or profile.get("scan_truncated"):
+        add("EVD-001", "운영 우수성", "review_required", "분석 누락 확인 필요",
+            "코드 파싱 오류 또는 분석량 제한으로 연결 관계가 누락되었을 수 있습니다.",
+            ["application_graph.errors", "application_graph.scan_truncated",
+             "repository.scan_truncated"], "미분석 파일과 구문을 검토하세요.")
+    if requirements.get("data_classification") == "sensitive":
+        add("SEC-001", "보안", "review_required", "민감정보 통제 미검증",
+            "암호화, IAM, 키 관리, 로그의 민감정보 처리는 확인하지 않았습니다.",
+            ["requirements.data_classification"], "실제 IaC/IAM과 조직 정책을 확인하세요.")
+    if requirements.get("data_classification") == "unknown":
+        add("SEC-002", "보안", "review_required", "데이터 민감도 미확정",
+            "데이터 분류가 없어 보안 통제를 판단할 수 없습니다.",
+            ["requirements.data_classification"], "데이터 등급을 지정하세요.")
+    if requirements.get("requires_authentication") is True:
+        add("SEC-003", "보안", "review_required", "인증·인가 실구현 미검증",
+            "인증 필요가 입력되었지만 실제 인가/세션 정책은 확인하지 않았습니다.",
+            ["requirements.requires_authentication"], "IAM·앱 인가·토큰 검증을 점검하세요.")
+    if requirements.get("availability_target_percent", 0) >= 99.9:
+        add("REL-001", "안정성", "review_required", "목표 가용성 검증 전",
+            "AZ 이중화 및 장애 대응과 가용성 측정 결과를 확인하지 않았습니다.",
+            ["requirements.availability_target_percent"], "실제 복구/가용성 테스트가 필요합니다.")
+    if "rto_minutes" in requirements or "rpo_minutes" in requirements:
+        add("REL-002", "안정성", "review_required", "복구 목표 검증 전",
+            "RTO/RPO 입력이 있으나 백업/복원 실측 결과가 없습니다.",
+            ["requirements.rto_minutes", "requirements.rpo_minutes"],
+            "백업 주기, 복구 전략 및 훈련을 검토하세요.")
+    if requirements.get("environment") == "production":
+        add("OPS-001", "운영 우수성", "review_required", "운영 통제 미확인",
+            "런북, 장애 알림, 변경 이력, 롤백 계획이 확인되지 않았습니다.",
+            ["requirements.environment"], "상용 운영 준비 절차를 검토하세요.")
+    if "expected_monthly_requests" in requirements:
+        add("PERF-001", "성능 효율성", "review_required", "피크 처리량 미측정",
+            "월 요청 수만으로 피크 RPS나 지연시간을 추정할 수 없습니다.",
+            ["requirements.expected_monthly_requests"],
+            "피크·동시 연결·지연 목표로 부하 테스트를 수행하세요.")
+    if "monthly_budget_usd" in requirements:
+        add("COST-001", "비용 최적화", "review_required", "예산 충족 여부 미산정",
+            "AWS 가격표/리전별 요금과 자원 사용량을 조회하지 않았습니다.",
+            ["requirements.monthly_budget_usd"], "가격·사용량 모델을 준비하세요.")
+    if not requirements.get("region"):
+        add("REQ-004", "운영 우수성", "review_required", "배포 리전 미확정",
+            "데이터 보존 지역·가격·네트워크 지연을 판단할 리전 정보가 없습니다.",
+            ["requirements.region"], "배포 리전과 데이터 지역 정책을 지정하세요.")
+
+    counts = Counter(item["severity"] for item in findings)
+    return {
+        "schema_version": "1.0",
+        "scope": "reference_design_static_consistency_only",
+        "decision_gate": "blocked" if counts["blocker"] else "review_required",
+        "production_ready": False,
+        "aws_account_checked": False,
+        "cost_estimated": False,
+        "performance_tested": False,
+        "security_compliance_verified": False,
+        "selected_option": choice,
+        "ai_review_status": (ai_review or {}).get("status", "disabled"),
+        "ai_proposal_applied": False,
+        "counts": {"blocker": counts["blocker"], "review_required": counts["review_required"]},
+        "findings": sorted(findings, key=lambda f: (0 if f["severity"] == "blocker" else 1, f["rule_id"])),
+        "well_architected": [{
+            "name": pillar, "status": "검증 전",
+            "finding_count": sum(1 for finding in findings if finding["pillar"] == pillar),
+            "review_topic": description,
+        } for pillar, description in PILLARS.items()],
+        "limitations": [
+            "차단은 이 참조안의 자동 채택 제한이지 AWS 기술 자체의 불가능 판정이 아닙니다.",
+            "실제 AWS 정책, IAM, 데이터 암호화, AZ, 요금 및 성능을 검사하지 않았습니다.",
+            "Well-Architected 6개 원칙은 실환경 검증 또는 전문가 검토가 필요합니다.",
+            "AI 제안은 사실성 검증 없이 자동 승인하거나 배포하지 않습니다.",
+        ],
+    }
