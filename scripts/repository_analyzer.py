@@ -62,7 +62,7 @@ def inspect_repository(root):
     paths = set(filenames)
     next_configs = [root / m["path"] for m in manifests if m["technology"] == "Next.js"]
     # 명시적인 next export 설정이 확인되기 전에는 SSR 가능성을 배제하지 않습니다.
-    next_export = any(re.search(r"\\boutput\\s*:\\s*['\"]export['\"]", safe_text(p))
+    next_export = any(re.search(r"\boutput\s*:\s*['\"]export['\"]", safe_text(p))
                       for p in next_configs)
     next_present = bool(next_configs)
     dependency_names = set()
