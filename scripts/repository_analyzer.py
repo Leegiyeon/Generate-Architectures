@@ -96,16 +96,22 @@ def inspect_repository(root):
                    ("Dockerfile", "docker-compose.yml", "compose.yaml", "serverless.yml")]
     auth_deps = {"next-auth", "@auth/core", "@clerk/nextjs", "passport",
                  "aws-amplify", "amazon-cognito-identity-js"}
-    database_deps = {"prisma", "@prisma/client", "pg", "mysql2", "mongoose",
-                     "sequelize", "typeorm", "drizzle-orm", "better-sqlite3"}
+    database_deps = {"pg", "mysql2", "sequelize", "typeorm", "drizzle-orm", "better-sqlite3"}
+    document_deps = {"mongoose", "mongodb"}
     queue_deps = {"bullmq", "bull", "amqplib", "ioredis"}
+    # Prisma 스키마는 DB 엔진이 PostgreSQL/MySQL인지 MongoDB인지 구분해 확인합니다.
+    prisma_files = [root / p for p in db_files if p.endswith("schema.prisma")]
+    prisma_text = "\n".join(safe_text(p) for p in prisma_files[:5])
+    prisma_relational = bool(re.search(r'provider\s*=\s*["\x27](postgresql|mysql|sqlite|sqlserver)["\x27]', prisma_text))
+    prisma_document = bool(re.search(r'provider\s*=\s*["\x27]mongodb["\x27]', prisma_text))
     techs = sorted({m["technology"] for m in manifests})
     categories = {m["category"] for m in manifests}
     signals = {
         "api_routes": bool(api_files),
         "nextjs": next_present,
         "next_static_export": bool(next_export),
-        "relational_database": bool(db_files or database_deps.intersection(dependency_names)),
+        "relational_database": bool(prisma_relational or database_deps.intersection(dependency_names)),
+        "document_database": bool(prisma_document or document_deps.intersection(dependency_names)),
         "authentication_library": bool(auth_deps.intersection(dependency_names)),
         "background_job_library": bool(queue_deps.intersection(dependency_names)),
         "docker": "containers" in categories,
@@ -117,7 +123,9 @@ def inspect_repository(root):
         "database_paths": evidence(db_files),
         "infrastructure_paths": evidence(infra_files),
         "auth_dependencies": sorted(auth_deps & dependency_names),
-        "db_dependencies": sorted(database_deps & dependency_names),
+        "db_dependencies": sorted((database_deps | document_deps | {"prisma", "@prisma/client"}) & dependency_names),
+        "database_engine_evidence": ([p.relative_to(root).as_posix() for p in prisma_files] if
+                                     prisma_relational or prisma_document else []),
         "job_dependencies": sorted(queue_deps & dependency_names),
         "next_configs": [p.relative_to(root).as_posix() for p in next_configs],
     }
@@ -130,8 +138,12 @@ def inspect_repository(root):
     questions = []
     if next_present and not next_export:
         questions.append("Next.js SSR/서버 컴포넌트/서버 액션 사용 여부는 무엇인가요?")
-    if not signals["relational_database"]:
+    if not signals["relational_database"] and not signals["document_database"]:
         questions.append("영속 데이터 저장소가 필요한가요? 기존 DB 또는 외부 SaaS가 있나요?")
+    if db_files and not prisma_relational and not prisma_document and not signals["relational_database"]:
+        questions.append("ORM/마이그레이션 파일은 있으나 DB 엔진 유형은 확인되지 않았습니다.")
+    if signals["document_database"]:
+        questions.append("MongoDB 계열 DB를 계속 사용할 예정인가요? 호환 AWS 관리형 서비스 검토가 필요한가요?")
     if not signals["authentication_library"]:
         questions.append("사용자 인증·인가가 필요한가요? 기존 인증 제공자가 있나요?")
     if inspected >= MAX_FILES:
