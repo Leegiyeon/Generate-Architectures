@@ -28,7 +28,7 @@ runs:
     # 2-1. AWS 서비스 아이콘과 연결선을 렌더링하기 위한 Graphviz 바이너리
     - name: Graphviz 설치
       shell: bash
-      run: sudo apt-get update -qq && sudo apt-get install -y graphviz
+      run: sudo apt-get update -qq && sudo apt-get install -y graphviz fonts-noto-cjk
 
     # 2-2. 고정된 Diagrams 버전으로 실행 환경을 재현
     - name: AWS 아이콘 렌더링 라이브러리 설치
