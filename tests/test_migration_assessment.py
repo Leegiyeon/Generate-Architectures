@@ -150,6 +150,93 @@ class MigrationAssessmentTests(unittest.TestCase):
         self.assertFalse(any(x["decision"] == "modify" and
                              "Amazon RDS" in x["to_be_candidate"]
                              for x in value["strategies"][1]["changes"]))
+        self.assertTrue(all(x["connection_changes"] == [] for x in value["strategies"]))
+        self.assertIn("연결 선언 없음", markdown_migration(value))
+
+    def test_declared_connections_keep_direction_purpose_sources_and_strategy_candidates(self):
+        data = inventory([
+            {"id": "proxy01", "role": "proxy", "os": "linux", "db_engine": "none"},
+            {"id": "api01", "role": "application", "os": "linux", "db_engine": "none"},
+            {"id": "db01", "role": "database", "os": "linux", "db_engine": "postgresql"},
+        ], [
+            {"from": "proxy01", "to": "api01", "purpose": "application"},
+            {"from": "api01", "to": "db01", "purpose": "database"},
+        ])
+        value = draft(data)
+        rehost, replatform = value["strategies"]
+        for strategy in value["strategies"]:
+            self.assertEqual(len(strategy["connection_changes"]), 2)
+            for index, change in enumerate(strategy["connection_changes"]):
+                original = data["connections"][index]
+                self.assertEqual({k: change[k] for k in ("from", "to", "purpose")},
+                                 {k: original[k] for k in ("from", "to", "purpose")})
+                self.assertEqual(change["evidence"][0], {
+                    "type": "user_declared_unverified",
+                    "ref": "as-is-inventory.json#/connections/" + str(index),
+                })
+                self.assertFalse(change["validated"])
+                self.assertFalse(change["change_approved"])
+                self.assertFalse(change["network_verified"])
+                self.assertIn("미검증", change["reason"])
+        db_link = rehost["connection_changes"][0]
+        self.assertEqual(db_link["decision"], "retain")
+        self.assertEqual([c["component"] for c in db_link["to_candidates"]], ["server"])
+        platform_link = replatform["connection_changes"][0]
+        self.assertEqual(platform_link["decision"], "modify")
+        self.assertIn("ECS", platform_link["from_candidates"][0]["to_be_candidate"])
+        self.assertIn("RDS", platform_link["to_candidates"][0]["to_be_candidate"])
+        self.assertEqual(platform_link["to_candidates"][0]["evidence"][0]["ref"],
+                         "as-is-inventory.json#/servers/2")
+        markdown = markdown_migration(value)
+        self.assertIn("선언된 연결의 변경 검토", markdown)
+        self.assertIn("api01 → db01", markdown)
+        self.assertIn("as-is-inventory.json#/connections/0", markdown)
+
+    def test_mixed_endpoint_does_not_assign_connection_to_application_or_database(self):
+        data = inventory([
+            {"id": "mixed01", "role": "mixed", "os": "linux", "db_engine": "postgresql"},
+            {"id": "db01", "role": "database", "os": "linux", "db_engine": "mysql"},
+        ], [{"from": "mixed01", "to": "db01", "purpose": "database"}])
+        change = draft(data)["strategies"][1]["connection_changes"][0]
+        self.assertEqual(change["decision"], "unknown")
+        self.assertEqual([c["component"] for c in change["from_candidates"]],
+                         ["application", "database"])
+        self.assertIn("구성요소", change["reason"])
+
+    def test_other_purpose_and_unknown_server_candidate_remain_unknown(self):
+        data = inventory([
+            {"id": "api01", "role": "application", "os": "linux", "db_engine": "none"},
+            {"id": "db01", "role": "database", "os": "unknown", "db_engine": "postgresql"},
+        ], [{"from": "api01", "to": "db01", "purpose": "other"}])
+        self.assertTrue(all(x["connection_changes"][0]["decision"] == "unknown"
+                            for x in draft(data)["strategies"]))
+        known_purpose = inventory([
+            {"id": "api01", "role": "application", "os": "unknown", "db_engine": "none"},
+            {"id": "db01", "role": "database", "os": "linux", "db_engine": "postgresql"},
+        ], [{"from": "api01", "to": "db01", "purpose": "database"}])
+        self.assertTrue(all(x["connection_changes"][0]["decision"] == "unknown"
+                            for x in draft(known_purpose)["strategies"]))
+
+    def test_connection_input_validation_is_not_relaxed_for_assessment(self):
+        servers = [{"id": "api01"}, {"id": "db01"}]
+        for link in (
+            {"from": "api01", "to": "missing", "purpose": "database"},
+            {"from": "api01", "purpose": "database"},
+            {"from": "api01", "to": "db01", "purpose": "unknown"},
+        ):
+            with self.subTest(link=link), self.assertRaises(ValueError):
+                inventory(servers, [link])
+
+    def test_purpose_role_mismatch_does_not_approve_declared_database_link(self):
+        data = inventory([
+            {"id": "api01", "role": "application", "os": "linux", "db_engine": "none"},
+            {"id": "api02", "role": "application", "os": "linux", "db_engine": "none"},
+        ], [{"from": "api01", "to": "api02", "purpose": "database"}])
+        for strategy in draft(data)["strategies"]:
+            change = strategy["connection_changes"][0]
+            self.assertEqual(change["decision"], "unknown")
+            self.assertIn("일치하지", change["reason"])
+            self.assertFalse(change["validated"])
 
     def test_cost_from_other_aws_scenario_is_not_migration_cost(self):
         value = draft(cost={"status":"scenario_estimate","monthly_total_usd":"10000"})
@@ -192,6 +279,12 @@ class MigrationAssessmentTests(unittest.TestCase):
                              "as-is-topology.svg", "AWS To-Be"):
                 self.assertIn(fragment,html)
             self.assertNotIn("<script",html)
+            self.assertEqual(html.count("선언된 연결의 변경 검토"), 2)
+            self.assertIn("api01 → db01", html)
+            self.assertIn("논리 관계 유지 검토", html)
+            self.assertIn("접속 경로 변경 검토", html)
+            self.assertIn("as-is-inventory.json#/connections/0", html)
+            self.assertIn("실제 연결·보안 정책은 미검증", html)
             self.assertIn("Rehost", (out/"START-HERE.md").read_text(encoding="utf-8"))
             self.assertIn("MIG-DATA",(out/"migration-assessment.md").read_text(encoding="utf-8"))
             self.assertEqual(len(json.loads((out/"artifact-index.json")

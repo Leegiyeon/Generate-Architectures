@@ -24,9 +24,19 @@
 | 관계형 DB | [schema.prisma](https://github.com/Leegiyeon/oneul-ui-gyeol/blob/4f25d2906639e42faa7712dc5542001a92e4100f/prisma/schema.prisma#L5)의 PostgreSQL, [db.ts](https://github.com/Leegiyeon/oneul-ui-gyeol/blob/4f25d2906639e42faa7712dc5542001a92e4100f/src/lib/db.ts#L5)의 PrismaClient | `relational_database=true`, Prisma 엔진 근거 연결. 실제 DB 연결·서버 위치·데이터 크기는 확인하지 않음. |
 | 자체 관리자 인증 | [admin-auth.ts](https://github.com/Leegiyeon/oneul-ui-gyeol/blob/4f25d2906639e42faa7712dc5542001a92e4100f/src/lib/admin-auth.ts#L28)의 비밀번호 비교·서명 쿠키, [로그인 API](https://github.com/Leegiyeon/oneul-ui-gyeol/blob/4f25d2906639e42faa7712dc5542001a92e4100f/src/app/api/admin/login/route.ts#L15) | `authentication_library=false`: 알려진 인증 라이브러리 미탐지. 자체 인증의 존재를 자동 검출하지 못함. 인증 필요 여부 질문과 `authentication_not_confirmed`를 유지하며 **인증 없음/보안 통과를 뜻하지 않음**. |
 
+## 후속 수정·감사 (2026-11-03)
+
+위 표는 PR #44 시점의 감사다. 이후 경로 분석과 AST 분석이 공통 테스트 파일 제외 규칙을 사용하도록 수정했다. 결틈의 `route.test.ts`가 API 경로 근거에서 제외되어 12개에서 11개로 줄었고, 실제 핸들러 경로는 보존했다. 자체 인증은 여전히 자동 검출하지 못하므로 인증 라이브러리 미탐지가 인증 부재를 뜻하지 않는다는 안내와 확인 질문을 강화했다.
+
+공식 NestJS·FastAPI 저장소 두 개의 고정 소스 감사는 [REAL_REPOSITORY_AUDIT.md](REAL_REPOSITORY_AUDIT.md), 별도 사용자 저장소의 실제 Actions 실행·Artifact 다운로드 및 브라우저 검사는 [EXTERNAL_E2E.md](EXTERNAL_E2E.md)에 기록했다. 세 사례로 전체 검출 정확도나 재현율을 산출하지 않는다.
+
+에이전트가 기존 13종 데스크톱 화면 및 일부 모바일·원본 도면을 직접 열어 관찰한 결과, 모바일 이전 표의 과도한 줄바꿈과 사용자 아이콘/라벨 겹침을 발견했다. 이 관찰은 자동 overflow 검사나 사람의 승인과 구분한다.
+
+후속 수정으로 모든 HTML 표에 내부 스크롤과 최소 너비 640px을 적용하고, 사용자 아이콘과 라벨을 별도 행으로 분리했다. 도면 글자 크기도 소폭 키웠다. 새로 생성한 합성 13종의 78개 Chrome 화면 상태가 통과했고, 표의 최소 너비·스크롤 실제 동작·스크롤 영역의 viewport 경계도 검사했다. 사용자 라벨이 아이콘 아래로 떨어져 있는지는 실제 SVG 좌표 회귀로 확인한다. 최종 Python 테스트 200개도 통과했다. 사람의 시각 승인과 AWS 검증 상태는 변경하지 않는다.
+
 ## 남은 검증
 
-- 이 감사는 실제 저장소 1건이며 열 가지 제품 유형의 정확도나 오탐/미탐률을 대표하지 않습니다.
+- 이 문서의 최초 감사는 실제 저장소 1건이며, 후속 2건까지 포함해도 열 가지 제품 유형의 정확도나 오탐/미탐률을 대표하지 않습니다.
 - 브라우저 자동 검사와 일부 화면의 시각 관찰은 모든 도면의 한글 글리프·아이콘·선/라벨 겹침 수동 승인과 다릅니다. 사람의 전체 시각 검수 완료 상태는 계속 false입니다.
-- 별도의 사용자 저장소에서 Actions 버튼 실행 → Artifact 다운로드 → 브라우저 열기의 전체 E2E는 미수행입니다(#33/#34).
+- 별도 공개 사용자 저장소의 제한된 Actions E2E는 후속 실행으로 확인했습니다. 비공개 저장소 권한과 실제 온프레미스 서버 입력의 진위는 미검증입니다(#33/#34).
 - 실제 AWS 계정·DB 연결·성능·보안·비용·이전 다운타임·배포는 검증하거나 변경하지 않았습니다.

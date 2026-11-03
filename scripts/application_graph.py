@@ -11,13 +11,12 @@ import subprocess
 from collections import Counter
 
 try:
-    from .repository_analyzer import EXCLUDED
+    from .repository_analyzer import EXCLUDED, is_test_source
 except ImportError:
-    from repository_analyzer import EXCLUDED
+    from repository_analyzer import EXCLUDED, is_test_source
 
 SUPPORTED = {".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts"}
 PYTHON = {".py"}
-IGNORE = {"test", "tests", "__tests__", "__mocks__", "fixtures", "node_modules"}
 MAX_SOURCE_FILES = 300
 MAX_SOURCE_BYTES = 65536
 MAX_NODES = 2000
@@ -28,20 +27,22 @@ HTTP = {"get", "post", "put", "patch", "delete", "options", "head"}
 def _files(root):
     results = []
     for current, dirs, files in os.walk(root, followlinks=False):
-        dirs[:] = sorted(d for d in dirs if d not in (EXCLUDED | IGNORE)
+        dirs[:] = sorted(d for d in dirs if d not in EXCLUDED
                          and not d.startswith(".") and not (Path(current) / d).is_symlink())
         for name in sorted(files):
             if len(results) >= MAX_SOURCE_FILES:
                 return results, True
             target = Path(current) / name
-            if target.suffix.lower() not in SUPPORTED or target.is_symlink():
+            relative = target.relative_to(root).as_posix()
+            if (target.suffix.lower() not in SUPPORTED or target.is_symlink() or
+                    is_test_source(relative)):
                 continue
             try:
                 if not target.is_file() or target.stat().st_size > MAX_SOURCE_BYTES:
                     continue
             except OSError:
                 continue
-            results.append(target.relative_to(root).as_posix())
+            results.append(relative)
     return results, False
 
 

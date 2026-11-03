@@ -43,6 +43,19 @@ async function inspectPage(page) {
         img.naturalWidth > 0 && img.clientWidth > 0 && img.clientHeight > 0})),
       contrast,
       details: document.querySelectorAll('details').length,
+      tables: [...document.querySelectorAll('table')]
+        .filter(table => table.getBoundingClientRect().width > 0).map(table => {
+          const container = table.closest('.table-scroll');
+          if (!container) return {contained: false};
+          const rect = container.getBoundingClientRect();
+          const overflow = container.scrollWidth > container.clientWidth + 1;
+          const previous = container.scrollLeft;
+          container.scrollLeft = 1;
+          const canScroll = container.scrollLeft > 0;
+          container.scrollLeft = previous;
+          return {contained: true, width: table.getBoundingClientRect().width,
+            left: rect.left, right: rect.right, overflow, canScroll};
+        }),
       replacementCharacters: document.body.textContent.includes('\ufffd'),
       overflowElements: [...document.querySelectorAll('body *')].filter(el => {
         const rect = el.getBoundingClientRect();
@@ -110,6 +123,11 @@ async function main() {
             assert(checks.documentWidth <= viewport.width + 1,
               `${relative}: page overflow at ${viewport.width}px (${state}): ` +
               JSON.stringify(checks.overflowElements));
+            assert(checks.tables.every(table => table.contained && table.width >= 639 &&
+              table.left >= -1 && table.right <= viewport.width + 1 &&
+              (!table.overflow || table.canScroll)),
+              `${relative}: table must keep readable width inside a working scroll area ` +
+              `at ${viewport.width}px (${state}): ` + JSON.stringify(checks.tables));
             assert(checks.images.length && checks.images.every(img => img.loaded && img.alt),
               `${relative}: image failed to render`);
             assert(checks.contrast.every(item => item.ratio >= 4.5),

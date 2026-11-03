@@ -45,12 +45,15 @@ GitHub → Actions → **AWS 아키텍처 검토 자동화** → **Run workflow*
 
 자동 테스트에서는 모든 참조 패턴(Static/Serverless/Mobile/Container)의 주요 파일 생성, 이미지/해시 일치, HTML 내부 링크, 외부 리소스/스크립트 차단, 입력 없는 비용의 미산정 표시, 일부 단가의 부분합, 악성 HTML 문자열의 이스케이프, 선택 게이트/토폴로지 불일치를 점검합니다.
 
+2026-11-03 기준 외부 결틈 저장소의 [Actions 실행 41630070177](https://github.com/Leegiyeon/oneul-ui-gyeol/actions/runs/41630070177)이 성공했습니다. 신규 AWS·이전 입력 없음·이전 Inventory 입력으로 생성한 Artifact를 다운로드해 보고서 3개·브라우저 상태 18개를 검사했습니다. Inventory는 가상 서버 2개이며 실제 서버·이전 환경을 확인한 결과가 아닙니다. [외부 E2E 검증 근거](EXTERNAL_E2E.md)를 참고하세요.
+
 **추가 수동 QA:** 실제 서비스 사용자 화면에서 SVG 복잡도/가독성, 한글 줄바꿈, 모바일 확대, 각 브라우저 파일 보안 제한 등을 확인해야 합니다. CI 자동 테스트만으로 이미지의 모든 시각적 품질이나 실제 AWS 구축 적합성을 보증하지 않습니다.
 
 ## 후속 개발
 
-- **#15** AWS 서비스/SKU·시나리오(최소/기준/피크)의 실제 비용/용량 비교는 별도 과제입니다. 이 보고서는 현재 지원하는 비용 입력 범위를 충실하게 표시합니다.
-- **#16** 대표 저장소 10종의 구조/그래프/보고서 시각 감사와 Golden E2E 테스트가 필요합니다.
+- **#15** [공식 비용 예시 3건의 산술 회귀](OFFICIAL_COST_VALIDATION.md)를 추가했습니다. 실제 SKU 선택·전체 서비스 비용·부하/용량의 실환경 비교는 남아 있습니다.
+- **#16** 합성 보고서 13종의 브라우저 회귀와 실제 공개 저장소 3개의 근거 대조를 수행했습니다. 테스트 API 오탐은 수정했고, [Python DB·NestJS API 등 남은 미탐](REAL_REPOSITORY_AUDIT.md)을 후속 개선 대상으로 기록했습니다.
+- **필수 CI 정책**: 현재 `main`은 `protected=false`, rulesets는 빈 배열로 확인했습니다. 자동 검사 실행과 별도로 병합 전 required CI 강제 적용이 필요합니다.
 - **#17~#18** 선택형 로컬 읽기 전용 AWS Account Inspector(미구현)는 이 보고서의 AWS 설계 제안과 실제 계정을 향후 비교하기 위한 별도 기능입니다.
 
 ## 3단계 비용 시나리오 연계 (#15 기반)
@@ -75,7 +78,7 @@ workflow_dispatch의 `golden_qa=true`는 실제 운영 저장소가 아닌 고�
 
 매 분석 실행 시 `report-qa.json` 생성 전 검증이 실패하면 결과 생성 자체를 오류로 처리합니다. 확인하는 항목은 오프라인 HTML 내부 앵커·파일 링크, 이미지 ALT/CSP/외부 스크립트 금지, AWS/As-Is SVG XML+viewBox, PNG 헤더·해상도, 토폴로지 노드/엣지 참조 일치, Artifact 해시, 신규/이전 모드별 미검증 메시지입니다.
 
-**중요:** `status=automated_structural_checks_passed`는 파일 구조 QA만 성공했다는 뜻이며 `browser_rendered=false`, `manual_visual_review_completed=false`, `real_repository_accuracy_audited=false`, `aws_account_checked=false`를 유지합니다. 실제 데스크톱/모바일 화면의 한글·폰트·아이콘·클리핑 수동 감사와 외부 실제 저장소 분석 정확도 검증은 #14/#16의 후속 작업입니다.
+**중요:** `status=automated_structural_checks_passed`는 파일 구조 QA만 성공했다는 뜻이며 `browser_rendered=false`, `manual_visual_review_completed=false`, `real_repository_accuracy_audited=false`, `aws_account_checked=false`를 유지합니다. 별도로 수행한 브라우저 검사와 일부 공개 저장소 감사가 개별 보고서의 자동 승인으로 바뀌지는 않습니다. 전체 도면 수동 승인과 탐지 정확도 개선은 #14/#16의 후속 작업입니다.
 
 ## 실제 브라우저 회귀 검사
 
@@ -99,4 +102,4 @@ node scripts/browser_qa/audit.cjs browser-fixtures browser-qa-output
 
 추가 브라우저 검사의 `browser-qa.json`만 `browser_rendered=true`를 기록합니다. 개별 분석의 기존 `report-qa.json`은 **브라우저를 실행하지 않았으므로 변경하지 않습니다**. 자동 화면 검사는 한글 글꼴의 모든 글리프·도면 내부의 선/라벨 겹침·AWS 설계의 적합성을 판정하지 않습니다. `manual_visual_review_completed=false`와 `aws_account_checked=false`를 유지합니다. 복잡한 모바일 도면은 `SVG 확대`로 열어 확대해서 확인하세요.
 
-실제 공개 코드 샘플 1건의 수동 근거 대조 결과는 [REPORT_QA_AUDIT.md](REPORT_QA_AUDIT.md)를 참고하세요. 13개 합성 fixture의 통과율을 실제 저장소 검출 정확도로 해석하면 안 됩니다.
+결틈 코드 샘플의 근거 대조는 [REPORT_QA_AUDIT.md](REPORT_QA_AUDIT.md), NestJS·FastAPI 공식 샘플의 추가 감사는 [REAL_REPOSITORY_AUDIT.md](REAL_REPOSITORY_AUDIT.md)에 기록합니다. 모바일 표·도면 라벨 보완 결과와 사람이 판단하는 도면 가독성은 계속 검토합니다. 13개 합성 fixture의 통과율을 실제 저장소 검출 정확도로 해석하면 안 됩니다.

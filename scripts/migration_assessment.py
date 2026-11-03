@@ -99,6 +99,56 @@ def _replatform(server, index, profile):
     return changes
 
 
+def _connection_changes(as_is, changes, strategy):
+    """선언된 논리 연결만 기존 서버별 후보에 대응. 실제 네트워크 설계는 아님."""
+    by_server = {s["id"]: [] for s in as_is["servers"]}
+    servers = {s["id"]: s for s in as_is["servers"]}
+    for change in changes:
+        by_server[change["server_id"]].append({
+            key: change[key] for key in ("component", "to_be_candidate", "decision", "evidence")
+        })
+    rows = []
+    for index, connection in enumerate(as_is["connections"]):
+        left, right = connection["from"], connection["to"]
+        source, target = by_server[left], by_server[right]
+        purpose = connection["purpose"]
+        destination = servers[right]
+        target_matches = {
+            "application": destination["role"] in ("application", "mixed", "proxy"),
+            "database": destination["db_engine"] not in ("none", "unknown") or
+                        destination["role"] in ("database", "mixed") and
+                        destination["db_engine"] == "unknown",
+            "storage": destination["role"] == "storage",
+            "other": False,
+        }[purpose]
+        ambiguous = len(source) != 1 or len(target) != 1
+        unknown = any(c["decision"] == "unknown" for c in source + target)
+        if not target_matches:
+            decision = "unknown"
+            reason = "연결 목적이 기타이거나 대상 서버 역할/DB 선언과 일치하지 않아 구성요소 대응 미확인."
+        elif ambiguous:
+            decision = "unknown"
+            reason = "서버가 여러 구성요소 후보로 나뉘어 실제 연결의 출발/도착 구성요소 미확인. 후보 전체를 표시하며 임의 선택하지 않습니다."
+        elif unknown:
+            decision = "unknown"
+            reason = "출발 또는 도착 서버의 실행 대상/호환성이 미확인으로 연결 변경 판단 보류."
+        elif strategy == "rehost":
+            decision = "retain"
+            reason = "EC2 서버 후보 사이에서 선언된 논리 관계 유지 검토. 실제 접속 경로는 변경될 수 있으며 유지 가능성 판정이 아닙니다."
+        else:
+            decision = "modify"
+            reason = "서버별 서비스 후보에 맞춘 접속 경로 변경 검토. 실제 연결 가능성 또는 이전 적합성 판정이 아닙니다."
+        rows.append({
+            "from": left, "to": right, "purpose": purpose, "decision": decision,
+            "from_candidates": source, "to_candidates": target,
+            "reason": reason + " 네트워크·프로토콜/포트·보안그룹·DNS·인증·실제 연결은 미검증이며 검토 분류만 제공합니다.",
+            "evidence": [{"type": "user_declared_unverified",
+                          "ref": "as-is-inventory.json#/connections/" + str(index)}],
+            "validated": False, "change_approved": False, "network_verified": False,
+        })
+    return rows
+
+
 def _steps():
     return [
         {"stage": "discovery", "title": "사전 조사",
@@ -143,6 +193,7 @@ def assess_migration(as_is, profile, requirements, topology, cost):
         options.append({
             "id": key, "title": title, "status": "candidate_review_only",
             "changes": changes, "summary": dict(Counter(x["decision"] for x in changes)),
+            "connection_changes": _connection_changes(as_is, changes, key),
             "approved": False, "functional_equivalence_verified": False,
             "capacity_verified": False, "security_verified": False,
             "migration_tested": False,
@@ -264,6 +315,26 @@ def markdown_migration(report):
             rows.append("| " + x["server_id"] + " | " + x["component"] +
                         " | " + x["decision"] + " | " + x["to_be_candidate"] +
                         " | " + x["reason"] + " (" + refs + ") |")
+        rows.append("")
+        rows += ["### 선언된 연결의 변경 검토", "",
+                 "유지/변경/미확인은 논리 관계에 대한 검토 분류이며 실제 연결 검증·이전 가능성·승인이 아닙니다.", ""]
+        connections = option.get("connection_changes", [])
+        if not connections:
+            rows += ["- 연결 선언 없음 — 실제 연결이 없다는 의미가 아니며 연결을 생성하지 않았습니다.", ""]
+            continue
+        rows += ["| 선언된 연결 | 목적 | 검토 분류 | 출발 후보 | 도착 후보 | 근거·확인할 사항 |",
+                 "| --- | --- | --- | --- | --- | --- |"]
+        for x in connections:
+            endpoints = ["; ".join(c["component"] + ": " + c["to_be_candidate"] +
+                                  " (" + ", ".join(e["ref"] for e in c["evidence"]) + ")"
+                                  for c in x[key])
+                         for key in ("from_candidates", "to_candidates")]
+            decision = {"retain": "유지 검토", "modify": "변경 검토", "unknown": "미확인"}[x["decision"]]
+            refs = ", ".join(e["ref"] for e in x["evidence"])
+            rows.append("| " + " | ".join([
+                x["from"] + " → " + x["to"], x["purpose"], decision,
+                *endpoints, x["reason"] + " (" + refs + ")",
+            ]) + " |")
         rows.append("")
     rows += ["## 우선 확인할 위험", ""]
     for x in report["risks"]:
