@@ -18,7 +18,9 @@ if __package__:
     from .aws_topology import design_aws_topology, markdown_topology
     from .render_aws_topology import render_aws_topology
     from .topology_network_policy import markdown_network_policy
-    from .architecture_decision_engine import compare_architectures, markdown_decision_matrix
+    from .architecture_decision_engine import (compare_architectures, markdown_decision_matrix,
+                                               build_decision_record, markdown_decision_record)
+    from .data_access_decision import assess_data_access, markdown_data_access
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -33,7 +35,9 @@ else:
     from aws_topology import design_aws_topology, markdown_topology
     from render_aws_topology import render_aws_topology
     from topology_network_policy import markdown_network_policy
-    from architecture_decision_engine import compare_architectures, markdown_decision_matrix
+    from architecture_decision_engine import (compare_architectures, markdown_decision_matrix,
+                                              build_decision_record, markdown_decision_record)
+    from data_access_decision import assess_data_access, markdown_data_access
 
 
 def scan(root):
@@ -116,7 +120,15 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         "review_required": len(topology["review_required"]),
     }
     # AWS 패턴별 적합 조건/제외 근거는 AI와 독립된 재현 가능한 의사결정 매트릭스로 생성합니다.
-    decision_matrix = compare_architectures(result, profile, requirements, contract, topology)
+    data_review = assess_data_access(profile, requirements, contract)
+    decision_matrix = compare_architectures(result, profile, requirements, contract, topology,
+                                            data_review=data_review)
+    result["data_access"] = {
+        "file": "data-access-decision.json",
+        "status": data_review["status"],
+        "pattern": data_review["data_access_pattern"],
+        "selected_data_store": None,
+    }
     result["decision_matrix"] = {
         "file": "architecture-decision-matrix.json",
         "status": decision_matrix["status"],
@@ -154,6 +166,12 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     ):
         topology["status"] = "blocked_for_review"
         result["aws_topology"]["status"] = "blocked_for_review"
+    adr = build_decision_record(result, validation, decision_matrix, data_review, contract)
+    result["decision_record"] = {
+        "file": "decision-record.json", "status": adr["status"],
+        "approval_required": adr["approval"]["required"],
+        "approved": False,
+    }
     result["validation"] = {
         "file": "validation.json",
         "decision_gate": validation["decision_gate"],
@@ -195,6 +213,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         ("application-graph.json", graph),
         ("aws-topology.json", topology),
         ("architecture-decision-matrix.json", decision_matrix),
+        ("data-access-decision.json", data_review),
+        ("decision-record.json", adr),
         ("evidence-contract.json", contract),
         ("requirements-gaps.json", {
             "schema_version": "1.0",
@@ -215,10 +235,11 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     (out / "aws-topology.md").write_text(markdown_topology(topology), encoding="utf-8")
     (out / "network-policy.md").write_text(markdown_network_policy(topology), encoding="utf-8")
     (out / "architecture-decision-matrix.md").write_text(markdown_decision_matrix(decision_matrix), encoding="utf-8")
+    (out / "data-access-decision.md").write_text(markdown_data_access(data_review), encoding="utf-8")
     (out / "cost-estimate.md").write_text(markdown_cost(cost_report), encoding="utf-8")
     (out / "iac-policy.md").write_text(markdown_iac(iac_report), encoding="utf-8")
     (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
-    (out / "decision-record.md").write_text(markdown_adr(result, validation), encoding="utf-8")
+    (out / "decision-record.md").write_text(markdown_decision_record(adr), encoding="utf-8")
     report = markdown_report(result)
     report += "\n## 9. 코드 기반 애플리케이션 그래프 (추가 산출물)\n\n"
     report += "- 분석 파일 수: " + str(graph["scanned_source_files"]) + "\n"
@@ -267,6 +288,11 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- 추가 검토 후보: " + ", ".join(decision_matrix["alternative_candidates"]) + "\n"
     report += "- 파일: `architecture-decision-matrix.json/md` (EC2 포함, 선택 자동 변경 없음)\n"
     report += "- AWS 서비스별 실제 성능·비용·가용성 검증 없이 후보 간 정량 순위를 산정하지 않습니다.\n"
+    report += "\n## 16. 데이터 접근 방식과 최종 ADR 승인 범위\n\n"
+    report += "- 데이터 접근 패턴: " + data_review["data_access_pattern"] + "\n"
+    report += "- DB 선택 상태: 미확정 / 자동 마이그레이션 없음\n"
+    report += "- ADR 상태: " + adr["status"] + " (사람 승인 필요)\n"
+    report += "- 파일: `data-access-decision.json/md`, `decision-record.json/md`\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:
