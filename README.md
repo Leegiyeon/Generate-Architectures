@@ -265,3 +265,13 @@ AWS Architecture Decision Engine은 기존 참조 설계의 선택을 **자동 �
 - 예상 청구액, 속도, SLO 점수/승인 결과를 생성하지 않습니다. 사용자 승인 없이 추천안을 바꾸거나 AWS를 배포하지 않습니다.
 
 `architecture-decision-matrix.json/md`와 [상세 의사결정 기준](docs/DECISIONS.md)을 참고하세요. **Issue #12는 1차 구현이며 복합 백엔드·서비스별 정확한 배포 패턴과 실측 가격/성능 비교는 후속 과제**입니다.
+
+## 17. 데이터 접근 패턴·EC2 대안·ADR 승인 상태 (Issue #12 후속)
+
+AWS 서비스 결정 전에 **관계형 트랜잭션, 문서형 조회, 키 기반 접근**을 구분합니다. `data_access_pattern`은 `undecided`, `relational_transactions`, `document_queries`, `key_value` 중 선택합니다. 기존 SQL/MongoDB 의존성 단서는 실행 증명이 아니며 **DB 이전을 자동 선택하지 않습니다**. `database_migration_approved`는 *이전 가능성 검토 의사*를 나타낼 뿐 자동 마이그레이션 동의/실행권이 아닙니다.
+
+새 결과물은 `data-access-decision.json/md`, `decision-record.json/md`입니다. ADR은 **명시적 사용자 요구/시스템 기본값을 분리**하고 선정 근거·대안 제외 이유·DB 선택 미완료·사람 승인 상태를 기록합니다.
+
+현재 컨테이너 아키텍처에서는 별도 `ec2-alternative/` 디렉터리에 **EC2 Auto Scaling 참조 토폴로지 SVG/PNG/JSON/한국어 보고서**를 제공합니다. 원래 ECS Fargate 설계는 유지하며, EC2의 OS 패치·AMI·IAM·SSM·Private Egress 비용은 별도 검토합니다. 실제 배포/자동 전환은 없습니다.
+
+설명: [서비스 결정 및 ADR](docs/DECISIONS.md).
