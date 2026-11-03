@@ -227,14 +227,14 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
          "3. 다운로드한 Artifact에서 START-HERE.html을 우선 확인합니다.", "",
          "[전체 기술 보고서](recommendation.md) · [정적 검증](validation.md) · [결과물 해시](artifact-index.json)", "",
          "**주의:** 실제 운영 인프라의 보안/가용성/비용은 이 도구로 검증하지 않았습니다.",""]
-    if alternative_comparison is not None:
+    if alternative_comparison is not None and alternative_comparison["status"] != "needs_input":
         md.extend(["", "## 7. 동일 업무량의 ECS/EC2/Lambda 입력 비용 비교", "",
                    "- 상태: " + markdown_value(alternative_comparison["status"]),
                    "- 동일 업무량·명시 요금·서비스 제약이 모두 충족되지 않으면 대안별 비용 순위를 정하지 않습니다.",
                    "- 운영 책임: 패치/IAM/오토스케일/모니터링 등 직접 검토해야 합니다.",
                    "- [대안 비용 비교 보고서](alternative-cost-comparison.md)",
                    ""])
-    if capacity_evidence is not None:
+    if capacity_evidence is not None and capacity_evidence["status"] != "needs_input":
         md.extend(["", "## 8. 사용자 제공 부하 테스트의 실측 수치 대조", "",
                    "- 상태: " + markdown_value(capacity_evidence["status"]),
                    "- 측정값의 진위·실환경 동일성·AWS 쿼터·Auto Scaling은 검증하지 않습니다.",
