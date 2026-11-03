@@ -44,7 +44,7 @@ class ProductFlowTests(unittest.TestCase):
             self.assertIn(key, product)
         # 고가치 미래 산출물을 '현재 구현'으로 과장하지 않음
         self.assertIn("상세 VPC/Subnet/AZ 구축 설계가 아니라", readme)
-        self.assertIn("현재는 4종 후보 비교", product)
+        self.assertIn("지금은 4종 후보 비교", product)
 
 
 if __name__ == "__main__":
