@@ -16,6 +16,10 @@ inputs:
     description: "선택 입력: 사용자 월 예산 상한 (실제 AWS 비용 추정치 아님)"
     required: false
     default: ""
+  onprem_inventory:
+    description: "선택: 기존 서버의 비기밀 Inventory JSON 경로 (이전 모드에서만, 미입력 시 .architecture/onprem-inventory.json 자동 확인)"
+    required: false
+    default: ""
   requirements_file:
     description: "선택 입력: 분석 대상 저장소 내부의 JSON 요구사항 파일 경로"
     required: false
@@ -89,6 +93,7 @@ runs:
       env:
         INPUT_WORKLOAD: ${{ inputs.workload }}
         INPUT_ANALYSIS_GOAL: ${{ inputs.analysis_goal }}
+        INPUT_ONPREM_INVENTORY: ${{ inputs.onprem_inventory }}
         INPUT_BUDGET: ${{ inputs.monthly_budget_usd }}
         INPUT_REQUIREMENTS: ${{ inputs.requirements_file }}
         INPUT_OUTPUT_DIR: ${{ inputs.output_dir }}
@@ -105,6 +110,9 @@ runs:
         set -- --repo . --output "$INPUT_OUTPUT_DIR" --workload "$INPUT_WORKLOAD" --analysis-goal "$INPUT_ANALYSIS_GOAL"
         if [[ -n "$INPUT_BUDGET" ]]; then
           set -- "$@" --budget "$INPUT_BUDGET"
+        fi
+        if [[ -n "$INPUT_ONPREM_INVENTORY" ]]; then
+          set -- "$@" --onprem-inventory "$INPUT_ONPREM_INVENTORY"
         fi
         if [[ -n "$INPUT_REQUIREMENTS" ]]; then
           set -- "$@" --requirements "$INPUT_REQUIREMENTS"
