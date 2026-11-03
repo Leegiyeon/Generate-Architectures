@@ -16,7 +16,8 @@
 | --- | --- | --- |
 | 코드·설정 정적 분석 | 구현 | 실제 런타임·서버 위치·네트워크 연결을 관찰한 것은 아님 |
 | 신규 AWS 구축 참조 설계 | 구현 | 논리 VPC/AZ/AWS 서비스 **제안**; AWS 실계정 검증/배포 없음 |
-| 온프레미스 목적 + 선언형 As-Is | **구현** | 온프레미스 Inventory를 사용자가 입력한 범위만 표시. 실제 인프라 자동 진단 및 Migration Assessment는 미구현 |
+| 온프레미스 목적 + 선언형 As-Is | **구현** | 사용자 입력 기존 인프라와 코드 근거를 분리. 실환경 자동 진단 없음 |
+| Rehost / Replatform 이전 비교 초안 | **구현** | 서버/DB/앱 이전 후보와 위험·수동 체크리스트. 적합성·이전 시간·비용 실증 없음 |
 | 근거·제약/DB 전환 주의·보안/운영 검토 | 기반 구현 | 실제 운영 정책·부하·백업/복구 검증 전 |
 | 비용·용량 입력 기반 비교 | 선택 구현 | 사용자가 제공한 가격·집계 부하에 한정; 전체 청구액 아님 |
 | **Local AWS Inspector** | **미구현** | AWS Profile/SSO 로컬 진단은 후속 개발 |
@@ -35,7 +36,7 @@ AI 보조 검토와 AWS 가격 API는 기본 비활성화입니다. AWS 비밀�
 
 1. [#33](https://github.com/Leegiyeon/Generate-Architectures/issues/33) 간편 시작/2가지 목적 선택 — 구현·검증 여부는 해당 Issue에서 관리
 2. [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34) 비기밀 Inventory + 근거 기반 As-Is — 기능 구현, 실제 시각 QA 필요
-3. [#35](https://github.com/Leegiyeon/Generate-Architectures/issues/35) Rehost/Replatform·As-Is/To-Be 변경사항과 위험
+3. [#35](https://github.com/Leegiyeon/Generate-Architectures/issues/35) Rehost/Replatform·As-Is/To-Be 변경사항과 위험 — 검토 초안 구현, 실환경 검증 별도
 4. [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 간결한 보고서·실제 시각 QA
 5. [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) 정확성 회귀/오탐 감사, [#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) 비용/용량 실증
 

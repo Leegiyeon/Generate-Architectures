@@ -83,7 +83,8 @@ def cost_capacity_markdown(cost, operations, topology):
 def generate_user_bundle(out, architecture, topology, graph, contract,
                          decision_matrix, adr, operations, cost, validation,
                          alternative_comparison=None, capacity_evidence=None,
-                         analysis_goal=None, onprem_as_is=None):
+                         analysis_goal=None, onprem_as_is=None,
+                         migration_assessment=None):
     """모든 기존 산출물이 생성된 후 실행하는 오프라인 읽기 전용 보고 단계."""
     out=Path(out)
     # Legacy callers default to new AWS intent; both modes remain review-only.
@@ -170,6 +171,8 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
         "analysis_goal":analysis_goal["goal"],
         "migration_assessment_performed":False,
         "onprem_inventory_analyzed":has_declared_as_is,
+        "migration_review_generated":bool(migration_assessment and
+                                         migration_assessment["status"] != "needs_inventory"),
         "chosen_option":architecture["option_id"],
         "decision_gate":validation["decision_gate"],
         "topology_status":topology["status"],
@@ -201,6 +204,15 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
             manifest["supplementary_files"].append({
                 "path": name, "source": "user_declared_unverified",
                 "sha256": hashlib.sha256(file.read_bytes()).hexdigest(),
+            })
+    if migration_assessment is not None:
+        for name in ("migration-assessment.json", "migration-assessment.md"):
+            path = out / name
+            if not path.is_file() or not path.stat().st_size:
+                raise ValueError("마이그레이션 검토 초안 결과물 생성 실패: " + name)
+            manifest["supplementary_files"].append({
+                "path": name, "source": "user_declared_and_static_code_review_unverified",
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
             })
     (out/"artifact-index.json").write_text(
         json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
@@ -262,7 +274,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
             "**기존 서버/DB·연결은 사용자가 선언한 정보입니다. 실제 서버·네트워크를 조사하지 않았습니다.**",
             "- [별도 As-Is 구성도](as-is-topology.svg) / [현재 인프라 표와 코드 단서](as-is-inventory.md)",
             "- [AWS To-Be 후보](deliverables/01-aws-to-be.svg)는 기존 환경이 아닌 제안입니다.",
-            "- Rehost/Replatform·데이터 전환·다운타임 검증은 미구현이며 별도 검토가 필요합니다.",
+            "- Rehost/Replatform은 정적 비교 초안입니다. 실제 데이터 이전·다운타임/롤백 검증은 아직 수행되지 않았습니다.",
             "",
         ]
         md.extend(["", "## 온프레미스 추가 확인 사항", ""] +
@@ -276,6 +288,12 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
         ]
         md.extend(["", "## 온프레미스 이전 전에 확인할 내용", ""] +
                   ["- "+markdown_value(x) for x in analysis_goal["next_actions"]])
+    if migration_assessment is not None and migration_assessment["status"] != "needs_inventory":
+        md.extend(["", "## Rehost / Replatform 변경사항·위험 (미검증 초안)", "",
+                   "- 후보는 2개이며 최적 전략을 자동 선정하거나 실제 이전/데이터 복제를 실행하지 않습니다.",
+                   "- [변경사항·근거·전환 체크리스트](migration-assessment.md)",
+                   "- 우선 확인 위험: " + str(len(migration_assessment["blocking_risk_ids"])) +
+                   "건의 검토 차단(위험 해소 여부 미확인)"])
     (out/"START-HERE.md").write_text("\n".join(md),encoding="utf-8")
 
     def li(values, limit=7):
@@ -396,6 +414,36 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
             "<div class='links'><a href='as-is-topology.svg'>As-Is 확대</a>"
             "<a href='as-is-inventory.md'>입력 구성/코드 근거</a></div></section>"
         )
+    migration_comparison_html = ""
+    if migration_assessment is not None and migration_assessment["status"] != "needs_inventory":
+        option_parts = []
+        for option in migration_assessment["strategies"]:
+            changes = "".join(row(
+                x["server_id"], x["component"], x["decision"],
+                x["to_be_candidate"], x["reason"],
+            ) for x in option["changes"][:10])
+            option_parts.append(
+                "<h3>" + safe(option["title"]) + "</h3>"
+                "<table><thead><tr><th>현재 서버</th><th>구성</th><th>검토 변경</th>"
+                "<th>AWS 후보</th><th>선택 근거/검증 전제</th></tr></thead><tbody>" +
+                changes + "</tbody></table>"
+            )
+        risk_html = li(
+            [x["title"] + " — " + x["question"]
+             for x in migration_assessment["risks"][:5]], 5)
+        migration_comparison_html = (
+            "<section class='panel' id='migration-assessment'>"
+            "<h2>Rehost / Replatform — AWS 이전 방식·변경사항 비교(검토 초안)</h2>"
+            "<p class='caution'>사용자 선언 및 코드 단서 기반 참고안입니다. "
+            "어느 방식이 적합한지 자동 선정하지 않았으며 DB 호환·다운타임·"
+            "실제 이전 비용·보안·성능은 미검증입니다.</p>" +
+            "".join(option_parts) +
+            "<h3>우선 검토 위험(최대 5개)</h3><ul>" + risk_html + "</ul>"
+            "<p>전환 절차: 사전 조사 → 테스트 → 데이터 이전 계획 → 검증 → Cutover → Rollback. "
+            "모두 수동 검토/승인 대상입니다.</p>"
+            "<div class='links'><a href='migration-assessment.md'>"
+            "전략별 상세 근거·위험·전환 체크리스트</a></div></section>"
+        )
     migration_notice = (
         "<section class='panel' id='migration-warning'><h2>온프레미스 → AWS 이전: 현재 판단 범위</h2>"
         "<p class='caution'><b>기존 서버·DB·네트워크 정보가 확인되지 않았습니다.</b> "
@@ -420,7 +468,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "<a href='#decision'>② 선정 근거</a><a href='#ops'>③ 보안·운영</a>"
         "<a href='#cost'>④ 비용·용량</a><a href='#evidence'>As-Is/To-Be</a>"
         "<a href='#next'>재분석</a></nav></header><main>"
-        + migration_notice + declared_as_is_html +
+        + migration_notice + declared_as_is_html + migration_comparison_html +
         "<section id='overview' class='grid'>"
         "<div class='card'><strong>권장 참조안</strong><b>"+safe(architecture["pattern"])+
         "</b><br><small>사람 승인 전</small></div>"
