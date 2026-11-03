@@ -95,6 +95,26 @@ jobs:
       - name: 자동 테스트
         run: python3 -m unittest discover -s tests -v
 
+      # 실제 브라우저의 렌더링 검사는 합성 보고서만 사용하며 분석 대상 앱을 실행하지 않습니다.
+      - name: 오프라인 보고서 브라우저 검사 준비
+        run: |
+          npm ci --prefix scripts/browser_qa --ignore-scripts --no-audit --no-fund
+          scripts/browser_qa/node_modules/.bin/playwright install --with-deps chromium
+          python3 tests/generate_golden_artifacts.py --output browser-fixtures
+          python3 tests/generate_browser_fixtures.py --output browser-fixtures
+
+      - name: 데스크톱·모바일 보고서 렌더링 회귀 검사
+        run: node scripts/browser_qa/audit.cjs browser-fixtures browser-qa-output
+
+      - name: 브라우저 검사 결과 및 화면 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-browser-qa
+          path: browser-qa-output/
+          if-no-files-found: ignore
+          retention-days: 7
+
       # 3-6. push/PR에서는 코드 품질검사만 실행. 사용자의 수동 요청에서만 전체 설계 분석을 수행
       # 기존 CI 자동 검증을 유지하면서 모델 호출과 분석 리소스 낭비를 줄입니다.
       - name: 설계 분석 및 다이어그램 생성 (수동 실행)

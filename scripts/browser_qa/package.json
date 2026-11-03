@@ -1,0 +1,9 @@
+{
+  "name": "generate-architectures-browser-qa",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Optional offline report rendering checks; never runs analyzed project code",
+  "dependencies": {
+    "playwright": "1.62.1"
+  }
+}
