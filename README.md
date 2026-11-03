@@ -1,8 +1,24 @@
-# Generate-Architectures — GitHub 중심 AWS 아키텍처 설계 지원
+# Generate-Architectures — 저장소에서 AWS 권장 설계와 선택 이유까지
 
 GitHub 저장소의 **확인 가능한 근거**와 **사용자가 직접 제공하는 요구사항**을 바탕으로, AWS 아키텍처 대안을 비교하고 서비스 아이콘이 포함된 다이어그램 및 한국어 검토 보고서를 생성합니다.
 
 > **현재 단계: SAA 업무 자동화의 1~2단계 기반 구현.** 실제 AWS 리소스 조회, 검증된 LLM 자율 설계 승인, 상세 비용 산정, 실제 AWS 보안 정책 검증, Terraform/CDK 생성 또는 인프라 배포는 제공하지 않습니다. 출력물은 전문가 검토가 필요한 **참조 설계 초안**입니다.
+
+## 30초 사용 안내
+
+**무엇을 입력하나요?** GitHub 저장소와 (선택) 서비스 요구사항 JSON을 입력합니다. 별도의 AWS 계정/자격증명은 필요하지 않습니다.
+
+**무엇을 받나요?** AWS 서비스 아이콘 **참조 설계도**(`architecture.svg/png`)와 선정 근거·대안·위험·미확인 조건을 담은 **한국어 보고서**(`recommendation.md`), ADR 초안 등을 받습니다. 현재 다이어그램은 **상세 VPC/Subnet/AZ 구축 설계가 아니라 참조 패턴**이며, 상세 설계는 다음 개발 범위입니다.
+
+**어떻게 실행하나요?** GitHub → **Actions → AWS 아키텍처 검토 자동화 → Run workflow** → 실행 완료 후 **Artifacts**에서 결과를 받습니다. **최초 1회 분석 및 필요시 수동 재분석**을 기본으로 합니다. 코드 변경 시의 push/PR 이벤트는 자동 테스트만 실행하고 아키텍처 분석은 반복하지 않습니다.
+
+| 사용 모드 | 사용자 가치 | 실제 상태 |
+| --- | --- | --- |
+| **Architecture Designer** | AWS 권장 구성·이유·미확인 조건 제시 | **참조 설계 기반 사용 가능**; 상세 네트워크·확장 설계는 개발 계획 |
+| **Local AWS Inspector** | 로컬 AWS Profile로 계정 구성 진단 | **미구현**; AWS 자격증명 입력 UI 없음 |
+| GitHub App | GitHub 이벤트로 분석 요청 | **웹훅 서버 코드만 존재**; App 설치·호스팅 미완료 |
+
+사용자 여정, 보안·권한, 현재 제공 범위와 다음 개발 항목은 **[제품 정의 및 업무 프로세스](docs/PRODUCT.md)**를 참고하세요. 자동 AWS 리소스 생성·수정·배포는 지원하지 않습니다.
 
 ## 1. 실제 구현 기능
 
@@ -20,7 +36,7 @@ GitHub 저장소의 **확인 가능한 근거**와 **사용자가 직접 제공�
 ## 2. 전체 실행 흐름
 
 ```text
-GitHub PR / Actions 수동 실행
+GitHub Actions 수동 실행 (push/PR 이벤트는 테스트만)
   → 대상 저장소 체크아웃 (읽기 전용)
   → 설정/경로 단서 수집 (repository_analyzer.py)
   → 비기밀 요구사항 JSON 검증 (requirements_model.py)
@@ -32,7 +48,7 @@ GitHub PR / Actions 수동 실행
 
 ## 3. 가장 빠른 사용법
 
-1. GitHub의 **Actions → AWS 아키텍처 검토 자동화 → Run workflow**에서 직접 실행합니다.
+1. GitHub의 **Actions → AWS 아키텍처 검토 자동화 → Run workflow**에서 분석이 필요할 때 직접 실행합니다. push/PR 이벤트는 테스트만 수행합니다.
 2. 완료된 실행의 **Artifacts → aws-architecture-recommendation**에서 결과 ZIP을 다운로드합니다.
 3. `recommendation.md`에서 근거·대안·위험·추가 질문을 확인하고 `architecture.svg` 또는 `architecture.png`를 엽니다.
 
@@ -71,11 +87,11 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output 
 
 ## 5. 외부 GitHub 저장소에서 사용
 
-[`examples/aws-architecture.yml`](examples/aws-architecture.yml)을 대상 저장소의 `.github/workflows/aws-architecture.yml`로 복사합니다. 예시에는 흐름별 **한국어 주석**이 포함되어 있습니다. 요구사항 파일을 아직 추가하지 않았다면 해당 Action 입력을 생략하세요.
+**수동 실행이 기본**입니다. [`examples/aws-architecture.yml`](examples/aws-architecture.yml)을 대상 저장소의 `.github/workflows/aws-architecture.yml`로 복사합니다. 중요한 PR에서만 자동 분석이 필요하면 [`examples/aws-architecture-pr-optional.yml`](examples/aws-architecture-pr-optional.yml)을 **추가로 선택해** 설치하세요. 예시에는 흐름별 **한국어 주석**이 포함되어 있습니다. 요구사항 파일을 아직 추가하지 않았다면 해당 Action 입력을 생략하세요.
 
 `uses: Leegiyeon/Generate-Architectures@main`은 최신 main 코드를 사용합니다. 운영 환경에서는 신뢰할 수 있는 **커밋 SHA 또는 버전 태그로 고정**하는 것을 권장합니다.
 
-### GitHub App 배포 (별도 설치)
+### GitHub App 웹훅 서버 코드 (현재 미배포)
 
 [`app/server.py`](app/server.py)는 서명 검증 웹훅으로 PR 이벤트를 수신해 **설치된 대상 저장소의 workflow_dispatch**를 호출하는 서버 코드입니다. GitHub App 등록, HTTPS 호스팅, 비밀 키 설정 및 저장소별 예시 워크플로 설치는 아직 자동화되지 않았습니다.
 
@@ -103,18 +119,19 @@ SVG는 디지털 문서용, PNG는 프레젠테이션용으로 사용할 수 있
 
 - 비밀키, `.env`, 전체 소스 전문을 OpenAI 등에 전송하지 않습니다. 기본 실행에는 외부 LLM API 키가 필요하지 않습니다. AI 보조 검토를 명시적으로 활성화한 경우에만 API 키가 필요합니다.
 - 분석 파일 수는 최대 5,000개이며, 일부 알려진 설정 파일만 최대 64KB까지 읽어 기술 의존성을 확인합니다. 심볼릭 링크와 주요 빌드/의존성 폴더는 제외합니다.
-- 현재 도구가 검증했다고 주장하는 것은 **입력 형식과 알려진 구조적 충돌**뿐입니다. AWS 계정, 서비스 가격, IAM, 취약점, 네트워크 실제 구성을 검사하지 않습니다.
+- 기본 분석이 검증하는 것은 **입력 형식과 알려진 구조적 충돌**뿐입니다. 선택적으로 공식 가격 API의 제한된 단가 조회 및 Terraform plan의 일부 위험 검사 코드가 있지만 실제 AWS 계정/IAM 전체·취약점·네트워크 운영 상태를 검증하지 않습니다.
 - 연결된 패턴과 비용·보안·가용성의 판단 근거가 충분하지 않으면 반드시 전문가 검토가 필요합니다.
 - 실제 코드와 다이어그램 사이의 완전한 일치, 내부망 배치, 다중 AZ 등은 가정으로 만들지 않습니다.
 
-## 8. 개발 계획
+## 8. 다음 개발 우선순위
 
-- **완료(이번 단계):** 저장소 근거 기반 기술/데이터 단서 분석, 비기밀 요구사항 수집, 설계 대안 비교, 6원칙 검토 질문, 한국어 보고서, Actions 자동화.
-- **다음 단계:** AST 분석 정확도 및 DB/외부연동 관계 추적, SSR 및 런타임 방식 추가 검증, 수집 근거에 대한 출처·신뢰도 표시.
-- **후속 단계:** 리전·사용량 가정 기반 AWS Price List 비용 모델, 규칙 기반 IAM·네트워크/IaC 정책 검사, 부하·장애 복구 검증 지원.
-- **장기 목표:** 인간 승인 필수인 IaC 제안 PR, GitHub App 운영 안정화, 멀티 클라우드 비교.
+**P0: 사용자에게 제공하는 상세 AWS 설계도와 근거 완성** — [#9 제품 재정의](https://github.com/Leegiyeon/Generate-Architectures/issues/9), [#10 분석 근거 계약](https://github.com/Leegiyeon/Generate-Architectures/issues/10), [#11 상세 네트워크·서비스 토폴로지](https://github.com/Leegiyeon/Generate-Architectures/issues/11), [#12 서비스 선정 이유](https://github.com/Leegiyeon/Generate-Architectures/issues/12), [#13 보안·확장·운영 전략](https://github.com/Leegiyeon/Generate-Architectures/issues/13), [#14 통합 보고서](https://github.com/Leegiyeon/Generate-Architectures/issues/14).
 
-자세한 결정 기준은 [설계 문서](docs/ARCHITECTURE.md) 및 [로드맵](docs/ROADMAP.md)을 참고하세요. 과거 `generate_aws_architectures.py`는 레거시 실험용 스크립트이며 현재 Action 실행 경로에는 포함되지 않습니다.
+**P1:** 배포 대안별 비용/용량 비교와 샘플 프로젝트 E2E 검증([#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15)·[#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16)).
+
+**P2:** 선택형 **로컬 읽기 전용 AWS Account Inspector**([#17](https://github.com/Leegiyeon/Generate-Architectures/issues/17)·[#18](https://github.com/Leegiyeon/Generate-Architectures/issues/18)). **P3:** GitHub App의 최초 분석·선택형 재실행 기능([#19](https://github.com/Leegiyeon/Generate-Architectures/issues/19)).
+
+상세 범위와 현재 구현 상태는 [제품 정의](docs/PRODUCT.md), [기술 아키텍처](docs/ARCHITECTURE.md) 및 [로드맵](docs/ROADMAP.md)을 참고하세요. 과거 `generate_aws_architectures.py`는 레거시 스크립트로 현재 Action 경로에 포함되지 않습니다.
 
 ## 9. P0 — 실제 소스코드 AST 기반 Application Graph (이번 개선)
 
