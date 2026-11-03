@@ -163,3 +163,11 @@ validation.json / validation.md / decision-record.md
 수동 AI 리뷰에서는 데이터 보호를 위해 source path, 함수 이름, 원본 코드가 아닌 정적 기술 신호·AST 개수·**명시적** 요구사항만 전송하며 시스템 기본값을 사용자 입력으로 표시하지 않습니다.
 
 생성 파일: `evidence-contract.json`, `evidence-report.md`, `requirements-gaps.json`. 이 자료는 향후 [Issue #11](https://github.com/Leegiyeon/Generate-Architectures/issues/11)의 상세 To-Be 설계에 필요한 출처 계약이며, 현재 상세 AWS 네트워크가 완성된 것으로 해석하지 않습니다.
+
+## AWS To-Be 논리 토폴로지 (Issue #11 기반 구현)
+
+`scripts/aws_topology.py`는 기존 간단 참조 설계와 사용자 요구·근거 계약을 조합하여 `aws-topology.json`을 생성합니다. `scripts/render_aws_topology.py`는 별도 `aws-topology.svg/png/dot`을 렌더링합니다. 포함된 AWS 영역, VPC, 두 논리 AZ의 Public/Private/DB Subnet, ALB/ECS/RDS 등의 계층 및 연결은 **참조 설계 제안**이며 배포 상태가 아닙니다. 정적/서버리스 패턴에서 불필요한 VPC는 자동 생성하지 않습니다.
+
+코드 기반 As-Is Application Graph, AWS 아이콘 서비스 참조도, To-Be 상세 논리 토폴로지는 각각 독립된 산출물입니다. 상세 토폴로지는 모든 노드/간선에 `proposed_not_deployed` / `proposed_not_verified` 상태를 유지합니다. 구축 전 NAT 또는 PrivateLink, SG/IAM, Route Table, 실제 AZ/CIDR, ACM/TLS, RDS DB subnet group 및 비용을 별도 확인해야 합니다.
+
+상세 문서: [TOPOLOGY.md](TOPOLOGY.md). 실제 VPC/서브넷/네트워크 보안 구현, 트래픽 및 장애 복구 정책은 다음 단계(#11~#13)에서 고도화합니다.
