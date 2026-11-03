@@ -101,7 +101,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     ai_review = review_architecture(
         profile, graph, requirements, result,
         enabled=ai_enabled, api_key=os.environ.get("OPENAI_API_KEY"),
-        model=ai_model,
+        model=ai_model, explicit_requirements=explicit_fields,
     )
     result["ai_review"] = {
         "status": ai_review["status"], "file": "ai-review.json",
