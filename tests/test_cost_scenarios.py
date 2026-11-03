@@ -64,7 +64,7 @@ class CostScenarioTests(unittest.TestCase):
             def get_products(self, **kwargs):
                 self.calls.append(kwargs)
                 return {"PriceList":[json.dumps({
-                    "product":{"attributes":{"regionCode":"ap-northeast-2"}},
+                    "product":{"sku":"MOCKSKU-LOCAL-001","attributes":{"regionCode":"ap-northeast-2"}},
                     "terms":{"OnDemand":{"term":{"priceDimensions":{
                         "dim":{"unit":"Requests","beginRange":"0","endRange":"Inf",
                                "pricePerUnit":{"USD":"0.0000002"}}}}}},
