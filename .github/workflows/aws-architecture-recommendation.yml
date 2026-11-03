@@ -42,6 +42,11 @@ on:
         type: boolean
         required: true
         default: false
+      golden_qa:
+        description: "선택: 가상 대표 프로젝트 10종의 오프라인 시각 QA 아티팩트 생성"
+        type: boolean
+        required: true
+        default: false
 
 # 2. 기본 권한: 소스 분석/테스트 작업은 읽기 전용만 허용
 permissions:
@@ -106,3 +111,18 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+
+      # 3-8. 대표 프로젝트 품질 검토는 사용자가 명시적으로 요청했을 때만 생성합니다.
+      # 테스트와 다르게 결과 보고서/다이어그램을 사람이 직접 비교할 수 있도록 따로 업로드합니다.
+      - name: 대표 프로젝트 10종 시각 QA 자료 생성 (수동 선택)
+        if: github.event_name == 'workflow_dispatch' && inputs.golden_qa
+        run: python3 tests/generate_golden_artifacts.py --output golden-output
+
+      - name: 골든 프로젝트 결과물 업로드 (수동 선택)
+        if: github.event_name == 'workflow_dispatch' && inputs.golden_qa
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-architecture-golden-fixtures
+          path: golden-output/
+          if-no-files-found: error
+          retention-days: 14

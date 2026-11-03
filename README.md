@@ -304,3 +304,11 @@ AWS As-Is(저장소 정적 코드 관찰)와 To-Be(AWS 논리 설계 후보), �
 AWS 비용 입력 파일은 기존 단일 사용량 형식(v1) 외에 **최소/기준/피크 3개 월 사용량**을 개별적으로 명시하는 v2 형식을 지원합니다. 리전과 서비스 분류(예: ALB·ECS Fargate·RDS·NAT·CloudWatch 로그/전송)를 표기하면 AWS To-Be 토폴로지와 비교해 **누락된 비용 항목**을 알려줍니다. 비어 있는 서비스 단가는 **미산정**으로 표시하며, AWS 전체 견적/최적 서비스 선택의 정량 검증으로 사용하지 않습니다.
 
 [비용 시나리오 가이드](docs/COST_SCENARIOS.md) / [안전한 예시 JSON](examples/cost-scenarios.example.json) / 주요 사용자 보고서 `START-HERE.html`의 비용·용량 비교를 참고하세요. **실제 AWS 단가·SKU/계층형 요금·부하 측정은 별도 검증 대상**이며 Issue #15는 개발 진행 중입니다.
+
+## 21. 대표 프로젝트 10종 회귀 및 수동 시각 QA (Issue #16 기반)
+
+Vite, Next.js Static/SSR, FastAPI, NestJS, Prisma/PostgreSQL, MongoDB, Serverless, Expo, 보안·고가용성/호스트 제어 조건 등 **10개 가상 대표 저장소**를 실제 파이프라인으로 처리하는 Golden CI 회귀 테스트를 추가했습니다. 코드 관찰/미확인 구분·DB/네트워크 노드·한글 HTML 및 SVG/PNG 생성·링크/해시·비용 미산정/승인 전 상태를 검증합니다.
+
+**수동 브라우저 QA(아직 미완료)**가 필요하면 Actions → Run workflow → **golden_qa=true**를 선택해, 별도 `aws-architecture-golden-fixtures` Artifact를 생성하고 `golden-index.md`에 있는 10개 사례를 검토할 수 있습니다. 코드 push/PR에서 이 선택형 대량 Artifact는 생성하지 않습니다.
+
+[대표 프로젝트 검증 및 수동 QA 가이드](docs/GOLDEN_QA.md). 가상 fixture 회귀 통과를 실제 고객 저장소·AWS 운영 적합성/수치 정확도로 주장하지 않습니다.

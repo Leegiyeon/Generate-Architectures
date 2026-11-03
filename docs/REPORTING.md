@@ -56,3 +56,7 @@ GitHub → Actions → **AWS 아키텍처 검토 자동화** → **Run workflow*
 ## 3단계 비용 시나리오 연계 (#15 기반)
 
 사용자가 선택한 v2 비용 파일은 **minimum / baseline / peak** 월 사용량을 분리합니다. START-HERE.html의 비용 섹션과 deliverables/04-cost-capacity.md에 시나리오별 입력 항목 부분합·완결 항목 합계·미산정 단가·To-Be 비용 분류 누락을 표시합니다. 사용자가 입력하지 않은 단가/사용량을 임의 채우거나 실제 AWS 비용으로 표시하지 않습니다. 자세한 검증 범위는 [COST_SCENARIOS.md](COST_SCENARIOS.md).
+
+## 대표 10종 오프라인 시각 QA 옵션
+
+workflow_dispatch의 `golden_qa=true`는 실제 운영 저장소가 아닌 고정 가상 fixture 10종에 대한 START-HERE.html/SVG/PNG 결과를 별도 Artifact로 만듭니다. 코드를 자동 배포하지 않으며 GitHub Actions 기본 수동 설계 실행에 영향을 주지 않습니다. 확인 절차는 [GOLDEN_QA.md](GOLDEN_QA.md) 참고. **인간의 시각 검수 완료 전에는 QA 완료로 표시하지 않습니다.**
