@@ -18,6 +18,7 @@ if __package__:
     from .aws_topology import design_aws_topology, markdown_topology
     from .render_aws_topology import render_aws_topology
     from .topology_network_policy import markdown_network_policy
+    from .architecture_decision_engine import compare_architectures, markdown_decision_matrix
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -32,6 +33,7 @@ else:
     from aws_topology import design_aws_topology, markdown_topology
     from render_aws_topology import render_aws_topology
     from topology_network_policy import markdown_network_policy
+    from architecture_decision_engine import compare_architectures, markdown_decision_matrix
 
 
 def scan(root):
@@ -113,6 +115,15 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         "high_availability_proposed": topology["high_availability_proposed"],
         "review_required": len(topology["review_required"]),
     }
+    # AWS 패턴별 적합 조건/제외 근거는 AI와 독립된 재현 가능한 의사결정 매트릭스로 생성합니다.
+    decision_matrix = compare_architectures(result, profile, requirements, contract, topology)
+    result["decision_matrix"] = {
+        "file": "architecture-decision-matrix.json",
+        "status": decision_matrix["status"],
+        "selected_reference": decision_matrix["selected_reference"],
+        "alternative_candidates": decision_matrix["alternative_candidates"],
+        "approved": False,
+    }
     # 선택적 AI 검토는 기존 결정 규칙의 결과와 실제 AWS 다이어그램을 바꾸지 않습니다.
     ai_review = review_architecture(
         profile, graph, requirements, result,
@@ -125,6 +136,19 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     }
     # 모델의 의견을 자동 적용하지 않고 규칙 기반 참조안과 사용자 요구를 독립적으로 검사.
     validation = validate_architecture(result, profile, requirements, graph, ai_review)
+    if decision_matrix["status"] == "blocked_for_review":
+        validation["findings"].append({
+            "rule_id": "DEC-001", "pillar": "운영 우수성", "severity": "blocker",
+            "title": "현재 AWS 참조안의 명시적 조건 충돌",
+            "detail": "아키텍처 후보 비교에서 현재 참조안에 적용 불가 조건이 발견되었습니다.",
+            "evidence": ["architecture-decision-matrix.json"],
+            "recommended_action": "현재 참조안과 블로커를 검토하고 다른 실행 전략을 사용자 승인으로 결정하세요.",
+            "verification": "정적 선택 규칙이며 실제 AWS 검증 결과가 아닙니다.",
+        })
+        validation["counts"]["blocker"] += 1
+        validation["decision_gate"] = "blocked"
+        topology["status"] = "blocked_for_review"
+        result["aws_topology"]["status"] = "blocked_for_review"
     if validation["decision_gate"] == "blocked" or any(
         x["id"] == "NET-SSR-CONFLICT" for x in topology["review_required"]
     ):
@@ -170,6 +194,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     for name, value in (
         ("application-graph.json", graph),
         ("aws-topology.json", topology),
+        ("architecture-decision-matrix.json", decision_matrix),
         ("evidence-contract.json", contract),
         ("requirements-gaps.json", {
             "schema_version": "1.0",
@@ -189,6 +214,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     (out / "evidence-report.md").write_text(markdown_evidence(contract), encoding="utf-8")
     (out / "aws-topology.md").write_text(markdown_topology(topology), encoding="utf-8")
     (out / "network-policy.md").write_text(markdown_network_policy(topology), encoding="utf-8")
+    (out / "architecture-decision-matrix.md").write_text(markdown_decision_matrix(decision_matrix), encoding="utf-8")
     (out / "cost-estimate.md").write_text(markdown_cost(cost_report), encoding="utf-8")
     (out / "iac-policy.md").write_text(markdown_iac(iac_report), encoding="utf-8")
     (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
@@ -235,6 +261,12 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- 구축 전 추가 확인: " + str(len(topology["review_required"])) + "건\n"
     report += "- 파일: `aws-topology.json`, `aws-topology.md`, `aws-topology.svg/png/dot`\n"
     report += "- AZ/서브넷·네트워크·서비스 연결은 가정된 참조 구조입니다. 실환경 정책과 리소스를 확인한 결과가 아닙니다.\n"
+    report += "\n## 15. AWS 서비스별 선정·제외 근거 (대안 비교)\n\n"
+    report += "- 현재 참조 실행 유형: " + decision_matrix["selected_reference"] + "\n"
+    report += "- 선택 검토 상태: " + decision_matrix["status"] + "\n"
+    report += "- 추가 검토 후보: " + ", ".join(decision_matrix["alternative_candidates"]) + "\n"
+    report += "- 파일: `architecture-decision-matrix.json/md` (EC2 포함, 선택 자동 변경 없음)\n"
+    report += "- AWS 서비스별 실제 성능·비용·가용성 검증 없이 후보 간 정량 순위를 산정하지 않습니다.\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:
