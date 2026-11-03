@@ -318,3 +318,15 @@ Vite, Next.js Static/SSR, FastAPI, NestJS, Prisma/PostgreSQL, MongoDB, Serverles
 최소/기준/피크 월 사용량(v2)을 입력하고 `live_pricing=true`를 **명시적으로 선택**하면, AWS Price List Query의 **단일 SKU·단일 OnDemand·동일 단위**에서 각 구간의 `beginRange/endRange`와 USD 단가가 명확한 경우에만 누적 구간별 예상 비용을 계산합니다. 상품 후보 중복, 여러 가격 차원 혼합, 리전 불일치 또는 계정 공유 무료 한도 등의 상황에서는 계산하지 않고 **미산정**으로 표시합니다. 기본값은 가격 API 조회 비활성화입니다.
 
 이 결과는 **입력된 서비스/사용량 범위의 부분 비용**입니다. 계정 전체 인프라 비용, 실제 청구액, 서비스별 최적/최저가 선정 또는 RPS 기반 용량 검증은 수행하지 않습니다. [계층 가격 공식·지원 조건](docs/COST_SCENARIOS.md)을 참고하세요.
+
+## 23. ECS/EC2/Lambda 동일 업무량 비용·유지보수 비교 (Issue #15 후속)
+
+기존 최소/기준/피크 비용 비교에 더해, **같은 월 API 요청량을 처리하는 AWS 실행 대안 2~3개**의 비용 입력값과 보안·운영·패치 책임을 분리해 비교할 수 있습니다. `--alternative-cost-input` 또는 GitHub Actions 수동 `alternative_cost_input`으로 비기밀 JSON 파일을 지정합니다.
+
+- **공통 업무량**: 월 최소/기준/피크 요청량·피크 RPS와 리전을 한 번 입력하고, Fargate/EC2/Lambda 후보가 공유합니다.
+- **대안별 실제 입력**: ECS vCPU·메모리/ALB, EC2 인스턴스/ALB·EBS, Lambda 요청·GB-Seconds/API Gateway 등의 사용량과 가격은 직접 입력하며 자동 환산하지 않습니다.
+- **검증·비교 차단**: 기존 요구사항 또는 서비스 블로커, 필수 비용 분류 누락, 미확인 단가가 있으면 대안별 전체 차액/비용 순위를 만들지 않습니다.
+- **운영 유지보수**: 호스트 OS 패치/AMI/SSM·Task/Execution Role·CloudWatch·Auto Scaling/동시성 등의 책임 및 확인 기준을 대안별로 구분합니다.
+- **출력**: `alternative-cost-comparison.json/md`, `START-HERE.html`, `deliverables/04-cost-capacity.md`에 입력 범위 한정 비교가 표시됩니다. 기존 선택 패턴, ADR·AWS 다이어그램·실제 배포는 변경하지 않습니다.
+
+[사용법·판정 범위](docs/ALTERNATIVE_COST_COMPARISON.md) · [비밀정보 없는 예제 JSON](examples/alternative-cost-comparison.example.json). **이 결과는 서비스별 실제 비용 우열·성능·보안/가용성의 검증 결과가 아닙니다.**
