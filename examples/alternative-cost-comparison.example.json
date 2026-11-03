@@ -1,0 +1,175 @@
+{
+  "schema_version": "1.0",
+  "region": "ap-northeast-2",
+  "workload": {
+    "id": "api_example",
+    "monthly_requests": {
+      "minimum": 10000,
+      "baseline": 100000,
+      "peak": 400000
+    },
+    "peak_rps": 100
+  },
+  "shared_items": [
+    {
+      "id": "outbound_gb",
+      "service": "data_transfer",
+      "unit": "GB",
+      "quantities": {
+        "minimum": 5,
+        "baseline": 40,
+        "peak": 200
+      },
+      "rate": {
+        "kind": "unknown"
+      }
+    },
+    {
+      "id": "logs_gb",
+      "service": "cloudwatch_logs",
+      "unit": "GB",
+      "quantities": {
+        "minimum": 1,
+        "baseline": 5,
+        "peak": 20
+      },
+      "rate": {
+        "kind": "unknown"
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "id": "fargate",
+      "items": [
+        {
+          "id": "ecs_cpu",
+          "service": "ecs_fargate",
+          "unit": "vCPU-Hours",
+          "quantities": {
+            "minimum": 100,
+            "baseline": 600,
+            "peak": 1800
+          },
+          "rate": {
+            "kind": "unknown"
+          }
+        },
+        {
+          "id": "ecs_mem",
+          "service": "ecs_fargate",
+          "unit": "GB-Hours",
+          "quantities": {
+            "minimum": 200,
+            "baseline": 1200,
+            "peak": 3600
+          },
+          "rate": {
+            "kind": "unknown"
+          }
+        },
+        {
+          "id": "ecs_alb",
+          "service": "alb",
+          "unit": "Hrs",
+          "quantities": {
+            "minimum": 100,
+            "baseline": 730,
+            "peak": 1460
+          },
+          "rate": {
+            "kind": "unknown"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ec2",
+      "items": [
+        {
+          "id": "ec2_hours",
+          "service": "ec2",
+          "unit": "Hrs",
+          "quantities": {
+            "minimum": 100,
+            "baseline": 730,
+            "peak": 1460
+          },
+          "rate": {
+            "kind": "unknown"
+          }
+        },
+        {
+          "id": "ec2_alb",
+          "service": "alb",
+          "unit": "Hrs",
+          "quantities": {
+            "minimum": 100,
+            "baseline": 730,
+            "peak": 1460
+          },
+          "rate": {
+            "kind": "unknown"
+          }
+        },
+        {
+          "id": "ebs_gb",
+          "service": "other",
+          "unit": "GB-Mo",
+          "quantities": {
+            "minimum": 30,
+            "baseline": 60,
+            "peak": 100
+          },
+          "rate": {
+            "kind": "unknown"
+          }
+        }
+      ]
+    },
+    {
+      "id": "lambda",
+      "items": [
+        {
+          "id": "lambda_req",
+          "service": "lambda",
+          "unit": "Requests",
+          "quantities": {
+            "minimum": 10000,
+            "baseline": 100000,
+            "peak": 400000
+          },
+          "rate": {
+            "kind": "unknown"
+          }
+        },
+        {
+          "id": "lambda_duration",
+          "service": "lambda",
+          "unit": "GB-Seconds",
+          "quantities": {
+            "minimum": 1000,
+            "baseline": 10000,
+            "peak": 40000
+          },
+          "rate": {
+            "kind": "unknown"
+          }
+        },
+        {
+          "id": "api_gateway_req",
+          "service": "api_gateway",
+          "unit": "Requests",
+          "quantities": {
+            "minimum": 10000,
+            "baseline": 100000,
+            "peak": 400000
+          },
+          "rate": {
+            "kind": "unknown"
+          }
+        }
+      ]
+    }
+  ]
+}
