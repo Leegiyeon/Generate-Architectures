@@ -193,3 +193,15 @@ validation.json / validation.md / decision-record.md
 `scripts/architecture_decision_engine.py`의 `build_decision_record`는 명시적인 입력과 시스템 기본값을 분리하고, 선택 패턴·제외 이유·ADR 승인 대기 상태를 JSON/Markdown으로 기록합니다. 저장소의 실제 성능·비용 및 AWS 운영 리소스를 검증하지 않았으므로 `approved=false`가 기본입니다.
 
 `scripts/ec2_alternative.py`: Fargate 네트워크 후보에서 VPC/AZ/ALB/DB 경계만 참고하여 EC2 ASG 기반 **독립 제안**을 만들고, 별도 아이콘 SVG/PNG 및 검토 보고서를 제공합니다. Fargate용 Private egress를 EC2에 그대로 적용하지 않습니다.
+
+## Security / Scaling / Operations Designer (Issue #13)
+
+scripts/operations_designer.py는 AWS To-Be 토폴로지의 실제 노드/간선과 network_controls에 존재하는 서비스만 연결하여 IAM/Secrets/SG·ECS/Lambda Scaling 후보·CloudWatch 알람·RDS 백업 및 Well-Architected 6개 원칙의 검토 항목을 구조화합니다.
+
+- **무결성:** ALB→ECS 실제 설계 간선과 SG 통제 의도가 맞지 않으면 오류를 발생시킵니다. 해당 리소스가 없는 Static/Serverless에 ECS/RDS 정책을 넣지 않습니다.
+- **출처:** RTO/RPO/피크 RPS/지연 시간/가용성 목표는 사용자 입력과 시스템 기본값을 분리합니다. 미입력값 또는 계정 실측값은 작성하지 않습니다.
+- **보안:** 공개/내부 ALB의 차이를 SG/운영 검토로 반영하고 Endpoint-only 외부 인터넷 API 충돌을 표시합니다.
+- **성능:** ECS 타깃 CPU/Memory/ALB 요청, Lambda ConcurrentExecutions 등 후보를 제공하되 실제 임계값, 용량, 쿼터, SLA 달성 상태는 null/검증 전으로 유지합니다.
+- **결과:** security-operations.json/md에 제안된 통제, CloudWatch 알람 후보, 복구·운영 확인 질문과 6개 Well-Architected 검토 상태를 기록합니다.
+
+전체 세부 설명은 [OPERATIONS.md](OPERATIONS.md)를 참고하세요.
