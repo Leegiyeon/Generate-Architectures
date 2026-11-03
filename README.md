@@ -37,7 +37,7 @@
 
 **현재 버전은 온프레미스 서버/네트워크/DB를 실제로 조사하지 않습니다.** 따라서 앱 코드에서 DB 연결 라이브러리를 발견하더라도, 현재 DB 서버 위치·성능·데이터 크기·방화벽 구성·이전 가능 여부를 **알 수 없습니다**.
 
-`migrate_onprem`은 이전 **목적**을 기록하고, 사용자 입력 Inventory가 있다면 **선언형 As-Is 도면**도 보여줍니다. **Rehost/Replatform 적합성 판단, 데이터 이전/다운타임·전환 계획은 아직 제공하지 않습니다.** 입력 Inventory 및 As-Is 기능은 [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34)에서 구현했습니다. 향후 [#35 Migration Assessment](https://github.com/Leegiyeon/Generate-Architectures/issues/35)에서 AWS 이전 전략/위험을 비교할 예정입니다.
+`migrate_onprem`은 이전 **목적**을 기록하고, 사용자 입력 Inventory가 있다면 **선언형 As-Is 도면**도 보여줍니다. **Rehost/Replatform의 변경사항·위험·수동 전환 체크리스트를 제공하지만 최적 전략, 이전 가능성 및 실제 데이터 이전/다운타임은 검증하지 않습니다.** 입력 Inventory 및 As-Is 기능은 [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34)에서 구현했습니다. [#35 Migration Assessment](https://github.com/Leegiyeon/Generate-Architectures/issues/35)에서 사용자 선언 기반 AWS 이전 후보 비교 초안을 생성합니다. 실제 AWS 이전은 자동으로 진행하지 않습니다.
 
 ## 필요할 때만 요구사항 보완
 
@@ -64,6 +64,7 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output 
 | --- | --- |
 | [제품 동작/지원 범위](docs/PRODUCT.md) | 신규·온프레미스 모드 차이와 현재 한계 |
 | [온프레미스 현재 구성 입력](docs/ONPREM_INVENTORY.md) | 비기밀 Inventory, As-Is 도면 |
+| [AWS 이전 방식·위험 비교](docs/MIGRATION_ASSESSMENT.md) | Rehost / Replatform 변경사항과 검증 전제 |
 | [간편 제품 로드맵](docs/LEAN_MIGRATION_ROADMAP.md) | 다음 개발 우선순위 |
 | [사용자 보고서](docs/REPORTING.md) | HTML/산출물 확인법 |
 | [요구사항·비용 입력](docs/COST_SCENARIOS.md) | 고급 요금 시나리오 |
