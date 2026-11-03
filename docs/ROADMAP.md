@@ -74,3 +74,5 @@
 - [Issue #15](https://github.com/Leegiyeon/Generate-Architectures/issues/15): **비용 시나리오 v2 기반 구현** — 사용자가 최소/기준/피크의 월 사용량을 명시하면 동일한 검증 단가로 계산, AWS To-Be 서비스별 비용 분류 누락 및 리전 불일치 표시. **잔여:** 실제 SKU/계층 가격·처리량 기반 용량 및 서로 다른 서비스 대안 비용 신뢰도 검증.
 
 - [Issue #16](https://github.com/Leegiyeon/Generate-Architectures/issues/16): **10종 가상 프로젝트 Golden CI 회귀 기반** 구축. 수동 브라우저 시각 QA·실제 오탐/미탐 분석/성능 실측은 남아 있음.
+
+- [Issue #15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) **2차 진전**: Price List Query의 단일 SKU/단위에서 연속된 OnDemand 계층별 USD 가격·기준일 기록, 보수적 미지원 차원 차단 및 가상 공식 형식 회귀 추가. **미완료**: 공식 SKU별 라이브 검증/특별 계약·Free Tier·서비스 조합/대안 비교, 실제 워크로드 기반 용량.
