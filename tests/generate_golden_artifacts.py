@@ -10,6 +10,10 @@ import json
 from pathlib import Path
 import shutil
 import tempfile
+import sys
+
+# CLI로 직접 실행할 때도 저장소 루트의 scripts 패키지를 불러옵니다.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from test_golden_workloads import CASES
 from scripts.recommend_architecture import run
