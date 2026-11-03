@@ -8,6 +8,8 @@ FIELDS = {
     "environment": {"dev", "staging", "production"},
     "data_classification": {"unknown", "public", "internal", "sensitive"},
     "operations_preference": {"minimize_maintenance", "balanced", "high_availability"},
+    "rendering_mode": {"static_export", "ssr", "hybrid"},
+    "document_database_strategy": {"keep_existing", "evaluate_migration"},
 }
 OPTIONAL_NUMBERS = {
     "monthly_budget_usd": (0, 10000000),
