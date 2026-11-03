@@ -1,5 +1,6 @@
 """AWS 상세 To-Be 토폴로지: 영역·서비스 연결·가정의 정합성을 검증합니다."""
 import json
+import html
 from pathlib import Path
 import tempfile
 import unittest
@@ -126,7 +127,7 @@ class AWSTopologyTests(unittest.TestCase):
                 dot=paths["dot"].read_text(encoding="utf-8")
                 self.assertIn("cluster",dot)
                 self.assertIn("VPC",svg)
-                self.assertIn("AZ-A",svg)
+                self.assertIn("AZ-A", html.unescape(svg))
         finally:tmp.cleanup()
 
     def test_integration_retains_both_original_and_detailed_architecture_diagrams(self):
