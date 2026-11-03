@@ -17,7 +17,7 @@ DATE_ISO = re.compile(r"\d{4}-\d{2}-\d{2}(?:T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?\Z")
 
 
 def _number(raw):
-    if isinstance(raw, bool) or not isinstance(raw, (str, int, float)):
+    if isinstance(raw, bool) or not isinstance(raw, (str, int, float, Decimal)):
         raise ValueError("가격/계층 숫자 타입이 올바르지 않습니다.")
     value = str(raw)
     if NUMBER.fullmatch(value) is None:
