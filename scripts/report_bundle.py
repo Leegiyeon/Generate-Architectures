@@ -433,7 +433,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
              for x in migration_assessment["risks"][:5]], 5)
         migration_comparison_html = (
             "<section class='panel' id='migration-assessment'>"
-            "<h2>Rehost / Replatform — AWS 이전 방식 비교(검토 초안)</h2>"
+            "<h2>Rehost / Replatform — AWS 이전 방식·변경사항 비교(검토 초안)</h2>"
             "<p class='caution'>사용자 선언 및 코드 단서 기반 참고안입니다. "
             "어느 방식이 적합한지 자동 선정하지 않았으며 DB 호환·다운타임·"
             "실제 이전 비용·보안·성능은 미검증입니다.</p>" +
