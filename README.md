@@ -275,3 +275,14 @@ AWS 서비스 결정 전에 **관계형 트랜잭션, 문서형 조회, 키 기�
 현재 컨테이너 아키텍처에서는 별도 `ec2-alternative/` 디렉터리에 **EC2 Auto Scaling 참조 토폴로지 SVG/PNG/JSON/한국어 보고서**를 제공합니다. 원래 ECS Fargate 설계는 유지하며, EC2의 OS 패치·AMI·IAM·SSM·Private Egress 비용은 별도 검토합니다. 실제 배포/자동 전환은 없습니다.
 
 설명: [서비스 결정 및 ADR](docs/DECISIONS.md).
+
+## 18. 보안·확장성·모니터링·백업 운영 설계 (Issue #13 1차)
+
+이제 권장 아키텍처에 연결된 **security-operations.json/md**를 생성합니다. 실제 To-Be 토폴로지의 ALB/ECS/RDS, CloudFront/S3 또는 API Gateway/Lambda에 대해서만 보안 접근 정책·오토스케일 후보·CloudWatch 경보·백업·운영/롤백 전략을 제공합니다.
+
+- **트래픽:** 입력된 평균·피크 RPS, 지연 목표를 근거로 ECS CPU/메모리/ALB 대상 요청 지표 또는 Lambda 동시성/실행시간/오류·제한 지표를 검토합니다. 타깃 임계값, 실제 태스크 수, Lambda 동시성, 서비스 쿼터는 실측 전까지 **미정(null)** 입니다.
+- **보안:** ALB 공개/내부 경계, ALB SG→ECS SG→DB SG 최소 통신 의도, IAM·Secrets·암호화·사용자 인증/인가 검토를 제공합니다. 실제 보안그룹·IAM을 생성/검사하지 않습니다.
+- **운영:** CloudWatch 경보 후보, 배포·롤백·로그 관리, Multi-AZ 및 RDS 백업/복원·RTO/RPO 검증 항목을 제공합니다. 장애 테스트 없이 SLA 충족을 보장하지 않습니다.
+- **근거와 한계:** AWS Well-Architected 6개 원칙별 검토 상태를 제공하되, **모두 review_required**이고 보안·성능·가용성 인증을 수행하지 않습니다.
+
+[운영·보안·확장 설계 가이드](docs/OPERATIONS.md)에서 역할별 상세 기준을 확인할 수 있습니다.
