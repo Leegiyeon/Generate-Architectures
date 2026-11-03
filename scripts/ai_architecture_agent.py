@@ -21,6 +21,7 @@ ALLOWED_REQUIREMENTS = (
     "requires_authentication", "requires_relational_database",
     "requires_persistent_storage", "average_rps", "peak_rps",
     "peak_concurrent_connections", "latency_target_ms", "operations_preference",
+    "rendering_mode", "document_database_strategy",
 )
 MODEL_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{1,63}$")
 INSTRUCTIONS = (
