@@ -15,6 +15,8 @@ if __package__:
     from .iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from .architecture_validator import validate_architecture, markdown_validation, markdown_adr
     from .evidence_contract import build_evidence_contract, markdown_evidence
+    from .aws_topology import design_aws_topology, markdown_topology
+    from .render_aws_topology import render_aws_topology
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -26,6 +28,8 @@ else:
     from iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from architecture_validator import validate_architecture, markdown_validation, markdown_adr
     from evidence_contract import build_evidence_contract, markdown_evidence
+    from aws_topology import design_aws_topology, markdown_topology
+    from render_aws_topology import render_aws_topology
 
 
 def scan(root):
@@ -97,6 +101,16 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         "questions": len(contract["questions"]),
         "partial": contract["status"] == "partial",
     }
+    # VPC/Subnet/AZ/서비스 연결은 실제 배포가 아닌 '설계 후보'로 별도 토폴로지에 생성.
+    topology = design_aws_topology(result, profile, requirements, contract)
+    result["aws_topology"] = {
+        "file": "aws-topology.json", "status": topology["status"],
+        "pattern": topology["pattern"],
+        "nodes": topology["counts"]["nodes"],
+        "edges": topology["counts"]["edges"],
+        "high_availability_proposed": topology["high_availability_proposed"],
+        "review_required": len(topology["review_required"]),
+    }
     # 선택적 AI 검토는 기존 결정 규칙의 결과와 실제 AWS 다이어그램을 바꾸지 않습니다.
     ai_review = review_architecture(
         profile, graph, requirements, result,
@@ -109,6 +123,11 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     }
     # 모델의 의견을 자동 적용하지 않고 규칙 기반 참조안과 사용자 요구를 독립적으로 검사.
     validation = validate_architecture(result, profile, requirements, graph, ai_review)
+    if validation["decision_gate"] == "blocked" or any(
+        x["id"] == "NET-SSR-CONFLICT" for x in topology["review_required"]
+    ):
+        topology["status"] = "blocked_for_review"
+        result["aws_topology"]["status"] = "blocked_for_review"
     result["validation"] = {
         "file": "validation.json",
         "decision_gate": validation["decision_gate"],
@@ -143,9 +162,11 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         raise ValueError("보고서 경로는 저장소 루트 또는 상위 폴더일 수 없습니다.")
     out.mkdir(parents=True, exist_ok=True)
     diagram_info = render_application_diagram(graph, out)
+    render_aws_topology(topology, out)
     result["application_graph"]["diagram"] = diagram_info
     for name, value in (
         ("application-graph.json", graph),
+        ("aws-topology.json", topology),
         ("evidence-contract.json", contract),
         ("requirements-gaps.json", {
             "schema_version": "1.0",
@@ -163,6 +184,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
                                 encoding="utf-8")
     (out / "ai-review.md").write_text(markdown_ai_review(ai_review), encoding="utf-8")
     (out / "evidence-report.md").write_text(markdown_evidence(contract), encoding="utf-8")
+    (out / "aws-topology.md").write_text(markdown_topology(topology), encoding="utf-8")
     (out / "cost-estimate.md").write_text(markdown_cost(cost_report), encoding="utf-8")
     (out / "iac-policy.md").write_text(markdown_iac(iac_report), encoding="utf-8")
     (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
@@ -203,6 +225,12 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- 상세: `evidence-contract.json`, `evidence-report.md`, `requirements-gaps.json`\n"
     if contract["status"] == "partial":
         report += "- **주의**: 일부 코드 분석 실패가 발생해 미관측 요소를 없는 것으로 단정할 수 없습니다.\n"
+    report += "\n## 14. AWS To-Be 네트워크·서비스 토폴로지 (신규 제안)\n\n"
+    report += "- 상세 영역/서비스 노드: " + str(topology["counts"]["nodes"]) + "\n"
+    report += "- 네트워크/서비스 연결: " + str(topology["counts"]["edges"]) + "\n"
+    report += "- 구축 전 추가 확인: " + str(len(topology["review_required"])) + "건\n"
+    report += "- 파일: `aws-topology.json`, `aws-topology.md`, `aws-topology.svg/png/dot`\n"
+    report += "- AZ/서브넷·네트워크·서비스 연결은 가정된 참조 구조입니다. 실환경 정책과 리소스를 확인한 결과가 아닙니다.\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:

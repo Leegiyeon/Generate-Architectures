@@ -2,7 +2,7 @@
 
 > **제품 정의:** GitHub 저장소와 사용자가 명시한 요구사항으로 AWS **권장 설계 초안과 선정 근거**를 제공하는 설계 지원 도구입니다. AWS 환경의 운영·자동 배포 도구가 아닙니다.
 >
-> **현 단계:** 정적 코드 분석과 4종 참조 패턴, AWS 아이콘 다이어그램, 근거·리스크·ADR 초안 제공. 상세 VPC/Subnet/AZ 토폴로지와 프로젝트별 트래픽/운영 설계는 [Issue #11](https://github.com/Leegiyeon/Generate-Architectures/issues/11)~[#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14)에서 구현할 목표입니다.
+> **현 단계:** 정적 코드 분석과 4종 참조 패턴, AWS 아이콘 다이어그램, 근거·리스크·ADR 초안 제공. 상세 VPC/Subnet/AZ의 **논리 제안 기반은 구현 중**이고 프로젝트별 트래픽/운영 설계는 [Issue #11](https://github.com/Leegiyeon/Generate-Architectures/issues/11)~[#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14)에서 구현할 목표입니다.
 
 ## 1. 사용자에게 제공하는 두 가지 기능
 
@@ -53,7 +53,7 @@
 
 **현재 제공**
 
-- `architecture.svg/png` — AWS **참조 설계의 서비스 구성도**. 아직 VPC/서브넷/AZ 단위 구축 설계 아님.
+- `architecture.svg/png` — AWS **참조 설계의 서비스 구성도**. VPC/서브넷/AZ 단위의 실제 구축·운영 검증 결과 아님. 추가 `aws-topology.svg/png`는 상징적인 AZ를 포함한 **네트워크 논리 제안**.
 - `recommendation.md` — 선택 이유·대안 비교·보안/가용성 확인 사항을 포함한 한국어 검토 보고서.
 - `decision-record.md` — 선택된 참조 패턴과 근거·미확인 문제를 담은 **미승인 ADR 초안**.
 - `application-graph.svg/png/json` — 정적 분석으로 확인되는 일부 코드 구조·호출 관계.
@@ -63,7 +63,7 @@
 
 **목표 산출물 ([#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11)~[#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15))**
 
-1. 프로젝트 조건에 맞는 상세 AWS To-Be 설계도(VPC·Subnet·AZ·서비스 연결·가정 명시).
+1. 프로젝트 조건에 맞는 상세 AWS To-Be 설계도(VPC·Subnet·AZ·서비스 연결·가정 명시) — **논리 토폴로지 기반 구현, 실환경·보안/라우팅 검증은 미완료**.
 2. 서비스별 **선정/제외 근거와 2~3개 배포 대안** 비교.
 3. Security & Operations 설계(최소 권한, 네트워크 통신 경계, 오토스케일, 모니터링, 백업·복구).
 4. Cost & Capacity 비교(리전·사용량·가격 기준일 표시, 미산정 항목 구분).

@@ -1,0 +1,116 @@
+"""AWS To-Be 상세 토폴로지의 영역 계층과 트래픽 흐름을 Graphviz로 렌더링.
+
+현재 서비스 아이콘 아키텍처와 별도로 VPC/Subnet/AZ 경계를 표시합니다.
+모든 요소는 설계 후보이며 배포 확인 상태가 아닙니다.
+"""
+import json
+from pathlib import Path
+import subprocess
+
+BOUNDARY_KINDS = {
+    "boundary", "vpc", "az", "subnet_public", "subnet_private",
+    "subnet_database",
+}
+COLORS = {
+    "boundary": ("#F8FAFC", "#94A3B8"),
+    "vpc": ("#F0FDF4", "#15803D"),
+    "az": ("#FAF5FF", "#7E22CE"),
+    "subnet_public": ("#E0F2FE", "#0369A1"),
+    "subnet_private": ("#F0FDF4", "#15803D"),
+    "subnet_database": ("#FEF3C7", "#B45309"),
+    "client": ("#E2E8F0", "#475569"),
+    "network": ("#DBEAFE", "#2563EB"),
+    "compute": ("#F5F3FF", "#7C3AED"),
+    "database": ("#FFEDD5", "#EA580C"),
+    "database_group": ("#FFEDD5", "#EA580C"),
+    "storage": ("#FDE68A", "#D97706"),
+    "security": ("#FCE7F3", "#BE185D"),
+    "management": ("#E2E8F0", "#475569"),
+}
+EDGE_STYLE = {
+    "traffic": ("#1D4ED8", "solid", "normal"),
+    "placement": ("#94A3B8", "dotted", "none"),
+    "trust_boundary": ("#D97706", "dashed", "normal"),
+    "policy": ("#BE185D", "dashed", "normal"),
+    "telemetry": ("#64748B", "dotted", "normal"),
+    "replication": ("#7C3AED", "bold", "normal"),
+    "authentication": ("#BE185D", "dashed", "normal"),
+}
+
+
+def render_aws_topology(topology, output):
+    output = Path(output).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    indexed = {x["id"]: x for x in topology["nodes"]}
+    if len(indexed) != len(topology["nodes"]):
+        raise ValueError("토폴로지 노드 ID가 중복되었습니다.")
+    children = {}
+    for item in topology["nodes"]:
+        parent = item["parent"]
+        if parent is not None and parent not in indexed:
+            raise ValueError("부모 영역 노드가 존재하지 않습니다.")
+        children.setdefault(parent, []).append(item)
+    lines = [
+        "digraph AwsTopology {",
+        'graph [rankdir=LR,bgcolor="white",pad="0.35",nodesep="0.30",ranksep="0.80",',
+        'fontname="Noto Sans CJK KR",fontsize=16,labelloc=t,',
+        'label="AWS To-Be 상세 토폴로지 · 설계 후보 / 실제 배포 아님"];',
+        'node [fontname="Noto Sans CJK KR",fontsize=10,style="rounded,filled",penwidth=1.15];',
+        'edge [fontname="Noto Sans CJK KR",fontsize=8,arrowsize=0.60,penwidth=1.15];',
+    ]
+    # 고정된 식별자만 Graphviz internal id로 사용. 사용자 입력은 JSON 문자열로 이스케이프.
+    names = {item["id"]: "node_" + str(i) for i, item in enumerate(topology["nodes"])}
+
+    def node(item):
+        fill, border = COLORS.get(item["kind"], ("#E2E8F0", "#475569"))
+        short = item["name"]
+        if len(short) > 62:
+            short = short[:59] + "..."
+        lines.append(names[item["id"]] + " [label=" + json.dumps(short, ensure_ascii=False) +
+                     ',shape=box,fillcolor="' + fill + '",color="' + border + '"];')
+
+    def walk(parent):
+        for item in children.get(parent, []):
+            if item["kind"] in BOUNDARY_KINDS:
+                fill, border = COLORS[item["kind"]]
+                lines.append("subgraph cluster_" + names[item["id"]] + " {")
+                lines.append("label=" + json.dumps(item["name"], ensure_ascii=False) +
+                             ';style="rounded";color="' + border +
+                             '";bgcolor="' + fill +
+                             '";fontname="Noto Sans CJK KR";fontsize=11;')
+                # 클러스터(영역)와의 관계를 표시할 연결용 포인트. 실제 서비스가 아님.
+                lines.append("anchor_" + names[item["id"]] +
+                             ' [label="",shape=point,style=invis,width=0.01,height=0.01];')
+                walk(item["id"])
+                if not children.get(item["id"]):
+                    # 빈 Public Subnet도 논리적 배치 영역으로 표시해야 합니다.
+                    lines.append("empty_" + names[item["id"]] +
+                                 ' [label="배치 범위 (논리)",shape=plaintext,fontsize=9];')
+                lines.append("}")
+            else:
+                node(item)
+                walk(item["id"])
+    walk(None)
+
+    for edge in topology["edges"]:
+        if edge["source"] not in indexed or edge["target"] not in indexed:
+            raise ValueError("토폴로지 간선의 서비스 ID를 찾지 못했습니다.")
+        # 영역(클러스터)은 실제 서비스가 아니므로 내부 앵커에 연결합니다.
+        def endpoint(ident):
+            return ("anchor_" if indexed[ident]["kind"] in BOUNDARY_KINDS else "") + names[ident]
+        color, style, arrow = EDGE_STYLE.get(edge["kind"], ("#64748B","solid","normal"))
+        note = edge["purpose"]
+        if len(note) > 26:
+            note = note[:23] + "..."
+        lines.append(endpoint(edge["source"]) + " -> " + endpoint(edge["target"]) +
+                     ' [color="' + color + '",style="' + style + '",arrowhead="' +
+                     arrow + '",label=' + json.dumps(note, ensure_ascii=False) + "];")
+    lines.append("}")
+    dot = output / "aws-topology.dot"
+    dot.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    for fmt in ("svg", "png"):
+        subprocess.run(["dot", "-T" + fmt, str(dot),
+                        "-o", str(output / ("aws-topology." + fmt))],
+                       check=True, timeout=45, capture_output=True)
+    return {"svg": output/"aws-topology.svg",
+            "png": output/"aws-topology.png", "dot": dot}

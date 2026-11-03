@@ -5,7 +5,7 @@
 ## 현재 제품 방향 — Architecture Designer 우선 (Issue #9)
 
 1. **핵심 Architecture Designer:** 사용자가 GitHub 저장소를 한 번 분석해 AWS 설계 초안, 선정 이유, 가정/위험, 다이어그램을 다운로드합니다. 재분석은 사용자가 선택합니다. push/PR은 자동 테스트만 수행합니다.
-2. **상세 설계 고도화:** [#10](https://github.com/Leegiyeon/Generate-Architectures/issues/10) 근거 계약(기반 구현 완료) → [#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11) 상세 AWS 토폴로지 → [#12](https://github.com/Leegiyeon/Generate-Architectures/issues/12) 선정 근거 → [#13](https://github.com/Leegiyeon/Generate-Architectures/issues/13) 보안·트래픽·운영 전략 → [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 사용자 보고서 통합.
+2. **상세 설계 고도화:** [#10](https://github.com/Leegiyeon/Generate-Architectures/issues/10) 근거 계약(기반 구현 완료) → [#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11) 상세 AWS 토폴로지(논리 기반 일부 구현) → [#12](https://github.com/Leegiyeon/Generate-Architectures/issues/12) 선정 근거 → [#13](https://github.com/Leegiyeon/Generate-Architectures/issues/13) 보안·트래픽·운영 전략 → [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 사용자 보고서 통합.
 3. **비용·품질:** [#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) 후보별 비용/용량, [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) 프로젝트 사례 E2E 검증.
 4. **선택형 로컬 진단:** [#17](https://github.com/Leegiyeon/Generate-Architectures/issues/17) AWS CLI 읽기 전용 진단, [#18](https://github.com/Leegiyeon/Generate-Architectures/issues/18) Local UI. 사용자 계정 비밀키의 중앙 저장 없음.
 5. **사용성:** [#19](https://github.com/Leegiyeon/Generate-Architectures/issues/19) GitHub App 설치/재분석 사용성. 상시 모니터링/배포 자동화는 현재 제품 범위에서 제외.
@@ -30,7 +30,7 @@
 2. [일부 완료] 확인 가능한 함수·API 호출의 경로/행 근거. [미완료] DI·외부 API·DB 실제 호출 연결 검증
 3. SSR/SSG/ISR, 배치/큐, 비동기 처리 여부를 검증 가능한 규칙으로 탐지
 4. [기반 구현 완료] evidence-contract.json으로 관찰/설정 단서/명시 입력/시스템 기본값/가정/미확인 및 파싱 오류·근거 시각을 분리
-5. [일부 완료] AST 구조 별도 다이어그램 생성. [미완료] 모듈별 상세도·AWS 후보 서비스와의 검증된 연결
+5. [일부 완료] AST 구조별 다이어그램 및 AWS VPC/상징 AZ 논리 토폴로지 별도 생성. [미완료] 근거와 서비스별 상세 네트워크 규칙·운영 검증 연결
 
 **완료 기준:** 대표 프로젝트 10개에 대해 API·DB 연결 근거 누락/오탐을 수동 감사하고, 예외 사례를 테스트에 추가한다.
 
