@@ -5,7 +5,7 @@
 ## 현재 제품 방향 — Architecture Designer 우선 (Issue #9)
 
 1. **핵심 Architecture Designer:** 사용자가 GitHub 저장소를 한 번 분석해 AWS 설계 초안, 선정 이유, 가정/위험, 다이어그램을 다운로드합니다. 재분석은 사용자가 선택합니다. push/PR은 자동 테스트만 수행합니다.
-2. **상세 설계 고도화:** [#10](https://github.com/Leegiyeon/Generate-Architectures/issues/10) 근거 계약 → [#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11) 상세 AWS 토폴로지 → [#12](https://github.com/Leegiyeon/Generate-Architectures/issues/12) 선정 근거 → [#13](https://github.com/Leegiyeon/Generate-Architectures/issues/13) 보안·트래픽·운영 전략 → [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 사용자 보고서 통합.
+2. **상세 설계 고도화:** [#10](https://github.com/Leegiyeon/Generate-Architectures/issues/10) 근거 계약(기반 구현 완료) → [#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11) 상세 AWS 토폴로지 → [#12](https://github.com/Leegiyeon/Generate-Architectures/issues/12) 선정 근거 → [#13](https://github.com/Leegiyeon/Generate-Architectures/issues/13) 보안·트래픽·운영 전략 → [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 사용자 보고서 통합.
 3. **비용·품질:** [#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) 후보별 비용/용량, [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) 프로젝트 사례 E2E 검증.
 4. **선택형 로컬 진단:** [#17](https://github.com/Leegiyeon/Generate-Architectures/issues/17) AWS CLI 읽기 전용 진단, [#18](https://github.com/Leegiyeon/Generate-Architectures/issues/18) Local UI. 사용자 계정 비밀키의 중앙 저장 없음.
 5. **사용성:** [#19](https://github.com/Leegiyeon/Generate-Architectures/issues/19) GitHub App 설치/재분석 사용성. 상시 모니터링/배포 자동화는 현재 제품 범위에서 제외.
@@ -29,7 +29,7 @@
 1. [일부 완료] Python/JS/TS AST와 Prisma 모델 정의 탐지. [미완료] Go/Java 파서, OpenAPI·ORM 상세 관계 추출
 2. [일부 완료] 확인 가능한 함수·API 호출의 경로/행 근거. [미완료] DI·외부 API·DB 실제 호출 연결 검증
 3. SSR/SSG/ISR, 배치/큐, 비동기 처리 여부를 검증 가능한 규칙으로 탐지
-4. 수동 확인 항목과 도구가 관찰한 사실을 구분해 신뢰 수준 표시
+4. [기반 구현 완료] evidence-contract.json으로 관찰/설정 단서/명시 입력/시스템 기본값/가정/미확인 및 파싱 오류·근거 시각을 분리
 5. [일부 완료] AST 구조 별도 다이어그램 생성. [미완료] 모듈별 상세도·AWS 후보 서비스와의 검증된 연결
 
 **완료 기준:** 대표 프로젝트 10개에 대해 API·DB 연결 근거 누락/오탐을 수동 감사하고, 예외 사례를 테스트에 추가한다.
@@ -41,7 +41,7 @@
 - [x] 설계/요구사항 정합성 정적 검증 규칙, AI 결과 격리, ADR 초안 생성 (이번 단계)
 - [ ] 실제 승인 워크플로, AWS 인프라/IaC 기반 보안·성능 검증
 
-1. RTO/RPO/SLO, 트래픽·피크, 민감 데이터, 리전 제약 및 운영역량을 폼으로 수집
+1. [JSON 입력 지원] RTO/RPO/SLO, 평균·피크 RPS, 피크 동시 연결, 지연 목표, 운영 우선순위·리전·데이터 분류. [미완료] 전용 입력 폼 UI
 2. 서버리스 / Fargate / EC2 / 관리형 서비스 대안을 구체적 제약과 함께 비교
 3. [초안 완료] 설계 결정 기록(ADR): 선택 사유, 제외 사유, 가정과 미검증 조건 분리
 4. [일부 완료] 명시적 요구와 참조 설계의 충돌은 차단. [미완료] 실제 IAM·네트워크 정책에서 위험 접근 확인

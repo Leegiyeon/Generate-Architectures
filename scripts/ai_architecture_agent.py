@@ -19,7 +19,9 @@ ALLOWED_REQUIREMENTS = (
     "region", "monthly_budget_usd", "expected_monthly_requests",
     "availability_target_percent", "rto_minutes", "rpo_minutes",
     "requires_authentication", "requires_relational_database",
-    "requires_persistent_storage",
+    "requires_persistent_storage", "average_rps", "peak_rps",
+    "peak_concurrent_connections", "latency_target_ms", "operations_preference",
+    "rendering_mode", "document_database_strategy",
 )
 MODEL_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{1,63}$")
 INSTRUCTIONS = (
@@ -34,7 +36,7 @@ INSTRUCTIONS = (
 )
 
 
-def build_context(profile, graph, requirements, architecture):
+def build_context(profile, graph, requirements, architecture, explicit_requirements=None):
     """외부로 나갈 최소한의 비기밀 구조화 사실만 만듭니다.
 
     앱 소스, 파일 경로, 이름, URL, 함수명, 사용자 작성 자유서술은 전송하지 않습니다.
@@ -47,8 +49,11 @@ def build_context(profile, graph, requirements, architecture):
     for signal in ALLOWED_SIGNALS:
         if profile["signals"].get(signal) is True:
             add("observed", signal, True)
+    # API 전송에서는 시스템이 채운 기본값을 사용자 의사인 것처럼 제시하지 않습니다.
+    allowed_explicit = (set(requirements) if explicit_requirements is None
+                        else set(explicit_requirements))
     for req in ALLOWED_REQUIREMENTS:
-        if req in requirements and isinstance(requirements[req], (bool, int, float, str)):
+        if req in allowed_explicit and req in requirements and isinstance(requirements[req], (bool, int, float, str)):
             value = requirements[req]
             # JSON 요구사항의 문자열은 이미 허용 값으로 제한. 서비스 이름/자유서술은 전송하지 않음.
             add("requirement", req, value)
@@ -204,7 +209,8 @@ def _disabled(reason):
 
 
 def review_architecture(profile, graph, requirements, architecture, *, enabled=False,
-                        api_key=None, model="gpt-6-luna", transport=None):
+                        api_key=None, model="gpt-6-luna", transport=None,
+                        explicit_requirements=None):
     """요청·승인된 경우에만 API 호출. 호출 실패 시 규칙 기반 설계 결과는 유지됩니다."""
     if not enabled:
         return _disabled("기본 설정에서 AI 외부 전송이 비활성화되어 있습니다.")
@@ -217,7 +223,7 @@ def review_architecture(profile, graph, requirements, architecture, *, enabled=F
                 "provider": "openai", "review": None,
                 "warning": "AI 검토를 수행하지 않았습니다."}
 
-    context = build_context(profile, graph, requirements, architecture)
+    context = build_context(profile, graph, requirements, architecture, explicit_requirements)
     if not any(x["applicable"] for x in context["options"]):
         return {"status": "unavailable", "reason": "검토 가능한 참조 대안이 없습니다.",
                 "provider": "openai", "review": None,

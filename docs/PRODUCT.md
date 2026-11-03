@@ -18,7 +18,7 @@
 ```text
 사용자: 저장소에서 Actions → 'AWS 아키텍처 검토 자동화' → Run workflow
   ① 저장소 파일·패키지·API/함수 구조 정적 분석
-       → 사실/추정/파싱 누락을 구분 (고도화: #10)
+       → evidence-contract.json에 관찰/설정 단서/명시 입력/기본값/가정/미확인 구분
   ② 요구사항 파일이 있으면 적용. 없으면 미확인 항목을 질문으로 출력
        → 추가 입력 후 수동 재분석 가능
   ③ Static / Serverless / Container / Mobile 참조 패턴 검토
@@ -41,13 +41,13 @@
 | --- | --- | --- |
 | GitHub 저장소 | 필수 | GitHub Actions가 해당 저장소를 체크아웃하여 정적 분석 |
 | `.architecture/requirements.json` | **선택** | 서비스 환경, 데이터 분류, 리전, 월 요청수, 예산, 가용성, RTO/RPO 등을 지정 |
-| 평균/피크 RPS, 업무상 중요도 | 상세 설계 목표에 필요 | **현재 요구사항 모델에는 전용 항목이 없음**; 확장은 #10 |
+| 평균/피크 RPS, 업무상 중요도 | 상세 설계 목표에 필요 | **요구사항 JSON에서 입력 가능** (평균·피크 RPS, 동시 연결, 지연 목표, 운영 우선순위). 별도 UI는 아직 없음 |
 | `enable_ai`, `OPENAI_API_KEY` | 선택 | 기본 꺼짐. 명시된 경우에만 요약된 비기밀 근거 외부 전송 |
 | 비용 JSON / AWS Price List API | 선택 | 미입력은 `needs_input`. 요율 불확실 시 전체 금액 미산정 |
 | Terraform plan JSON | **선택, 로컬에서만 권장** | 일부 정책의 정적 확인. 원문은 비밀정보 포함 가능하므로 Git 추적 금지 |
 | AWS 계정 ID/Access Key/Secret Key | **요구하지 않음** | Designer는 AWS 로그인·실운영 조회 없이 실행 |
 
-사용자가 입력하지 않았고 코드에서도 확인할 수 없는 내용을 사실로 주장하지 않습니다. 사용자에게 반복 질문하지 않도록 코드로 관찰 가능한 구조와 비즈니스 입력을 분리하는 작업은 #10의 목표입니다.
+사용자가 입력하지 않았고 코드에서도 확인할 수 없는 내용을 사실로 주장하지 않습니다. 사용자에게 반복 질문하지 않도록 코드로 확인된 단서와 명시적인 입력을 분리하여 evidence-contract.json에 기록합니다. 단, 실제 트래픽과 운영 배포 설정은 검증하지 않습니다.
 
 ## 4. 출력: 사용자가 무엇을 얻는가?
 
@@ -58,6 +58,7 @@
 - `decision-record.md` — 선택된 참조 패턴과 근거·미확인 문제를 담은 **미승인 ADR 초안**.
 - `application-graph.svg/png/json` — 정적 분석으로 확인되는 일부 코드 구조·호출 관계.
 - `validation.md/json` — 참조 패턴과 입력 간 정적 충돌 및 미측정 항목. 합격/인증 결과 아님.
+- `evidence-contract.json`, `evidence-report.md`, `requirements-gaps.json` — 관측 사실/설정 단서/사용자 명시입력/기본값/가정/미확인 조건.
 - `cost-estimate.md/json`, `iac-policy.md/json`, `ai-review.md/json` — 기능이 비활성화되었으면 **미실행/미산정 표시**.
 
 **목표 산출물 ([#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11)~[#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15))**
@@ -83,7 +84,7 @@
 ## 7. 개발 우선순위 및 검수 기준
 
 - [#9](https://github.com/Leegiyeon/Generate-Architectures/issues/9): 사용자 여정/제품 경계/수동 중심 실행 정책 (**본 문서**)
-- [#10](https://github.com/Leegiyeon/Generate-Architectures/issues/10): 정적 분석 근거와 미확인 요구사항의 공통 계약
+- [#10](https://github.com/Leegiyeon/Generate-Architectures/issues/10): 정적 분석 근거와 미확인 요구사항의 공통 계약 (**기반 구현 완료**)
 - [#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11): 상세 AWS 토폴로지
 - [#12](https://github.com/Leegiyeon/Generate-Architectures/issues/12): 선택 이유·대안 엔진
 - [#13](https://github.com/Leegiyeon/Generate-Architectures/issues/13): 보안·운영·확장 설계

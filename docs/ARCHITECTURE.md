@@ -142,3 +142,24 @@ validation.json / validation.md / decision-record.md
 현 단계의 4개 참조 패턴과 서비스 아이콘은 **실구축용 VPC·Subnet·AZ 상세 토폴로지가 아닙니다**. 이를 포함한 상세 설계, 대안 선정 근거, 보안·트래픽·유지보수 청사진은 [#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11)~[#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14)에서 구현합니다.
 
 **선택형 Local AWS Inspector는 미구현**이며, 추후 AWS CLI Profile/SSO 기반 읽기 전용 로컬 진단으로 분리합니다. Access Key 직접 입력 웹페이지, 중앙 계정 비밀키 저장, 실제 AWS 리소스 생성/수정/삭제는 제품 범위에서 제외합니다. [전체 사용자 여정 문서](PRODUCT.md)를 단일 제품 정의의 근거로 사용합니다.
+
+## 정적 근거 계약 및 요구사항 Gap Analyzer (Issue #10)
+
+`scripts/evidence_contract.py`는 API·모델·직접 호출(소스 AST)과 설정파일 탐지 결과를 구분하고, **관측 시점·근거·불확실성**을 가진 데이터로 재구성합니다.
+
+| 필드 | 의미 | 해석 시 주의 |
+| --- | --- | --- |
+| `observations` | F0001… 정적 API/모델/호출·설정 파일을 관찰 | 파일 경로/행은 실제 런타임 또는 운영 계정의 검증 근거가 아님 |
+| `configuration_inferences` | I0001… DB·인증·Docker 등 설정 기반 신호 | 추정 단서이며 실행 여부는 확인되지 않음 |
+| `user_requirements` | R0001… 사용자가 명시한 요구사항 | 원본 입력 파일/CLI에 존재하는 키만 기록 |
+| `system_defaults` | environment=dev, workload=auto 등 | 내부 기본값으로, 사용자의 승인/입력과 다름 |
+| `assumptions` | A0001… AWS 참조 제안의 가정 | 클라우드 운영 사실이 아님 |
+| `unknowns` | U0001… 요청량·운영·보안·RTO/RPO 등 질문 | 값이 없으면 미확인으로 두고 임의 수치를 채우지 않음 |
+
+`analyzed_at_utc`와 `coverage`는 파서 오류, 파일/그래프 분석 상한, 미지원 영역을 포함합니다. 직접 관찰은 `static_observed`, 설정 감지는 `configuration_indicator`처럼 분류하고 **근거 없는 백분율 confidence는 만들지 않습니다**.
+
+`parse_requirements(return_provenance=True)`는 기존 호출자의 사전 호환성을 유지하면서 사용자 명시 입력 키 목록을 반환합니다. 사용자 확인 완료된 `rendering_mode` 및 `document_database_strategy`도 보존하여 이후 동일한 질문을 다시 하지 않습니다. `run()`은 공통 계약으로 질문을 결정하며, 이미 코드에서 탐지된 인증·DB 단서나 이미 입력된 값을 다시 요구하지 않습니다. 다만 구성 요소 발견은 실제 구현·보안 정책 적합성 검증이 아닙니다.
+
+수동 AI 리뷰에서는 데이터 보호를 위해 source path, 함수 이름, 원본 코드가 아닌 정적 기술 신호·AST 개수·**명시적** 요구사항만 전송하며 시스템 기본값을 사용자 입력으로 표시하지 않습니다.
+
+생성 파일: `evidence-contract.json`, `evidence-report.md`, `requirements-gaps.json`. 이 자료는 향후 [Issue #11](https://github.com/Leegiyeon/Generate-Architectures/issues/11)의 상세 To-Be 설계에 필요한 출처 계약이며, 현재 상세 AWS 네트워크가 완성된 것으로 해석하지 않습니다.
