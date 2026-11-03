@@ -82,9 +82,18 @@ def cost_capacity_markdown(cost, operations, topology):
 
 def generate_user_bundle(out, architecture, topology, graph, contract,
                          decision_matrix, adr, operations, cost, validation,
-                         alternative_comparison=None, capacity_evidence=None):
+                         alternative_comparison=None, capacity_evidence=None,
+                         analysis_goal=None):
     """모든 기존 산출물이 생성된 후 실행하는 오프라인 읽기 전용 보고 단계."""
     out=Path(out)
+    # Legacy callers default to new AWS intent; both modes remain review-only.
+    if analysis_goal is None:
+        try:
+            from .analysis_goal import build_analysis_goal
+        except ImportError:
+            from analysis_goal import build_analysis_goal
+        analysis_goal = build_analysis_goal("new_aws")
+    migration_waiting = analysis_goal["goal"] == "migrate_onprem"
     selected=next(c for c in decision_matrix["candidates"] if c["is_current_reference"])
     if (decision_matrix["selected_reference"] != adr["chosen_reference_detail"] or
         adr["gate"]["architecture"] != validation["decision_gate"] or
@@ -115,7 +124,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
     (destination/"02-architecture-decisions.md").write_text(decisions,encoding="utf-8")
     # 동일 업무량 비용 비교는 선택 입력이며 기본 미입력 상태도 명확히 안내합니다.
     comparison_note = ""
-    if alternative_comparison is not None:
+    if alternative_comparison is not None and alternative_comparison["status"] != "needs_input":
         try:
             from .alternative_cost_comparison import markdown_comparison
         except ImportError:
@@ -123,7 +132,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
         comparison_note = ("\n\n## AWS 실행 대안의 동일 업무량 비용·유지보수 비교\n\n" +
                            markdown_comparison(alternative_comparison))
     capacity_note = ""
-    if capacity_evidence is not None:
+    if capacity_evidence is not None and capacity_evidence["status"] != "needs_input":
         try:
             from .capacity_evidence import markdown_capacity
         except ImportError:
@@ -136,7 +145,8 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
     blocked=(validation["decision_gate"]=="blocked" or
              topology["status"]=="blocked_for_review" or
              decision_matrix["status"]=="blocked_for_review")
-    status=("조건 충돌 — 설계 수정 및 검토 필요" if blocked else
+    status=("온프레미스 현황 미확인 — AWS 이전 적합성 판단 불가" if migration_waiting else
+            "조건 충돌 — 설계 수정 및 검토 필요" if blocked else
             "권장 참조 설계 — 승인 전 추가 검증 필요")
     question_list=[x["question"] for x in contract["unknowns"]]
     ops_questions=[x["question"] for x in operations["questions"]]
@@ -151,6 +161,9 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
     manifest={
         "schema_version":"1.0", "state":"unapproved_reference_design",
         "status":status, "production_ready":False, "aws_account_checked":False,
+        "analysis_goal":analysis_goal["goal"],
+        "migration_assessment_performed":False,
+        "onprem_inventory_analyzed":False,
         "chosen_option":architecture["option_id"],
         "decision_gate":validation["decision_gate"],
         "topology_status":topology["status"],
@@ -179,6 +192,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
     md=[
         "# AWS 아키텍처 검토 — 시작하기", "",
         "> **실제 AWS 배포·계정 조회 미실행 / 사용자 승인 전 / 정적 참조 설계**", "",
+        "- 분석 목적: "+markdown_value(analysis_goal["label"]),
         "- 상태: "+status,
         "- 현재 참조 패턴: "+markdown_value(architecture["pattern"]),
         "- 검토 차단: "+str(validation["counts"]["blocker"])+"건",
@@ -205,8 +219,8 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
          "- **검증 전**: 서비스별 비용·IAM/SG·부하·복구/장애 시험·SLO 미검증.",
          "- **미실행**: AWS 자원 생성/변경/삭제·Terraform apply·계정 자격증명 입력을 수행하지 않음.",
          "", "## 5. 우선 확인할 질문", ""]
-    md.extend("- "+markdown_value(x) for x in question_list[:8])
-    md.extend("- "+markdown_value(x) for x in ops_questions[:4] if x not in question_list[:8])
+    md.extend("- "+markdown_value(x) for x in question_list[:5])
+    md.extend("- "+markdown_value(x) for x in ops_questions[:2] if x not in question_list[:5])
     md+=["", "## 6. 수동 재분석", "",
          "1. 설계 차단/누락 조건을 확인하고 저장소의 .architecture/requirements.json에 비기밀 값을 추가합니다.",
          "2. GitHub → Actions → AWS 아키텍처 검토 자동화 → Run workflow를 수동 실행합니다.",
@@ -226,6 +240,15 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
                    "- 측정값의 진위·실환경 동일성·AWS 쿼터·Auto Scaling은 검증하지 않습니다.",
                    "- [집계 부하 테스트 분석 보고서](capacity-evidence.md)",
                    ""])
+    # 온프레미스 모드는 AWS To-Be 설계도의 존재를 이전 검증으로 오해하지 않도록 합니다.
+    if migration_waiting:
+        md[4:4] = [
+            "", "## 온프레미스 정보 확인 전 — 마이그레이션 판단 보류", "",
+            "**현재 서버/DB/네트워크·스토리지를 조사하지 않았습니다. "
+            "As-Is 인프라 및 Rehost/Replatform 비교 기능은 아직 제공되지 않습니다.**", "",
+        ]
+        md.extend(["", "## 온프레미스 이전 전에 확인할 내용", ""] +
+                  ["- "+markdown_value(x) for x in analysis_goal["next_actions"]])
     (out/"START-HERE.md").write_text("\n".join(md),encoding="utf-8")
 
     def li(values, limit=7):
@@ -284,7 +307,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
             ". 전체 AWS 청구액 검증이 아닙니다.</p>"
         )
     comparison_html = ""
-    if alternative_comparison is not None:
+    if alternative_comparison is not None and alternative_comparison["status"] != "needs_input":
         summary = alternative_comparison
         brief = "".join(
             row(c["id"], c["status"],
@@ -302,7 +325,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
             "대안 비용·유지보수 비교 자세히</a></div>"
         )
     capacity_html = ""
-    if capacity_evidence is not None:
+    if capacity_evidence is not None and capacity_evidence["status"] != "needs_input":
         cap_rows = "".join(row(
             x["candidate"], x["status"], x["observed"]["sustained_rps"],
             x["observed"]["p95_latency_ms"], x["observed"]["error_rate_percent"],
@@ -317,12 +340,22 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
             "</tbody></table><div class='links'><a href='capacity-evidence.md'>"
             "부하 테스트 집계·용량 계획 검토</a></div>"
         )
+    migration_notice = (
+        "<section class='panel' id='migration-warning'><h2>온프레미스 → AWS 이전: 현재 판단 범위</h2>"
+        "<p class='caution'><b>기존 서버·DB·네트워크 정보가 확인되지 않았습니다.</b> "
+        "이 그림은 코드 기반 AWS To-Be 참조 후보일 뿐, 온프레미스 As-Is 구성도/이전 가능 판정이 아닙니다. "
+        "Rehost·Replatform 및 다운타임/데이터 이전 위험은 현재 분석하지 못합니다.</p>"
+        "<h3>다음에 확인할 내용</h3><ul>" +
+        li(analysis_goal["next_actions"],3) + "</ul></section>"
+        if migration_waiting else ""
+    )
     html_doc=(
         "<!doctype html><html lang='ko'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
         "<meta http-equiv='Content-Security-Policy' content=\""+safe(CSP)+"\">"
         "<title>AWS 아키텍처 설계 검토</title><style>"+css+"</style></head><body>"
         "<header><small>Generate-Architectures · Architecture Designer</small>"
+        "<p>분석 목적: <b>"+safe(analysis_goal["label"])+"</b></p>"
         "<h1>AWS 아키텍처 설계 검토</h1>"
         "<p>저장소 정적 분석과 입력된 요구사항에 따른 <b>참조 설계 제안</b>입니다. AWS 계정·배포·보안 인증은 수행하지 않았습니다.</p>"
         "<span class='pill'>"+safe(status)+"</span><p>정적 분석 시각(UTC): "+
@@ -331,6 +364,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "<a href='#decision'>② 선정 근거</a><a href='#ops'>③ 보안·운영</a>"
         "<a href='#cost'>④ 비용·용량</a><a href='#evidence'>As-Is/To-Be</a>"
         "<a href='#next'>재분석</a></nav></header><main>"
+        + migration_notice +
         "<section id='overview' class='grid'>"
         "<div class='card'><strong>권장 참조안</strong><b>"+safe(architecture["pattern"])+
         "</b><br><small>사람 승인 전</small></div>"
@@ -391,8 +425,8 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         ("<p class='caution'>코드 파싱 일부 실패: 미관측을 부재로 해석할 수 없습니다.</p>"
          if contract["status"]=="partial" else "")+"</section>"
         "<section class='panel' id='next'><h2>우선 확인 사항 및 재분석</h2>"
-        "<h3>추가 요구사항</h3><ul>"+li(question_list,8)+"</ul>"
-        "<h3>운영 검증 질문</h3><ul>"+li(ops_questions,5)+"</ul>"
+        "<h3>추가 요구사항 (우선순위 최대 5개)</h3><ul>"+li(question_list,5)+"</ul>"
+        "<h3>운영 검증 질문</h3><ul>"+li(ops_questions,2)+"</ul>"
         "<h3>수동 재분석</h3><ol>"
         "<li>저장소의 .architecture/requirements.json에 비기밀 업무 요구와 운영 조건을 보완합니다.</li>"
         "<li>GitHub → Actions → AWS 아키텍처 검토 자동화 → <b>Run workflow</b>를 실행합니다.</li>"
@@ -411,4 +445,5 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "manifest":"artifact-index.json",
         "primary_files":[x["path"] for x in manifest["primary_files"]],
         "status":"review_required_not_deployed","production_ready":False,
+        "analysis_goal":analysis_goal["goal"],
     }
