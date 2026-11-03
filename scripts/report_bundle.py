@@ -164,6 +164,8 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
         "needs_input": "미산정 · 입력 필요",
         "partial_unpriced": "부분 산정 · 누락 항목 존재",
         "modeled_items_comparable_unverified": "입력 기반 비교 · 검증 전",
+        "estimated": "입력 기준 금액 · 실제 청구 아님",
+        "scenario_estimate": "입력 시나리오 기준 · 검증 전",
     }.get(cost["status"], "검토 필요 · 상세 보고서 참조")
     cost_summary=("입력 항목 합계 "+str(cost["monthly_total_usd"])+" USD (전체 인프라 청구액 아님)"
                   if cost["complete"] else
