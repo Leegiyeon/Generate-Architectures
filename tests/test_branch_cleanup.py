@@ -1,5 +1,7 @@
 """병합 후 자동 브랜치 정리가 안전하게 대상을 선택하는지 검증."""
 import unittest
+from unittest.mock import patch
+from scripts.branch_cleanup import GitHubClient
 from scripts.branch_cleanup import find_prunable
 
 
@@ -39,6 +41,26 @@ class BranchCleanupTests(unittest.TestCase):
             pr("feat/protected", "protected"),
             pr("feat/fork-pr", "fork-head", from_repo="someone/other-repo"),
         ]
+
+    def test_repository_metadata_uses_canonical_url_without_trailing_slash(self):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return b'{"full_name":"Leegiyeon/Generate-Architectures"}'
+
+        def get_response(request, timeout):
+            self.assertEqual(
+                request.full_url,
+                "https://api.github.com/repos/Leegiyeon/Generate-Architectures"
+            )
+            self.assertEqual(request.get_method(), "GET")
+            return FakeResponse()
+        with patch("scripts.branch_cleanup.urlopen", side_effect=get_response):
+            value = GitHubClient("fake_test_token", REPO).request("")
+        self.assertEqual(value["full_name"], REPO)
 
     def test_only_unchanged_same_repo_merged_pr_heads_deleted(self):
         targets = find_prunable(self.branches, self.prs, "main", REPO)

@@ -50,7 +50,7 @@ class GitHubClient:
         self.token, self.repo = token, repo
 
     def request(self, path, method="GET"):
-        url = "https://api.github.com/repos/" + self.repo + "/" + path
+        url = "https://api.github.com/repos/" + self.repo + ("/" + path if path else "")
         req = Request(url, method=method, headers={
             "Accept": "application/vnd.github+json",
             "Authorization": "Bearer " + self.token,
