@@ -1,345 +1,68 @@
-# Generate-Architectures — 저장소에서 AWS 권장 설계와 선택 이유까지
+# Generate-Architectures
 
-> **새 개발 방향(계획):** 신규 AWS 구축과 온프레미스 → AWS 이전의 두 가지 목적을 **최소 입력·수동 실행·한 장 결과 보고서**로 지원합니다. 현재 온프레미스 Inventory/As-Is 및 전환 전략 자동 비교는 **미구현**입니다. 작업 목록과 완료 기준은 [간편한 제품 로드맵](docs/LEAN_MIGRATION_ROADMAP.md)에서 관리합니다.
+**GitHub 저장소 한 번 분석 → AWS 참조 설계도와 선정 근거를 한국어로 확인하는 도구**입니다. AWS 계정이나 별도 서비스 서버 없이 시작할 수 있으며, 실제 인프라를 변경하지 않습니다.
 
-GitHub 저장소의 **확인 가능한 근거**와 **사용자가 직접 제공하는 요구사항**을 바탕으로, AWS 아키텍처 대안을 비교하고 서비스 아이콘이 포함된 다이어그램 및 한국어 검토 보고서를 생성합니다.
-
-> **현재 단계: SAA 업무 자동화의 1~2단계 기반 구현.** 실제 AWS 리소스 조회, 검증된 LLM 자율 설계 승인, 상세 비용 산정, 실제 AWS 보안 정책 검증, Terraform/CDK 생성 또는 인프라 배포는 제공하지 않습니다. 출력물은 전문가 검토가 필요한 **참조 설계 초안**입니다.
+> 현재 지원: 코드/설정의 정적 관찰 → AWS To-Be **상세 논리 설계 제안**·서비스 선정 이유·보안/운영 검토·입력 기반 비용 분석. **실제 계정 구성이나 구축 검증 결과는 아닙니다.**
 
 ## 30초 사용 안내
 
-**무엇을 입력하나요?** GitHub 저장소와 (선택) 서비스 요구사항 JSON을 입력합니다. 별도의 AWS 계정/자격증명은 필요하지 않습니다.
+**1.** 대상 GitHub 저장소에 [예제 Workflow](examples/aws-architecture.yml)를 `.github/workflows/aws-architecture.yml`로 복사합니다.
 
-**무엇을 받나요?** 오프라인 단일 보고서 **`START-HERE.html`**(요약·상세 설계·선정 이유·보안·비용)와 4개 핵심 결과물(`deliverables/`)입니다. 추가로 AWS 서비스 아이콘 **참조 설계도**(`architecture.svg/png`)와 선정 근거·대안·위험·미확인 조건을 담은 **한국어 보고서**(`recommendation.md`), ADR 초안 등을 받습니다. 기존 아이콘 다이어그램은 **서비스 참조 패턴**이며, 새 `aws-topology.svg/png`는 **VPC/Subnet/상징적 AZ 경계와 AWS 서비스 아이콘을 결합한 상세 논리 설계 제안**입니다. 둘 다 실제 계정 구성이나 구축 검증 결과는 아닙니다.
+**2.** 해당 저장소의 **Actions → AWS Architecture Review → Run workflow**에서 목적 하나를 선택합니다.
 
-**어떻게 실행하나요?** GitHub → **Actions → AWS 아키텍처 검토 자동화 → Run workflow** → 실행 완료 후 **Artifacts**에서 결과를 받습니다. **최초 1회 분석 및 필요시 수동 재분석**을 기본으로 합니다. 코드 변경 시의 push/PR 이벤트는 자동 테스트만 실행하고 아키텍처 분석은 반복하지 않습니다.
-
-| 사용 모드 | 사용자 가치 | 실제 상태 |
+| 선택 | 목적 | 현재 가능한 결과 |
 | --- | --- | --- |
-| **Architecture Designer** | AWS 권장 구성·이유·미확인 조건 제시 | **참조 설계 기반 사용 가능**; 상세 네트워크·확장 설계는 개발 계획 |
-| **Local AWS Inspector** | 로컬 AWS Profile로 계정 구성 진단 | **미구현**; AWS 자격증명 입력 UI 없음 |
-| GitHub App | GitHub 이벤트로 분석 요청 | **웹훅 서버 코드만 존재**; App 설치·호스팅 미완료 |
+| `new_aws` | 신규 서비스 AWS 구축 | 코드 근거를 사용한 AWS To-Be 참조 설계 및 선정 이유 |
+| `migrate_onprem` | 온프레미스에서 AWS 이전 검토 | 코드 근거 기반 AWS 후보 + **현재 인프라 정보 미확인/마이그레이션 판단 보류** 안내 |
 
-사용자 여정, 보안·권한, 현재 제공 범위와 다음 개발 항목은 **[제품 정의 및 업무 프로세스](docs/PRODUCT.md)**를 참고하세요. 자동 AWS 리소스 생성·수정·배포는 지원하지 않습니다.
+**3.** 실행 후 **Artifacts → aws-architecture-recommendation**을 다운로드하고 압축을 풀어 **`START-HERE.html`**을 엽니다. 한국어 요약은 `START-HERE.md`로도 확인할 수 있습니다.
 
-## 1. 실제 구현 기능
+**필수 선택은 목적 하나뿐**입니다. 로그인, AWS 계정 ID/Access Key, OpenAI API 키를 요구하지 않습니다. 코드 변경마다 설계를 자동 반복하지 않고 사용자가 요청할 때만 분석합니다.
 
-| 기능 | 현재 동작 | 한계 |
-| --- | --- | --- |
-| 저장소 구조 분석 | Node/Next.js/Vite/Python/Java/Go/Docker/Expo 등 설정 파일 탐지 | 함수별 호출·데이터 흐름 전체를 파악하지는 못함 |
-| 근거 수집 | API 경로, 관계형 DB 관련 파일/패키지, 인증·작업 큐·IaC 단서 수집 | 파일 경로와 제한된 설정 파일에서만 추출 |
-| 요구사항 분석 | 워크로드, 배포 선호, 평균·피크 RPS, 운영 우선순위, 예산, 리전, 가용성, RTO/RPO, 데이터 분류 입력 검증 | 입력하지 않은 값은 추정하거나 확정하지 않음 |
-| 설계 비교 | Static / Serverless / Container / Mobile 참조 패턴 비교 | 실제 AWS 서비스 구성의 적합성 보장 불가 |
-| 안전한 판단 | Next.js SSR 미확인 시 정적 호스팅으로 단정하지 않음; 관계형 DB 요구와 패턴 충돌 시 경고 | 실제 실행·성능 테스트 없이 결론 확정 불가 |
-| Well-Architected 및 Validator | 6개 원칙의 보안·확장·운영 **설계 제안** 및 참조 설계/요구사항 정적 충돌 검출 | 실제 AWS 자원·IAM·보안 정책·비용·성능 검증 미수행 |
-| 다이어그램 | AWS 서비스 아이콘, 논리 VPC/Subnet/상징 AZ를 SVG/PNG/DOT로 표현 | 제안된 논리 토폴로지이며 AWS 계정/네트워크 실환경 배치 검증 아님 |
-| 자동화 | GitHub Actions, PR 링크, 재사용 Action, GitHub App 서버 코드 | GitHub App 등록/배포/설치 절차는 사용자 환경에서 별도 진행 |
+### 무엇을 받나요?
 
-## 2. 전체 실행 흐름
+- **AWS 설계도**: 사용 가능한 서비스와 논리 VPC/AZ·연결을 나타내는 To-Be **제안**(SVG/PNG).
+- **왜 그렇게 설계했는지**: 소스에서 관찰한 단서, 선정/제외한 서비스와 검토가 필요한 조건.
+- **보안·운영**: IAM, 네트워크, 확장, 관측, 백업의 검토용 항목(실제 정책 점검 아님).
+- **비용·다음 행동**: 비용 입력이 없으면 **미산정**, 검증이 필요한 정보와 수동 재분석 방법.
 
-```text
-GitHub Actions 수동 실행 (push/PR 이벤트는 테스트만)
-  → 대상 저장소 체크아웃 (읽기 전용)
-  → 설정/경로 단서 수집 (repository_analyzer.py)
-  → 비기밀 요구사항 JSON 검증 (requirements_model.py)
-  → 서비스 구성 대안 비교 및 미확인 항목 정리 (architecture_advisor.py)
-  → 한국어 Markdown + 근거 JSON + AWS 서비스 아이콘 PNG/SVG 생성
-  → GitHub Actions Artifact 보관 / PR 결과 링크
-  → 사람의 설계 검토 및 승인 (AWS 자동 배포 없음)
-```
+기존 중간 JSON·다이어그램 파일 등 개발자용 결과물은 Artifact에 유지하며 처음부터 열 필요가 없습니다.
 
-## 3. 가장 빠른 사용법
+### 온프레미스 이전 모드를 선택했다면
 
-1. GitHub의 **Actions → AWS 아키텍처 검토 자동화 → Run workflow**에서 분석이 필요할 때 직접 실행합니다. push/PR 이벤트는 테스트만 수행합니다.
-2. 완료된 실행의 **Artifacts → aws-architecture-recommendation**에서 결과 ZIP을 다운로드합니다.
-3. **`START-HERE.html`을 브라우저에서 먼저 열고**, 설계도·선정 이유·보안/운영·비용/용량을 한 페이지에서 검토합니다. Markdown만 필요하면 `START-HERE.md`를 열고, 원본 개발자용 자료는 `recommendation.md` 등에서 확인합니다.
+**현재 버전은 온프레미스 서버/네트워크/DB를 실제로 조사하지 않습니다.** 따라서 앱 코드에서 DB 연결 라이브러리를 발견하더라도, 현재 DB 서버 위치·성능·데이터 크기·방화벽 구성·이전 가능 여부를 **알 수 없습니다**.
 
-요구사항을 입력하고 싶다면 [`.architecture/requirements.example.json`](.architecture/requirements.example.json)을 복사해 **`.architecture/requirements.json`**을 만들고, 수동 실행의 `requirements_file`에 해당 경로를 입력합니다. 실제 키·암호·개인정보를 요구사항 파일에 저장하지 마세요.
+`migrate_onprem`은 이전 **목적**을 명확히 기록하고 AWS 후보를 생성하되, **As-Is 인프라 도면, Rehost/Replatform 적합성 판단, 데이터 이전/다운타임·전환 계획은 제공하지 않습니다.** 이 기능은 [#34 Inventory/As-Is](https://github.com/Leegiyeon/Generate-Architectures/issues/34)와 [#35 Migration Assessment](https://github.com/Leegiyeon/Generate-Architectures/issues/35)에서 개발할 예정입니다.
 
-## 4. 요구사항 입력 예시
+## 필요할 때만 요구사항 보완
 
-```json
-{
-  "workload": "auto",
-  "deployment_preference": "auto",
-  "environment": "dev",
-  "data_classification": "internal",
-  "region": "ap-northeast-2",
-  "monthly_budget_usd": 200,
-  "expected_monthly_requests": 100000,
-  "average_rps": 10,
-  "peak_rps": 200,
-  "peak_concurrent_connections": 100,
-  "latency_target_ms": 500,
-  "operations_preference": "balanced",
-  "availability_target_percent": 99.9,
-  "rto_minutes": 240,
-  "rpo_minutes": 60,
-  "requires_authentication": true,
-  "requires_relational_database": true
-}
-```
+처음에는 파일 없이 실행할 수 있습니다. 더 구체적인 설계를 원하면 [예제 요구사항 JSON](.architecture/requirements.example.json)을 참고해 대상 저장소에 `.architecture/requirements.json`을 만든 후 예제 Workflow의 `requirements_file` 주석을 해제합니다. 자격증명·개인정보·실제 서버 IP를 GitHub 저장소에 올리지 마세요.
 
-**이 값들은 사용 예시일 뿐**이며, 실제 프로젝트에 맞게 교체해야 합니다. 미입력 필드는 보고서의 질문으로 남습니다. 입력한 월 예산은 **AWS 예상 청구액이 아닙니다**. 사용자 입력과 코드 단서가 충돌하면 관련 경고를 출력합니다.
-
-터미널에서 실행하려면 Python 3.10 이상과 Graphviz 바이너리를 설치하고 다음을 실행합니다.
+로컬 실행(선택)은 다음과 같습니다. Graphviz와 Python 의존성을 설치해야 합니다.
 
 ```bash
 python3 -m pip install -r requirements-diagrams.txt
-python3 -m unittest discover -s tests -v
-python3 scripts/recommend_architecture.py --repo . --output architecture-output --requirements .architecture/requirements.json
+python3 scripts/recommend_architecture.py --repo . --output architecture-output --analysis-goal new_aws
+# 또는 --analysis-goal migrate_onprem
 ```
 
-요구사항 파일을 만들지 않았다면 `--requirements` 옵션을 생략하세요. `--workload web`, `--budget 200`으로 수동 입력값을 덮어쓸 수 있습니다.
+### 보안·신뢰성
 
-## 5. 외부 GitHub 저장소에서 사용
+- 보고서는 **코드에서 확인한 사실 / 사용자 입력 / 가정 / 미확인**을 구분합니다. 외부 AI와 AWS 가격 조회는 기본 비활성화입니다.
+- AWS 비용·보안·성능·가용성은 실제 계정에서 검증하지 않았습니다. 근거 없는 수치·리소스·완료 판정은 만들지 않습니다.
+- AWS 자동 배포, 리소스 생성·수정·삭제, 사용자 Access Key 보관은 하지 않습니다.
+- 외부 저장소에서 재사용할 때 예제의 `@main`은 신뢰할 수 있는 **커밋 SHA/릴리스 태그로 고정**하는 것이 좋습니다. GitHub Actions에서 분석 코드가 저장소에 접근하는 권한도 검토하세요.
 
-**수동 실행이 기본**입니다. [`examples/aws-architecture.yml`](examples/aws-architecture.yml)을 대상 저장소의 `.github/workflows/aws-architecture.yml`로 복사합니다. 중요한 PR에서만 자동 분석이 필요하면 [`examples/aws-architecture-pr-optional.yml`](examples/aws-architecture-pr-optional.yml)을 **추가로 선택해** 설치하세요. 예시에는 흐름별 **한국어 주석**이 포함되어 있습니다. 요구사항 파일을 아직 추가하지 않았다면 해당 Action 입력을 생략하세요.
+## 상세 정보(선택)
 
-`uses: Leegiyeon/Generate-Architectures@main`은 최신 main 코드를 사용합니다. 운영 환경에서는 신뢰할 수 있는 **커밋 SHA 또는 버전 태그로 고정**하는 것을 권장합니다.
-
-### GitHub App 웹훅 서버 코드 (현재 미배포)
-
-[`app/server.py`](app/server.py)는 서명 검증 웹훅으로 PR 이벤트를 수신해 **설치된 대상 저장소의 workflow_dispatch**를 호출하는 서버 코드입니다. GitHub App 등록, HTTPS 호스팅, 비밀 키 설정 및 저장소별 예시 워크플로 설치는 아직 자동화되지 않았습니다.
-
-1. GitHub Developer Settings에서 App을 등록합니다. 저장소 권한은 **Actions: Read and write**, **Contents: Read-only**, **Pull requests: Read-only**로 최소 설정하고 PR 이벤트를 구독합니다.
-2. Webhook URL을 `https://YOUR_HOST/webhook`으로 설정하고 별도의 Webhook secret을 생성합니다.
-3. GitHub App ID, PEM private key, Webhook secret을 서버의 안전한 환경변수(`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_WEBHOOK_SECRET`)로 제공합니다.
-4. 저장소 루트에서 `docker build -f app/Dockerfile -t generate-architectures-app .`을 실행한 뒤 HTTPS 프록시 뒤에 배포합니다.
-5. 앱을 대상 저장소에 설치하고 대상 저장소의 기본 브랜치에 `.github/workflows/aws-architecture.yml`을 배치합니다. 웹훅으로 실행할 때 `pull_request` 트리거를 유지하면 중복 실행될 수 있습니다.
-
-## 6. 생성 결과물
-
-| 파일 | 용도 |
+| 문서 | 필요한 경우 |
 | --- | --- |
-| **`START-HERE.html`** | **오프라인 한국어 아키텍처 통합 검토 화면(먼저 열기)** |
-| **`START-HERE.md`** | **같은 사용자 여정의 텍스트 요약 및 네 가지 결과물 링크** |
-| **`deliverables/`** | **01 AWS To-Be SVG/PNG, 02 서비스 선정·ADR, 03 보안·운영, 04 비용·용량** |
-| `artifact-index.json` | 주요 결과물 경로·해시·분석/승인/비용 상태 |
-| `recommendation.md` | 개발자용 한글 설계 결정, 대안 비교, 확인 근거, 위험과 사용자 질문 |
-| `repository-analysis.json` | 확인된 파일·기술·단서와 스캔 제한 |
-| `requirements-used.json` | 실제 설계 판단에 사용한 값(사용자 명시값 + 시스템 기본값) |
-| `evidence-contract.json` | AST/설정 관찰 근거, 사용자 명시값, 기본값, 미확인 조건의 출처 계약 |
-| `requirements-gaps.json` | 추가 사용자 입력 질문 및 파서 분석 상태 |
-| `evidence-report.md` | 한국어 근거 및 미확인 조건 보고서 |
-| `architecture.json` | 선택 패턴·대안·Well-Architected 검토 항목 |
-| `architecture-decision-matrix.json/md` | Static/Lambda/ECS/EC2/모바일 후보의 선정·제외 근거, 검토 필요 조건 |
-| `architecture.png` | 기존 AWS 아이콘 참조도 |
-| `aws-topology.json` | 근거/가정과 서비스·네트워크 경계를 구조화한 To-Be 제안 |
-| `aws-topology.svg/png/dot` | 논리 VPC·AZ·서브넷 경계/제안 흐름 다이어그램 |
-| `aws-topology.md` | 한국어 제안 배치, 통신 관계와 미확정 정책 검토 |
-| `network-policy.md` | 명시적 ALB 접근 범위, SG/Private Outbound/NAT/Endpoint 선택과 미확정 네트워크 정책 |
-| `architecture.svg` | AWS 서비스 아이콘이 내장된 독립 실행형 SVG |
-| `architecture.dot` | Graphviz 원본 |
-
-SVG는 디지털 문서용, PNG는 프레젠테이션용으로 사용할 수 있습니다. 다이어그램의 실선은 요청/데이터 흐름 **제안**, 점선은 보안 연계, 점선형 회색 선은 모니터링 연계를 나타냅니다. Diagrams의 AWS 아이콘은 최신 AWS 공식 아트워크와 다를 수 있습니다.
-
-## 7. 보안과 한계
-
-- 비밀키, `.env`, 전체 소스 전문을 OpenAI 등에 전송하지 않습니다. 기본 실행에는 외부 LLM API 키가 필요하지 않습니다. AI 보조 검토를 명시적으로 활성화한 경우에만 API 키가 필요합니다.
-- 분석 파일 수는 최대 5,000개이며, 일부 알려진 설정 파일만 최대 64KB까지 읽어 기술 의존성을 확인합니다. 심볼릭 링크와 주요 빌드/의존성 폴더는 제외합니다.
-- 기본 분석이 검증하는 것은 **입력 형식과 알려진 구조적 충돌**뿐입니다. 선택적으로 공식 가격 API의 제한된 단가 조회 및 Terraform plan의 일부 위험 검사 코드가 있지만 실제 AWS 계정/IAM 전체·취약점·네트워크 운영 상태를 검증하지 않습니다.
-- 연결된 패턴과 비용·보안·가용성의 판단 근거가 충분하지 않으면 반드시 전문가 검토가 필요합니다.
-- 실제 코드와 다이어그램 사이의 완전한 일치, 내부망 배치, 다중 AZ 등은 가정으로 만들지 않습니다.
-
-## 8. 다음 개발 우선순위
-
-**P0: 사용자에게 제공하는 상세 AWS 설계도와 근거 완성** — [#9 제품 재정의](https://github.com/Leegiyeon/Generate-Architectures/issues/9), [#10 분석 근거 계약](https://github.com/Leegiyeon/Generate-Architectures/issues/10), [#11 상세 네트워크·서비스 토폴로지](https://github.com/Leegiyeon/Generate-Architectures/issues/11), [#12 서비스 선정 이유](https://github.com/Leegiyeon/Generate-Architectures/issues/12), [#13 보안·확장·운영 전략](https://github.com/Leegiyeon/Generate-Architectures/issues/13), [#14 통합 보고서](https://github.com/Leegiyeon/Generate-Architectures/issues/14).
-
-**P1:** 배포 대안별 비용/용량 비교와 샘플 프로젝트 E2E 검증([#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15)·[#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16)).
-
-**P2:** 선택형 **로컬 읽기 전용 AWS Account Inspector**([#17](https://github.com/Leegiyeon/Generate-Architectures/issues/17)·[#18](https://github.com/Leegiyeon/Generate-Architectures/issues/18)). **P3:** GitHub App의 최초 분석·선택형 재실행 기능([#19](https://github.com/Leegiyeon/Generate-Architectures/issues/19)).
-
-상세 범위와 현재 구현 상태는 [제품 정의](docs/PRODUCT.md), [기술 아키텍처](docs/ARCHITECTURE.md) 및 [로드맵](docs/ROADMAP.md)을 참고하세요. 과거 `generate_aws_architectures.py`는 레거시 스크립트로 현재 Action 경로에 포함되지 않습니다.
-
-## 9. P0 — 실제 소스코드 AST 기반 Application Graph (이번 개선)
-
-이제 단순히 파일 이름만 탐지하는 데 그치지 않고, **Python AST + JavaScript/TypeScript Babel AST**로 함수·메서드·API Route·import·명시적 호출 관계를 분석합니다. 대상 저장소의 함수를 실행하지 않으며 원문·비밀키를 외부 AI API에 전달하지 않습니다.
-
-산출물: `application-graph.json`(노드/간선·근거 파일 및 행·파싱 오류), `application-graph.svg`, `application-graph.png`, `application-graph.dot`. 기존 AWS 아이콘 기반 설계 제안도(`architecture.svg`)와 **구분**됩니다.
-
-- **확인된 구조:** 정적 API 엔드포인트, 함수/메서드, 모듈 import, 확인된 직접 호출, Python SQLAlchemy/Django 계열 모델 후보, Prisma 모델 정의.
-- **미확인 구조:** 동적 import, DI 주입 대상, 실제 네트워크·DB 호출, ORM 관계 전체, tsconfig alias, 런타임 리플렉션, Go/Java AST. 근거가 없으면 연결선을 그리지 않습니다.
-- **보안/자원 상한:** 소스코드 실행 없음, 설치 스크립트 차단(`npm --ignore-scripts`), 최대 300개 소스 파일 및 파일당 64KB, 출력 노드/간선 수 제한. 다이어그램 표시량이 초과되면 JSON에 전체 추출 범위를 보존한 채 표시 제한 여부를 기록합니다.
-- **실패 처리:** 일부 파일 구문 오류 또는 Node 파서 부재 시 `errors`에 명시하고, 가능한 다른 언어의 분석은 계속합니다. 파서 실패를 '연결 관계 없음'으로 해석하지 않습니다.
-
-**직접 실행 준비:** Python, Node.js, Graphviz, `diagrams`를 설치한 뒤 `npm install --prefix scripts/js_analyzer --ignore-scripts --no-audit --no-fund --package-lock=false`를 먼저 실행합니다. GitHub Actions와 재사용 Action은 해당 설치를 자동 수행합니다. Node 또는 Babel을 설치할 수 없다면 Python AST만 분석하며 누락 사유를 결과 JSON에 기록합니다.
-
-다이어그램은 구문 분석 결과를 이해하기 위한 참고 자료이며, AWS 설계 적합성이나 운영상의 호출/성능을 검증한 것으로 간주할 수 없습니다.
-
-## 10. AI Solutions Architect Agent — 선택적 보조 검토
-
-**기본은 비활성화이며, `workflow_dispatch` 수동 실행에서만 켤 수 있습니다.** 기존 `architecture.json`, AWS 아이콘 다이어그램, 규칙 기반 선정은 AI의 결과로 자동 변경되지 않습니다. 실제 AWS 인프라의 비용·보안·성능·적합성을 검증한 기능이 아닙니다.
-
-### 동작 및 데이터 보호
-
-1. 저장소 구조 분석, AST 그래프와 사용자가 명시한 요구사항을 **로컬에서 먼저** 처리합니다.
-2. AI 전송 입력은 `true`인 기술 신호, 검증된 비기밀 요구사항, API/함수/모델 **개수**, 비교 가능한 배포 대안 및 E001 형태의 근거 ID로 **최소화**합니다. **원본 소스, 파일 경로/파일명, 함수명, 사용자 자유 입력, 저장소 이름, 토큰/키를 프롬프트에 넣지 않습니다.**
-3. OpenAI Responses API의 Structured Outputs(JSON Schema, `store: false`)로 보조 의견, 다른 대안의 장단점, 미확인 위험, 사용자 확인 질문을 받습니다.
-4. 모델이 선택한 대안의 적합 가능 여부와 근거 ID를 **애플리케이션에서 다시 검사**합니다. 모델이 허용되지 않은 대안을 선택하거나 알려지지 않은 근거를 참조하면 해당 결과를 폐기합니다. 근거 ID 일치가 내용의 사실성을 보증하지는 않습니다.
-5. 호출 실패·키 없음·스키마 오류 시 원래 규칙 기반 추천을 변경하지 않고, AI 미실행/실패 사유만 파일에 남깁니다.
-
-### 활성화
-
-GitHub 저장소 **Settings → Secrets and variables → Actions**에서 `OPENAI_API_KEY`를 저장하고, Actions → AWS 아키텍처 검토 자동화 → Run workflow에서 `enable_ai=true`로 명시적으로 선택합니다. 기본 모델은 `gpt-6-luna`이며, 실제 모델 사용 권한·과금은 API 계정 정책에 따릅니다. **API 키가 아직 없다면 모델 호출은 수행되지 않습니다.**
-
-외부 저장소에서 재사용하는 경우에도 `enable_ai: "true"`와 실행 단계에 `OPENAI_API_KEY` 환경변수를 **사용자가 직접** 전달해야 합니다. 자동 `push`/PR에서는 모델을 호출하지 않도록 메인 CI에서 강제 비활성화했습니다. AI 사용 시 전송 단서 자체가 외부 서비스로 전달된다는 점을 검토하세요.
-
-### 결과물
-
-- `ai-review.json`: `disabled` / `unavailable` / `error` / `reviewed_unverified` 상태, 검증된 구조화 의견과 E001 근거 ID
-- `ai-review.md`: **한국어** AI 보조 검토, 대안, 위험, 미확인 질문, 근거 ID 카탈로그
-- `recommendation.md`: AI 실행 여부를 한 줄로 표시하여 규칙 기반 설계와 구분
-
-**현재 검증 범위:** 실제 API 비용을 발생시키는 E2E 호출을 수행하지 않으며, CI에서는 모의 응답(mock)과 오류/환각 방어 테스트를 실행합니다. 외부 모델의 실제 응답은 API 키와 허용 계정을 설정한 사용자가 수동으로 확인해야 합니다. AI는 AWS 자원을 생성하거나 배포하지 않습니다.
-
-## 11. Architecture Validator — 설계 제약 정적 검사와 ADR (이번 구현)
-
-Architecture Validator는 AI 추천의 정확성을 보증하는 도구가 아니라, **현재 참조 설계와 명시적 요구사항 사이에서 코드로 증명할 수 있는 충돌을 사전에 드러내는 정책 엔진**입니다.
-
-| 산출물 | 내용 |
-| --- | --- |
-| `validation.json` | 검출된 룰 ID(ARC/REQ/PAT/EVD/SEC/REL/OPS/PERF/COST), 근거 키, 차단 또는 검토 필요, 권장 조치 |
-| `validation.md` | 한글 정적 검사 결과 및 Well-Architected 6개 영역별 미검증 현황 |
-| `decision-record.md` | ADR-0001: 관찰된 사실, 입력된 조건, 선택 이유, 대안 비교 및 승인 전 조치 |
-| `architecture.json` | 검증 게이트 요약, 차단 건수, 검토 필요 건수 |
-
-**게이트 의미:** `blocked`는 명시적 요구상 충돌이나 설계 데이터의 무결성 문제가 있어서 **현 참조안을 자동 채택할 수 없음**을 의미합니다. `review_required`는 알려진 차단 항목은 없지만 실제 검증이 완료되지 않았다는 의미입니다. 어느 경우에도 `production_ready=true` 또는 Well-Architected 합격으로 표시하지 않습니다.
-
-**구현된 정적 검사 예시:** 필수 관계형 DB와 영속 저장 불필요 동시 입력, API가 있는 프로젝트에 정적 호스팅만 선정한 경우, Next.js 정적 export 불명확, 선택 아키텍처에 없는 서비스/연결 추가, 데이터 등급 불명확, 민감정보 처리, 가용성/SLO 및 RTO/RPO 달성을 위한 검증 자료 미제공, 실제 가격 미조회. **실제 AWS 계정/IaC 정책은 아직 조회하지 않습니다.**
-
-**AI 보조 의견은 승인되지 않습니다.** `ai-review.json`은 검증 엔진에 상태만 전달하며, AI 추천에 따라 다이어그램·설계·배포 대상을 자동으로 변경하지 않습니다. GitHub Actions는 외부 API 키 없이도 검증을 수행합니다.
-
-테스트: `python3 -m unittest discover -s tests -v`. 검증 규칙은 [시스템 설계 문서](docs/ARCHITECTURE.md)에 정리했습니다. 향후 별도 IaC 검사기(AWS CloudFormation Guard, Checkov 등)를 추가하더라도 실제 검증 결과와 정적 초안 검토는 구분해야 합니다.
-
-## 12. AWS 비용 시나리오 및 Terraform IaC 보안 검사 (이번 개발)
-
-**실제 AWS 요금·인프라 적합성을 보증하지 않습니다.** 비용/보안 입력이 없다면 각각 `needs_input` / `not_scanned` 상태를 출력하며 **0원 또는 보안 통과로 표시하지 않습니다**.
-
-| 새 산출물 | 목적 |
-| --- | --- |
-| `cost-estimate.json`, `cost-estimate.md` | 입력한 사용량·검증된 단가 출처 기반 비용 시나리오 (불완전한 요금은 전체 총액 미표시) |
-| `iac-policy.json`, `iac-policy.md` | Terraform plan JSON에서 **명시적으로 확인된 일부 위험 설정**을 R0001 등의 익명 식별자로 기록 |
-| `recommendation.md` | 비용·IaC 점검 상태, 미검증 범위 안내 |
-
-비용 입력은 [`.architecture/cost.example.json`](.architecture/cost.example.json)을 참고하세요. Price List 조회는 `--live-pricing` / `live_pricing=true`를 **명시적으로** 지정한 경우에만 수행하며, 별도의 AWS `pricing:GetProducts` 권한이 필요합니다. 단가와 가격 구간이 명확하지 않으면 추정하지 않습니다.
-
-Terraform 보안 검사는 `--terraform-plan .architecture/terraform-plan.json` 옵션을 통해 실행합니다. **원본 Terraform plan에는 비밀정보가 포함될 수 있으므로 Git에 올리지 마세요.** 이 도구는 Terraform을 실행하거나 AWS 계정을 조회하지 않으며 일부 리소스의 명시적 정책만 검사합니다.
-
-설치·비용·보안·유지보수 체크리스트는 **[비용·보안·운영 관리 가이드](docs/COST_SECURITY_OPERATIONS.md)** 를 참고하세요.
-
-## 13. P0 — 근거 계약과 추가 요구사항 질문 (Issue #10)
-
-정적 분석 결과를 `evidence-contract.json`으로 정리합니다. **코드 직접 관찰(Fxxxx)**, **설정 파일 기반 단서(Ixxxx)**, **명시적 사용자 입력(Rxxxx)**, **시스템 기본값**, **설계 가정(Axxxx)**, **미확인 질문(Uxxxx)**을 별개로 표시합니다.
-
-- 모든 직접 관찰에는 상대경로와 가능한 행 번호가 포함되지만 실제 운영 호출과 동일하다고 보증하지 않습니다.
-- `environment=dev` 등 입력하지 않은 기본값을 사용자의 결정이라고 표시하지 않습니다.
-- 평균·피크 RPS, 피크 동시 연결, 지연 목표 및 운영 우선순위는 요구사항 파일에서 입력할 수 있습니다. Next.js 렌더링 모드(`rendering_mode`: static_export/ssr/hybrid)와 문서형 DB 유지 여부(`document_database_strategy`: keep_existing/evaluate_migration)도 명시하면 질문을 반복하지 않습니다. 피크 RPS는 평균 이상이어야 합니다.
-- DB/인증 코드 단서가 발견되거나 사용자가 해당 조건을 명시했다면 같은 질문을 반복하지 않습니다.
-- 파서 오류가 있으면 `partial` 상태를 표시하고 미탐지를 기능 부재로 판단하지 않습니다.
-- 외부 AI에는 소스코드·파일경로·함수명을 보내지 않으며, 기본값을 사용자 입력인 것처럼 전송하지 않습니다.
-
-신규 산출물: `evidence-contract.json`, `evidence-report.md`, `requirements-gaps.json`. 업데이트된 [요구사항 입력 예시](.architecture/requirements.example.json)를 참고하세요.
-
-**다음 작업(#11):** 실제 코드 근거와 요구사항을 연결해 VPC·Subnet·AZ를 포함한 상세 AWS To-Be 설계를 구현합니다. 현재는 정적 분석과 기본 참조 설계이며 실제 AWS에 배포된 구조가 아닙니다.
-
-## 14. AWS To-Be 상세 네트워크·서비스 토폴로지 (Issue #11 기반 구현)
-
-기존 `architecture.svg/png`(AWS 아이콘 서비스 참조도)을 유지하고 `aws-topology.svg/png/dot`와 `aws-topology.json/md`를 추가했습니다.
-
-- **컨테이너:** ALB가 두 논리 AZ의 Public Subnet을 사용하도록 제안하고, ECS Fargate는 Private App Subnet에 배치합니다. DB 단서/요구가 있으면 별도 Private DB Subnet 2개와 RDS Subnet Group을 표현합니다.
-- **고가용성:** 사용자가 지정한 운영 환경·가용성 목표를 근거로 ECS 다중 AZ 및 RDS standby를 **제안**합니다. 실제 리소스 구성/복구가 검증된 것은 아닙니다.
-- **정적/서버리스:** VPC를 불필요하게 추가하지 않고 S3 OAC / CloudFront 또는 API Gateway / Lambda / 선택적 DynamoDB·Cognito를 구분합니다.
-- **정확성:** AZ-A/B는 설명용 기호입니다. 실제 AZ 이름·CIDR·Security Group·라우팅/NAT/VPC Endpoint·ACM·비용·피크 RPS에 따라 최종 구성이 바뀝니다.
-
-상세 원칙 및 남은 개발 과제는 [AWS 토폴로지 가이드](docs/TOPOLOGY.md)를 참고하세요. **Issue #11은 일부 완료 상태이며 AWS 최적 설계·실환경 검증이 완료된 것은 아닙니다.**
-
-## 15. 상세 AWS 아이콘 다이어그램과 네트워크 정책 (Issue #11 후속)
-
-`aws-topology.svg/png`은 **VPC/두 AZ/Subnet/서비스 아이콘이 통합된 한 장의 설계 후보**로 개선했습니다. 별도로 `network-policy.md`가 **ALB 공개/내부 선택, Private ECS NAT·Endpoint 아웃바운드, 컨테이너/DB 포트와 Security Group 통신 경계**를 사용자 입력 근거와 함께 제공합니다.
-
-컨테이너 서비스는 `alb_scheme`(`internet_facing` / `internal`) 및 `egress_strategy`(`undecided` / `nat_gateway` / `vpc_endpoints_only` / `nat_plus_endpoints`)를 설정할 수 있습니다. AWS에서 실제 통신 가능한지는 별도 계정·IAM·SG·라우트 검증이 필요합니다. 외부 인터넷 API 호출이 필요한데 VPC Endpoint만 선택한 경우 충돌을 표시합니다. 자세한 설명은 [TOPOLOGY.md](docs/TOPOLOGY.md)에 있습니다.
-
-## 16. AWS 서비스 선정·제외 근거 비교 (Issue #12 1차)
-
-AWS Architecture Decision Engine은 기존 참조 설계의 선택을 **자동 변경하지 않고**, Static(CloudFront+S3) / Lambda(API Gateway) / ECS Fargate(ALB) / EC2(ALB) / 모바일 백엔드의 **적합 조건·배제 이유·미확인 정보를 비교**합니다.
-
-- 장기 작업 실행시간(`max_job_duration_seconds`)과 호스트 직접 제어 필요(`requires_host_control`)를 선택적으로 명시할 수 있습니다.
-- 관계형 DB/API/Next.js SSR 요구가 있는데 현재 템플릿에 DB 계층이 없거나 정적 실행 계층만 있으면 **현재 참조안 자동 채택 차단**으로 기록합니다.
-- AWS Lambda의 일반 구성 900초 제약을 참고하되 특별한 Lambda 실행 모델/비동기 호출에는 별도 제한이 있으므로 서비스 전체가 불가능하다고 단정하지 않습니다.
-- EC2는 **운영 관리 부담과 호스트 제어 요구 비교용**이며 현 단계에서 자동 AWS To-Be 배포 설계로 선정하지 않습니다.
-- 예상 청구액, 속도, SLO 점수/승인 결과를 생성하지 않습니다. 사용자 승인 없이 추천안을 바꾸거나 AWS를 배포하지 않습니다.
-
-`architecture-decision-matrix.json/md`와 [상세 의사결정 기준](docs/DECISIONS.md)을 참고하세요. **Issue #12는 1차 구현이며 복합 백엔드·서비스별 정확한 배포 패턴과 실측 가격/성능 비교는 후속 과제**입니다.
-
-## 17. 데이터 접근 패턴·EC2 대안·ADR 승인 상태 (Issue #12 후속)
-
-AWS 서비스 결정 전에 **관계형 트랜잭션, 문서형 조회, 키 기반 접근**을 구분합니다. `data_access_pattern`은 `undecided`, `relational_transactions`, `document_queries`, `key_value` 중 선택합니다. 기존 SQL/MongoDB 의존성 단서는 실행 증명이 아니며 **DB 이전을 자동 선택하지 않습니다**. `database_migration_approved`는 *이전 가능성 검토 의사*를 나타낼 뿐 자동 마이그레이션 동의/실행권이 아닙니다.
-
-새 결과물은 `data-access-decision.json/md`, `decision-record.json/md`입니다. ADR은 **명시적 사용자 요구/시스템 기본값을 분리**하고 선정 근거·대안 제외 이유·DB 선택 미완료·사람 승인 상태를 기록합니다.
-
-현재 컨테이너 아키텍처에서는 별도 `ec2-alternative/` 디렉터리에 **EC2 Auto Scaling 참조 토폴로지 SVG/PNG/JSON/한국어 보고서**를 제공합니다. 원래 ECS Fargate 설계는 유지하며, EC2의 OS 패치·AMI·IAM·SSM·Private Egress 비용은 별도 검토합니다. 실제 배포/자동 전환은 없습니다.
-
-설명: [서비스 결정 및 ADR](docs/DECISIONS.md).
-
-## 18. 보안·확장성·모니터링·백업 운영 설계 (Issue #13 1차)
-
-이제 권장 아키텍처에 연결된 **security-operations.json/md**를 생성합니다. 실제 To-Be 토폴로지의 ALB/ECS/RDS, CloudFront/S3 또는 API Gateway/Lambda에 대해서만 보안 접근 정책·오토스케일 후보·CloudWatch 경보·백업·운영/롤백 전략을 제공합니다.
-
-- **트래픽:** 입력된 평균·피크 RPS, 지연 목표를 근거로 ECS CPU/메모리/ALB 대상 요청 지표 또는 Lambda 동시성/실행시간/오류·제한 지표를 검토합니다. 타깃 임계값, 실제 태스크 수, Lambda 동시성, 서비스 쿼터는 실측 전까지 **미정(null)** 입니다.
-- **보안:** ALB 공개/내부 경계, ALB SG→ECS SG→DB SG 최소 통신 의도, IAM·Secrets·암호화·사용자 인증/인가 검토를 제공합니다. 실제 보안그룹·IAM을 생성/검사하지 않습니다.
-- **운영:** CloudWatch 경보 후보, 배포·롤백·로그 관리, Multi-AZ 및 RDS 백업/복원·RTO/RPO 검증 항목을 제공합니다. 장애 테스트 없이 SLA 충족을 보장하지 않습니다.
-- **근거와 한계:** AWS Well-Architected 6개 원칙별 검토 상태를 제공하되, **모두 review_required**이고 보안·성능·가용성 인증을 수행하지 않습니다.
-
-[운영·보안·확장 설계 가이드](docs/OPERATIONS.md)에서 역할별 상세 기준을 확인할 수 있습니다.
-
-## 19. 사용자용 통합 결과물 (Issue #14)
-
-이제 수동 실행 Artifact에서 **START-HERE.html**을 열면, 기존에 나뉘어 있던 AWS To-Be 다이어그램, 서비스 선정·제외 이유/ADR, Security & Operations, Cost & Capacity를 **한 페이지에서** 검토할 수 있습니다. 로컬에서 HTML을 열면 외부 JavaScript·CSS·이미지 호출 없이 도식이 표시됩니다. **START-HERE.md**와 **deliverables/** 아래 4개 주요 출력도 함께 생성합니다.
-
-AWS As-Is(저장소 정적 코드 관찰)와 To-Be(AWS 논리 설계 후보), 시스템 기본값·사용자 명시 요구·미검증 항목, 실제 비용 부분합/미산정을 명확히 구분합니다. 검토를 마친 뒤 요구사항 JSON을 수정하고 GitHub Actions에서 재분석할 수 있습니다.
-
-자세한 사용 절차·보안·시각 QA의 한계는 [사용자 보고서 안내](docs/REPORTING.md)를 참고하세요. **이는 실제 계정의 운영 적합성/비용/보안이 검증된 결과가 아닙니다.**
-
-## 20. AWS 비용 최소·기준·피크 비교 (Issue #15 기반 구현)
-
-AWS 비용 입력 파일은 기존 단일 사용량 형식(v1) 외에 **최소/기준/피크 3개 월 사용량**을 개별적으로 명시하는 v2 형식을 지원합니다. 리전과 서비스 분류(예: ALB·ECS Fargate·RDS·NAT·CloudWatch 로그/전송)를 표기하면 AWS To-Be 토폴로지와 비교해 **누락된 비용 항목**을 알려줍니다. 비어 있는 서비스 단가는 **미산정**으로 표시하며, AWS 전체 견적/최적 서비스 선택의 정량 검증으로 사용하지 않습니다.
-
-[비용 시나리오 가이드](docs/COST_SCENARIOS.md) / [안전한 예시 JSON](examples/cost-scenarios.example.json) / 주요 사용자 보고서 `START-HERE.html`의 비용·용량 비교를 참고하세요. **실제 AWS 단가·SKU/계층형 요금·부하 측정은 별도 검증 대상**이며 Issue #15는 개발 진행 중입니다.
-
-## 21. 대표 프로젝트 10종 회귀 및 수동 시각 QA (Issue #16 기반)
-
-Vite, Next.js Static/SSR, FastAPI, NestJS, Prisma/PostgreSQL, MongoDB, Serverless, Expo, 보안·고가용성/호스트 제어 조건 등 **10개 가상 대표 저장소**를 실제 파이프라인으로 처리하는 Golden CI 회귀 테스트를 추가했습니다. 코드 관찰/미확인 구분·DB/네트워크 노드·한글 HTML 및 SVG/PNG 생성·링크/해시·비용 미산정/승인 전 상태를 검증합니다.
-
-**수동 브라우저 QA(아직 미완료)**가 필요하면 Actions → Run workflow → **golden_qa=true**를 선택해, 별도 `aws-architecture-golden-fixtures` Artifact를 생성하고 `golden-index.md`에 있는 10개 사례를 검토할 수 있습니다. 코드 push/PR에서 이 선택형 대량 Artifact는 생성하지 않습니다.
-
-[대표 프로젝트 검증 및 수동 QA 가이드](docs/GOLDEN_QA.md). 가상 fixture 회귀 통과를 실제 고객 저장소·AWS 운영 적합성/수치 정확도로 주장하지 않습니다.
-
-## 22. AWS Price List 계층형 요금 해석 (#15 2차)
-
-최소/기준/피크 월 사용량(v2)을 입력하고 `live_pricing=true`를 **명시적으로 선택**하면, AWS Price List Query의 **단일 SKU·단일 OnDemand·동일 단위**에서 각 구간의 `beginRange/endRange`와 USD 단가가 명확한 경우에만 누적 구간별 예상 비용을 계산합니다. 상품 후보 중복, 여러 가격 차원 혼합, 리전 불일치 또는 계정 공유 무료 한도 등의 상황에서는 계산하지 않고 **미산정**으로 표시합니다. 기본값은 가격 API 조회 비활성화입니다.
-
-이 결과는 **입력된 서비스/사용량 범위의 부분 비용**입니다. 계정 전체 인프라 비용, 실제 청구액, 서비스별 최적/최저가 선정 또는 RPS 기반 용량 검증은 수행하지 않습니다. [계층 가격 공식·지원 조건](docs/COST_SCENARIOS.md)을 참고하세요.
-
-## 23. ECS/EC2/Lambda 동일 업무량 비용·유지보수 비교 (Issue #15 후속)
-
-기존 최소/기준/피크 비용 비교에 더해, **같은 월 API 요청량을 처리하는 AWS 실행 대안 2~3개**의 비용 입력값과 보안·운영·패치 책임을 분리해 비교할 수 있습니다. `--alternative-cost-input` 또는 GitHub Actions 수동 `alternative_cost_input`으로 비기밀 JSON 파일을 지정합니다.
-
-- **공통 업무량**: 월 최소/기준/피크 요청량·피크 RPS와 리전을 한 번 입력하고, Fargate/EC2/Lambda 후보가 공유합니다.
-- **대안별 실제 입력**: ECS vCPU·메모리/ALB, EC2 인스턴스/ALB·EBS, Lambda 요청·GB-Seconds/API Gateway 등의 사용량과 가격은 직접 입력하며 자동 환산하지 않습니다.
-- **검증·비교 차단**: 기존 요구사항 또는 서비스 블로커, 필수 비용 분류 누락, 미확인 단가가 있으면 대안별 전체 차액/비용 순위를 만들지 않습니다.
-- **운영 유지보수**: 호스트 OS 패치/AMI/SSM·Task/Execution Role·CloudWatch·Auto Scaling/동시성 등의 책임 및 확인 기준을 대안별로 구분합니다.
-- **출력**: `alternative-cost-comparison.json/md`, `START-HERE.html`, `deliverables/04-cost-capacity.md`에 입력 범위 한정 비교가 표시됩니다. 기존 선택 패턴, ADR·AWS 다이어그램·실제 배포는 변경하지 않습니다.
-
-[사용법·판정 범위](docs/ALTERNATIVE_COST_COMPARISON.md) · [비밀정보 없는 예제 JSON](examples/alternative-cost-comparison.example.json). **이 결과는 서비스별 실제 비용 우열·성능·보안/가용성의 검증 결과가 아닙니다.**
-
-## 24. 집계 부하 테스트로 피크 RPS·지연·오류율 검토 (Issue #15 4차)
-
-저장소 외부의 AWS 계정/서비스를 직접 시험하지 않고, **사용자가 자체 부하 테스트에서 기록한 비기밀 집계 결과**를 검토합니다. 선택형 `--capacity-evidence` 또는 GitHub Actions `capacity_evidence`에 저장소 내부 JSON 경로를 지정합니다. 입력된 처리량·p95 응답시간·오류율·테스트 지속시간을 사용자가 명시한 목표와 비교합니다. 처리 성능을 자동 검증했다고 주장하지 않습니다.
-
-- Fargate/EC2: 사용자가 명시적으로 선형 확장 가정에 동의한 경우에만 참조용 Task/인스턴스 수 산술을 제시하고 실제 필요한 용량이라고 표시하지 않습니다.
-- Lambda: 제출된 평균 실행시간에 목표 RPS를 곱한 **정상상태 이론 동시성**만 표시하며 순간 피크·쿼터/예약 동시성 검증 전입니다.
-- 기존 비용 대안과 동시에 입력할 때 후보/워크로드/리전 불일치·관측치 미달은 비용 차액 표기를 중단합니다. 검증된 AWS 최저가로 자동 선정하거나 실제 AWS 용량 및 요금 입력을 수정하지 않습니다.
-- 산출물: `capacity-evidence.json/md`, START-HERE.html, `deliverables/04-cost-capacity.md`. AWS 자격증명/테스트 원본 로그는 수집하지 않습니다.
-
-[부하 테스트 근거 사용 가이드](docs/CAPACITY_EVIDENCE.md) · [합성 입력 예제](examples/capacity-evidence.example.json). **실제 부하 테스트·운영 환경·보안·용량·쿼터는 검증되지 않았습니다.**
+| [제품 동작/지원 범위](docs/PRODUCT.md) | 신규·온프레미스 모드 차이와 현재 한계 |
+| [간편 제품 로드맵](docs/LEAN_MIGRATION_ROADMAP.md) | 다음 개발 우선순위 |
+| [사용자 보고서](docs/REPORTING.md) | HTML/산출물 확인법 |
+| [요구사항·비용 입력](docs/COST_SCENARIOS.md) | 고급 요금 시나리오 |
+| [부하 테스트 입력](docs/CAPACITY_EVIDENCE.md) | 입력된 성능 집계값 검토 |
+| [AWS 서비스 대안 비용](docs/ALTERNATIVE_COST_COMPARISON.md) | ECS/EC2/Lambda 입력 비용·운영 비교 |
+| [개발자 기술 구성](docs/ARCHITECTURE.md) | 코드 파서·보안 경계·아키텍처 구성 |
+
+**Local AWS Inspector**와 로컬 온프레미스 수집기는 아직 미구현입니다. GitHub App 서버 코드는 실제 설치·운영되는 서비스가 아니며 필수 설치 대상이 아닙니다. IaC 자동 생성/자동 배포는 제품 범위 밖입니다.
