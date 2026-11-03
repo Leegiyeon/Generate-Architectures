@@ -251,3 +251,9 @@ CLI/Action 입력 `alternative_cost_input`은 선택적이며, 기본 상태는 
 ECS/EC2는 사용자가 선형 외삽을 명시적으로 허용한 경우에만 가설적 개수, Lambda는 평균 실행시간의 정상상태 이론 동시성만 산출합니다. `production_ready=false`, `evidence_authenticity_verified=false`, `autoscaling_verified=false`, `aws_quotas_verified=false`를 유지하며, 비용의 인스턴스·Task 수량을 자동 변경하지 않습니다.
 
 `run()`은 `--capacity-evidence`를 선택적으로 사용하고 `capacity-evidence.json/md`를 별도로 생성합니다. 다른 비용 대안 파일이 있을 때는 사용자 업무량 및 후보 집합을 교차 검사해 관측 결과가 불충분하거나 목표에 못 미치면 대안 비용 차액 출력을 차단합니다. [입력·한계](CAPACITY_EVIDENCE.md).
+
+## 온프레미스 선언형 Inventory · As-Is (#34)
+
+`scripts/onprem_inventory.py`에서 16KB 이하 비기밀 서버 정보(최대 8개)와 **명시적** 연결만 수용합니다. 숫자/허용 필드/ID/안전한 경로를 엄격하게 검사하며 IP·접근키·세부 ACL·원시 로그·도메인·비밀정보 필드는 받지 않습니다. 저장소의 DB 패키지/설정 단서는 별도 `code_observations`로 기록하며 실제 DB 서버 위치에 자동 매핑하지 않습니다. `scripts/render_onprem_as_is.py`는 자체완결형 SVG를 별도로 그립니다. AWS To-Be 논리도 및 결정/ADR은 변경하지 않습니다.
+
+`migrate_onprem`에서 기본 `.architecture/onprem-inventory.json`을 자동 탐색하고, 없으면 기존 `needs_input`/미확인 메시지와 승인 보류를 유지합니다. 결과물은 `as-is-inventory.json/md`, `as-is-topology.svg`, 사용자 HTML/Markdown과 `artifact-index.json` 보조 파일 해시입니다. 사용자 선언은 검증된 사실로 승격하지 않으며 Migration Assessment는 아직 구현되지 않았습니다. 자세한 입력 규격은 [ONPREM_INVENTORY.md](ONPREM_INVENTORY.md)에서 확인합니다.
