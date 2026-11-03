@@ -97,3 +97,7 @@
 ## 선택형 데이터 접근 및 EC2 대안 설계
 
 프로젝트 DB 의존성 또는 `data_access_pattern` 사용자 요구가 있다면 기존 DB를 새 AWS DB로 강제 전환하지 않고 각 선택의 검증 조건을 출력합니다. `decision-record.json/md`에는 명시적 요구/기본값과 사용자 승인 대기를 구분합니다. Fargate 참조안이 선택되면 `ec2-alternative/`에 독립 EC2/ASG To-Be 논리도가 추가됩니다. 이는 실제 AWS 배포/검증을 수행하는 기능이 아닙니다.
+
+## 보안·확장성·운영 제안 (Issue #13)
+
+새로 제공하는 security-operations.json/md에는 선택한 AWS To-Be 토폴로지와 실제로 연결되는 IAM/SG·Auto Scaling 후보·CloudWatch 알림·백업·복구·롤백 검토 사항을 포함합니다. 운영 임계값·최소/최대 태스크 수·API 쿼터·SLA는 실제 AWS 계정/부하 시험 없이 결정하지 않습니다. 이 산출물은 운영 적합성 인증이 아니라 검토용 제안입니다.
