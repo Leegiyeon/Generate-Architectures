@@ -13,6 +13,8 @@ if __package__:
     from .ai_architecture_agent import review_architecture, markdown_ai_review
     from .cost_estimator import read_cost_inputs, estimate_costs, markdown_cost
     from .cost_scenarios import correlate_topology_costs
+    from .alternative_cost_comparison import (read_alternative_cost_input,
+                                              compare_alternatives, markdown_comparison)
     from .iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from .architecture_validator import validate_architecture, markdown_validation, markdown_adr
     from .evidence_contract import build_evidence_contract, markdown_evidence
@@ -34,6 +36,8 @@ else:
     from ai_architecture_agent import review_architecture, markdown_ai_review
     from cost_estimator import read_cost_inputs, estimate_costs, markdown_cost
     from cost_scenarios import correlate_topology_costs
+    from alternative_cost_comparison import (read_alternative_cost_input,
+                                            compare_alternatives, markdown_comparison)
     from iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from architecture_validator import validate_architecture, markdown_validation, markdown_adr
     from evidence_contract import build_evidence_contract, markdown_evidence
@@ -83,7 +87,7 @@ def design(found, kind, budget):
 
 def run(repo, output, workload="auto", budget=None, requirements_file=None,
         ai_enabled=False, ai_model="gpt-6-luna", cost_input=None,
-        live_pricing=False, terraform_plan=None):
+        live_pricing=False, terraform_plan=None, alternative_cost_input=None):
     """구현 범위: 읽기 전용 정적 분석 및 검토용 AWS 참조 설계 생성."""
     root = Path(repo).resolve()
     if not root.is_dir():
@@ -214,6 +218,18 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         estimate_costs(read_cost_inputs(root, cost_input), live=live_pricing),
         topology, requirements,
     )
+    # 대안 비용 비교는 명시적인 동일 월 업무량과 실행 패턴별 사용량이 입력될 때만 수행.
+    # 기존 cost_estimate와 ADR은 변경하지 않으며 가격 미확인/제약 충돌 시 비교를 거부합니다.
+    alternative_cost = compare_alternatives(
+        read_alternative_cost_input(root, alternative_cost_input),
+        requirements, decision_matrix, live=live_pricing,
+    )
+    result["alternative_cost_comparison"] = {
+        "file": "alternative-cost-comparison.json",
+        "status": alternative_cost["status"],
+        "auto_selected": False,
+        "candidates": len(alternative_cost["candidates"]),
+    }
     # Terraform plan 파일은 민감 원문을 포함할 수 있어 결과에는 익명화된 위험만 기록.
     iac_report = inspect_terraform_plan(read_terraform_plan(root, terraform_plan))
     result["cost_estimate"] = {
@@ -264,6 +280,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         }),
         ("ai-review.json", ai_review),
         ("cost-estimate.json", cost_report),
+        ("alternative-cost-comparison.json", alternative_cost),
         ("iac-policy.json", iac_report),
         ("validation.json", validation),
         ("repository-analysis.json", profile),
@@ -280,6 +297,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     (out / "data-access-decision.md").write_text(markdown_data_access(data_review), encoding="utf-8")
     (out / "security-operations.md").write_text(markdown_operations(operations_plan), encoding="utf-8")
     (out / "cost-estimate.md").write_text(markdown_cost(cost_report), encoding="utf-8")
+    (out / "alternative-cost-comparison.md").write_text(
+        markdown_comparison(alternative_cost), encoding="utf-8")
     (out / "iac-policy.md").write_text(markdown_iac(iac_report), encoding="utf-8")
     (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
     (out / "decision-record.md").write_text(markdown_decision_record(adr), encoding="utf-8")
@@ -342,6 +361,11 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- 트래픽/오토스케일 정책 검토: " + str(len(operations_plan["scaling"]["policies"])) + "개\n"
     report += "- CloudWatch 경보 후보: " + str(len(operations_plan["alerts"])) + "개\n"
     report += "- 파일: `security-operations.json/md` (임계값·실측·AWS IAM·SLO 검증 전)\n"
+    report += "\n## 18. 동일 업무량 AWS 대안 비용·유지보수 비교\n\n"
+    report += "- 사용자 입력 대안 비교 상태: " + alternative_cost["status"] + "\n"
+    report += "- 대안별 월간 비용은 사용자가 입력한 항목만 산정하며 AWS 전체 총액이 아닙니다.\n"
+    report += "- 대안별 차단 조건 및 패치/IAM/Auto Scaling 등 운영 책임을 별도로 표시합니다.\n"
+    report += "- 파일: `alternative-cost-comparison.json/md` (실측·승인·자동 선정 없음)\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:
@@ -353,7 +377,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     # 원본 JSON과 중간 보고서는 이전 버전 호환을 위해 그대로 유지합니다.
     bundle = generate_user_bundle(out, result, topology, graph, contract,
                                   decision_matrix, adr, operations_plan,
-                                  cost_report, validation)
+                                  cost_report, validation,
+                                  alternative_comparison=alternative_cost)
     result["user_report"] = bundle
     (out / "architecture.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -376,13 +401,15 @@ def main():
                         help="외부 OpenAI API로 비기밀 구조화 분석 근거를 전송합니다 (명시적 동의 필요)")
     parser.add_argument("--ai-model", default="gpt-6-luna", help="지원되는 Responses API 모델 ID")
     parser.add_argument("--cost-input", default=None, help="비기밀 월 사용량과 단가 출처 JSON (선택)")
+    parser.add_argument("--alternative-cost-input", default=None,
+                        help="동일 업무량 ECS/EC2/Lambda 비용·유지보수 비교 JSON (선택)")
     parser.add_argument("--live-pricing", action="store_true", help="AWS Price List API 실시간 조회 (명시적 활성화, 읽기 권한 필요)")
     parser.add_argument("--terraform-plan", default=None, help="terraform show -json으로 만든 로컬 plan JSON 파일 (민감 정보 포함 주의)")
     args = parser.parse_args()
     try:
         run(args.repo, args.output, args.workload, args.budget, args.requirements,
             args.enable_ai, args.ai_model, args.cost_input,
-            args.live_pricing, args.terraform_plan)
+            args.live_pricing, args.terraform_plan, args.alternative_cost_input)
     except (ValueError, OSError) as exc:
         parser.error(str(exc))
 

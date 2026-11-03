@@ -77,3 +77,7 @@ AWS 공식 [Price List의 티어 문서](https://docs.aws.amazon.com/awsaccountb
 **v1 단일 수량 형식은 기존 동작을 유지**하며 v1 계층 요금은 미산정입니다. 계층 해석은 현재 v2 입력 형식에 한정합니다. 여러 상품을 결합하는 스토리지/전송/요청 과금, AWS 전체 청구액, 공식 Pricing Calculator 실제 사례/운영 비용 대조는 아직 후속 검증 대상입니다.
 
 공식 자료: [AWS GetProducts API](https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html), [AWS 서비스 가격표 차원](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/reading-service-price-list-file-for-services.html).
+
+## ECS Fargate / EC2 / Lambda 동일 업무량 비교 입력 (3차 기능)
+
+이전의 단일 AWS 선택안 비용 시나리오와 별도로, 두 개 이상 실행 대안의 월 요청량을 공통으로 고정하고 각각의 서비스 사용량·요금 항목을 입력할 수 있습니다. 이는 피크 RPS를 CPU/메모리/동시 실행 수로 환산하는 것이 아니므로 실측 없이 성능 동등성을 주장하지 않습니다. [예제 JSON](../examples/alternative-cost-comparison.example.json)과 [상세 판정 기준](ALTERNATIVE_COST_COMPARISON.md)을 참조하세요. 결과는 `alternative-cost-comparison.json/md` 및 HTML 비용 영역에 추가됩니다.

@@ -81,7 +81,8 @@ def cost_capacity_markdown(cost, operations, topology):
     return "\n".join(rows)
 
 def generate_user_bundle(out, architecture, topology, graph, contract,
-                         decision_matrix, adr, operations, cost, validation):
+                         decision_matrix, adr, operations, cost, validation,
+                         alternative_comparison=None):
     """모든 기존 산출물이 생성된 후 실행하는 오프라인 읽기 전용 보고 단계."""
     out=Path(out)
     selected=next(c for c in decision_matrix["candidates"] if c["is_current_reference"])
@@ -112,8 +113,18 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
         "\n## 3. ADR 및 최종 승인 기준\n\n"+
         (out/"decision-record.md").read_text(encoding="utf-8"))
     (destination/"02-architecture-decisions.md").write_text(decisions,encoding="utf-8")
+    # 동일 업무량 비용 비교는 선택 입력이며 기본 미입력 상태도 명확히 안내합니다.
+    comparison_note = ""
+    if alternative_comparison is not None:
+        try:
+            from .alternative_cost_comparison import markdown_comparison
+        except ImportError:
+            from alternative_cost_comparison import markdown_comparison
+        comparison_note = ("\n\n## AWS 실행 대안의 동일 업무량 비용·유지보수 비교\n\n" +
+                           markdown_comparison(alternative_comparison))
     (destination/"04-cost-capacity.md").write_text(
-        cost_capacity_markdown(cost,operations,topology),encoding="utf-8")
+        cost_capacity_markdown(cost,operations,topology) + comparison_note,
+        encoding="utf-8")
     blocked=(validation["decision_gate"]=="blocked" or
              topology["status"]=="blocked_for_review" or
              decision_matrix["status"]=="blocked_for_review")
@@ -194,6 +205,13 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
          "3. 다운로드한 Artifact에서 START-HERE.html을 우선 확인합니다.", "",
          "[전체 기술 보고서](recommendation.md) · [정적 검증](validation.md) · [결과물 해시](artifact-index.json)", "",
          "**주의:** 실제 운영 인프라의 보안/가용성/비용은 이 도구로 검증하지 않았습니다.",""]
+    if alternative_comparison is not None:
+        md.extend(["", "## 7. 동일 업무량의 ECS/EC2/Lambda 입력 비용 비교", "",
+                   "- 상태: " + markdown_value(alternative_comparison["status"]),
+                   "- 동일 업무량·명시 요금·서비스 제약이 모두 충족되지 않으면 대안별 비용 순위를 정하지 않습니다.",
+                   "- 운영 책임: 패치/IAM/오토스케일/모니터링 등 직접 검토해야 합니다.",
+                   "- [대안 비용 비교 보고서](alternative-cost-comparison.md)",
+                   ""])
     (out/"START-HERE.md").write_text("\n".join(md),encoding="utf-8")
 
     def li(values, limit=7):
@@ -251,6 +269,24 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
                  "분류상 없음 (SKU·사용량 검증 전)") +
             ". 전체 AWS 청구액 검증이 아닙니다.</p>"
         )
+    comparison_html = ""
+    if alternative_comparison is not None:
+        summary = alternative_comparison
+        brief = "".join(
+            row(c["id"], c["status"],
+                c["scenarios"]["baseline"]["provided_items_total_usd"] or "미산정",
+                ", ".join(c["missing_categories"]) or "없음 (SKU 검증 전)")
+            for c in summary["candidates"])
+        comparison_html = (
+            "<h3>ECS/EC2/Lambda 동일 업무량 비용·운영 책임 (입력 조건 한정)</h3>"
+            "<p class='caution'>상태: " + safe(summary["status"]) +
+            ". 가격/용량/성능 검증 없이 AWS 최저가를 자동 추천하지 않습니다.</p>"
+            "<table><thead><tr><th>실행 패턴</th><th>검토 상태</th><th>기준 월 입력 항목 합계 USD</th>"
+            "<th>미입력 서비스 분류</th></tr></thead><tbody>" +
+            (brief or "<tr><td colspan='4'>대안 비교 입력 없음</td></tr>") +
+            "</tbody></table><div class='links'><a href='alternative-cost-comparison.md'>"
+            "대안 비용·유지보수 비교 자세히</a></div>"
+        )
     html_doc=(
         "<!doctype html><html lang='ko'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -304,7 +340,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "<br>입력 SKU만 계산하며 실제 AWS 총액, 할인/세금/데이터 전송, RPS 처리량을 보장하지 않습니다.</p>"
         "<table><thead><tr><th>항목</th><th>사용량</th><th>가격 상태</th><th>금액 USD</th></tr>"
         "</thead><tbody>"+cost_html+"</tbody></table>"
-        + scenario_html +
+        + scenario_html + comparison_html +
         "<p>입력 피크 RPS: <b>"+
         (safe(operations["scaling"]["demand"]["peak_rps"])
          if operations["scaling"]["demand"]["peak_rps"] is not None else "미입력")+
