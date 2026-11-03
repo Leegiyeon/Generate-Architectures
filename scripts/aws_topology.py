@@ -149,7 +149,7 @@ def design_aws_topology(architecture, profile, requirements, contract):
             "id": "NET-EVIDENCE-PARTIAL", "title": "코드 분석이 완료되지 않음",
             "action": "분석 실패 파일과 미지원 구문을 확인하고 API/DB 구조 오탐 가능성을 검토하세요.",
         })
-    if not requirements.get("peak_rps"):
+    if "peak_rps" not in requirements:
         reviews.append({
             "id": "NET-TRAFFIC", "title": "피크 트래픽 미확인",
             "action": "피크 RPS·동시 연결·지연 목표를 입력한 뒤 스케일링 및 용량을 산정하세요.",
