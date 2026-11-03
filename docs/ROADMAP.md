@@ -78,3 +78,5 @@
 - [Issue #15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) **2차 진전**: Price List Query의 단일 SKU/단위에서 연속된 OnDemand 계층별 USD 가격·기준일 기록, 보수적 미지원 차원 차단 및 가상 공식 형식 회귀 추가. **미완료**: 공식 SKU별 라이브 검증/특별 계약·Free Tier·서비스 조합/대안 비교, 실제 워크로드 기반 용량.
 
 - [Issue #15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) 3차 진전: 사용자 제공 **동일 월 업무량의 ECS/EC2/Lambda 비용 항목 비교**, 서비스별 운영/보안/패치 책임, 요구사항·입력 금액·기본 비용 분류 충돌 차단 구현. **후속:** 동일 워크로드에서 실제 처리량/용량과 공식 리전별 SKU 가격 및 전체 청구 범위가 검증된 비교는 미완료.
+
+- [Issue #15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) 4차 진전: **사용자가 제출한 집계형 부하 테스트 데이터**로 대상 워크로드의 RPS/p95/오류율/시험 지속시간을 명시 목표와 비교, Lambda 이론 정상상태 동시성 및 옵트인한 ECS/EC2 선형 산술 계획 수량 참고. 요구 미달·후보 누락 시 비용 차액 표기 중단. **미완료:** 실제 AWS 부하/쿼터·운영 환경 성능 검증과 검증된 단가·정확한 필요 용량 및 서비스별 전체 비용 산정.

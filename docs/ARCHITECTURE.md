@@ -243,3 +243,11 @@ v1 비용 JSON은 호환 유지, `cost-estimate.json/md`와 `deliverables/04-cos
 비교된 후보가 기존 결정 매트릭스에서 사용자 요구 충돌로 차단되거나, 입력 리전/피크 RPS·월 요청 수가 맞지 않거나, AWS 가격·기본 비용 분류가 누락되면 모델 차액을 표시하지 않습니다. 모든 값이 있더라도 `modeled_items_comparable_unverified` 상태에 한정하며 `recommended_by_cost=null`, `production_ready=false`, `auto_selected=false`, `capacity_benchmarked=false`입니다. 선택된 다이어그램과 ADR을 변경하지 않습니다.
 
 CLI/Action 입력 `alternative_cost_input`은 선택적이며, 기본 상태는 `needs_input`입니다. `alternative-cost-comparison.json/md`와 사용자용 오프라인 HTML/비용 상세 보고서에 결과를 반영합니다. 상세 설명은 [ALTERNATIVE_COST_COMPARISON.md](ALTERNATIVE_COST_COMPARISON.md).
+
+## Capacity Evidence Inspector (Issue #15 4차)
+
+`scripts/capacity_evidence.py`는 사용자가 준비한 32KB 이하 집계 부하 테스트 JSON의 형식, 범위, 업무량 ID, AWS 리전, 사용자 입력 RPS/p95 목표와 보고서가 일치하는지 검토합니다. 허용된 수치와 짧은 ID만 읽고 실제 API 요청/계정 접근이나 성능 시험을 수행하지 않습니다. 테스트 결과는 AWS 계정·운영 SLO 또는 진위 검증 없이 `observed_targets_met_limited` 범위에서만 판단됩니다.
+
+ECS/EC2는 사용자가 선형 외삽을 명시적으로 허용한 경우에만 가설적 개수, Lambda는 평균 실행시간의 정상상태 이론 동시성만 산출합니다. `production_ready=false`, `evidence_authenticity_verified=false`, `autoscaling_verified=false`, `aws_quotas_verified=false`를 유지하며, 비용의 인스턴스·Task 수량을 자동 변경하지 않습니다.
+
+`run()`은 `--capacity-evidence`를 선택적으로 사용하고 `capacity-evidence.json/md`를 별도로 생성합니다. 다른 비용 대안 파일이 있을 때는 사용자 업무량 및 후보 집합을 교차 검사해 관측 결과가 불충분하거나 목표에 못 미치면 대안 비용 차액 출력을 차단합니다. [입력·한계](CAPACITY_EVIDENCE.md).

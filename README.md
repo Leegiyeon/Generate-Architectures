@@ -330,3 +330,14 @@ Vite, Next.js Static/SSR, FastAPI, NestJS, Prisma/PostgreSQL, MongoDB, Serverles
 - **출력**: `alternative-cost-comparison.json/md`, `START-HERE.html`, `deliverables/04-cost-capacity.md`에 입력 범위 한정 비교가 표시됩니다. 기존 선택 패턴, ADR·AWS 다이어그램·실제 배포는 변경하지 않습니다.
 
 [사용법·판정 범위](docs/ALTERNATIVE_COST_COMPARISON.md) · [비밀정보 없는 예제 JSON](examples/alternative-cost-comparison.example.json). **이 결과는 서비스별 실제 비용 우열·성능·보안/가용성의 검증 결과가 아닙니다.**
+
+## 24. 집계 부하 테스트로 피크 RPS·지연·오류율 검토 (Issue #15 4차)
+
+저장소 외부의 AWS 계정/서비스를 직접 시험하지 않고, **사용자가 자체 부하 테스트에서 기록한 비기밀 집계 결과**를 검토합니다. 선택형 `--capacity-evidence` 또는 GitHub Actions `capacity_evidence`에 저장소 내부 JSON 경로를 지정합니다. 입력된 처리량·p95 응답시간·오류율·테스트 지속시간을 사용자가 명시한 목표와 비교합니다. 처리 성능을 자동 검증했다고 주장하지 않습니다.
+
+- Fargate/EC2: 사용자가 명시적으로 선형 확장 가정에 동의한 경우에만 참조용 Task/인스턴스 수 산술을 제시하고 실제 필요한 용량이라고 표시하지 않습니다.
+- Lambda: 제출된 평균 실행시간에 목표 RPS를 곱한 **정상상태 이론 동시성**만 표시하며 순간 피크·쿼터/예약 동시성 검증 전입니다.
+- 기존 비용 대안과 동시에 입력할 때 후보/워크로드/리전 불일치·관측치 미달은 비용 차액 표기를 중단합니다. 검증된 AWS 최저가로 자동 선정하거나 실제 AWS 용량 및 요금 입력을 수정하지 않습니다.
+- 산출물: `capacity-evidence.json/md`, START-HERE.html, `deliverables/04-cost-capacity.md`. AWS 자격증명/테스트 원본 로그는 수집하지 않습니다.
+
+[부하 테스트 근거 사용 가이드](docs/CAPACITY_EVIDENCE.md) · [합성 입력 예제](examples/capacity-evidence.example.json). **실제 부하 테스트·운영 환경·보안·용량·쿼터는 검증되지 않았습니다.**

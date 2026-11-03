@@ -32,6 +32,10 @@ inputs:
     description: "선택: 저장소 내부 비기밀 비용 사용량 JSON (미입력 시 미산정)"
     required: false
     default: ""
+  capacity_evidence:
+    description: "선택: 사용자 제공 집계 부하 테스트 JSON 경로 (AWS 테스트 실행/조회 없음)"
+    required: false
+    default: ""
   alternative_cost_input:
     description: "선택: 동일 월 업무량 ECS/EC2/Lambda 대안 비용·운영 책임 비교 JSON"
     required: false
@@ -87,6 +91,7 @@ runs:
         INPUT_AI_MODEL: ${{ inputs.ai_model }}
         INPUT_COST_FILE: ${{ inputs.cost_input }}
         INPUT_ALTERNATIVE_COST_FILE: ${{ inputs.alternative_cost_input }}
+        INPUT_CAPACITY_EVIDENCE: ${{ inputs.capacity_evidence }}
         INPUT_LIVE_PRICING: ${{ inputs.live_pricing }}
         INPUT_TERRAFORM_PLAN: ${{ inputs.terraform_plan }}
         ACTION_SCRIPT: ${{ github.action_path }}/scripts/recommend_architecture.py
@@ -107,6 +112,9 @@ runs:
         esac
         if [[ -n "$INPUT_COST_FILE" ]]; then
           set -- "$@" --cost-input "$INPUT_COST_FILE"
+        fi
+        if [[ -n "$INPUT_CAPACITY_EVIDENCE" ]]; then
+          set -- "$@" --capacity-evidence "$INPUT_CAPACITY_EVIDENCE"
         fi
         if [[ -n "$INPUT_ALTERNATIVE_COST_FILE" ]]; then
           set -- "$@" --alternative-cost-input "$INPUT_ALTERNATIVE_COST_FILE"

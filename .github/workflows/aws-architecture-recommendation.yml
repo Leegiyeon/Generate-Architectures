@@ -37,6 +37,10 @@ on:
         description: "선택: 저장소 안 비기밀 월 사용량 JSON (미입력은 미산정)"
         type: string
         required: false
+      capacity_evidence:
+        description: "선택: 집계 부하 테스트(JSON) 검토, 실제 AWS 부하/계정 조회 없음"
+        type: string
+        required: false
       alternative_cost_input:
         description: "선택: ECS/EC2/Lambda 동일 업무량 비교 JSON 경로 (기본 비활성화)"
         type: string
@@ -100,6 +104,7 @@ jobs:
           # 비용 산정은 사용자가 입력한 사용량만 활용하며 누락 단가는 추정하지 않습니다.
           cost_input: ${{ inputs.cost_input || '' }}
           alternative_cost_input: ${{ inputs.alternative_cost_input || '' }}
+          capacity_evidence: ${{ inputs.capacity_evidence || '' }}
           live_pricing: ${{ github.event_name == 'workflow_dispatch' && inputs.live_pricing || false }}
         env:
           # Secrets는 수동 실행에서 동의한 경우에만 노출; 일반 PR은 비활성화
