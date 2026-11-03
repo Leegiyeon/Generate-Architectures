@@ -5,7 +5,7 @@
 ## 현재 제품 방향 — Architecture Designer 우선 (Issue #9)
 
 1. **핵심 Architecture Designer:** 사용자가 GitHub 저장소를 한 번 분석해 AWS 설계 초안, 선정 이유, 가정/위험, 다이어그램을 다운로드합니다. 재분석은 사용자가 선택합니다. push/PR은 자동 테스트만 수행합니다.
-2. **상세 설계 고도화:** [#10](https://github.com/Leegiyeon/Generate-Architectures/issues/10) 근거 계약(기반 구현 완료) → [#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11) 상세 AWS 토폴로지(논리 AWS 아이콘/네트워크 선택 규칙 기반 구현, 실환경 정책 검증 미완료) → [#12](https://github.com/Leegiyeon/Generate-Architectures/issues/12) 선정 근거 → [#13](https://github.com/Leegiyeon/Generate-Architectures/issues/13) 보안·트래픽·운영 전략 → [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 사용자 보고서 통합.
+2. **상세 설계 고도화:** [#10](https://github.com/Leegiyeon/Generate-Architectures/issues/10) 근거 계약(기반 구현 완료) → [#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11) 상세 AWS 토폴로지(논리 AWS 아이콘/네트워크 선택 규칙 기반 구현, 실환경 정책 검증 미완료) → [#12](https://github.com/Leegiyeon/Generate-Architectures/issues/12) 선정 근거(정적 매트릭스 기반 구현) → [#13](https://github.com/Leegiyeon/Generate-Architectures/issues/13) 보안·트래픽·운영 전략 → [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 사용자 보고서 통합.
 3. **비용·품질:** [#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) 후보별 비용/용량, [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) 프로젝트 사례 E2E 검증.
 4. **선택형 로컬 진단:** [#17](https://github.com/Leegiyeon/Generate-Architectures/issues/17) AWS CLI 읽기 전용 진단, [#18](https://github.com/Leegiyeon/Generate-Architectures/issues/18) Local UI. 사용자 계정 비밀키의 중앙 저장 없음.
 5. **사용성:** [#19](https://github.com/Leegiyeon/Generate-Architectures/issues/19) GitHub App 설치/재분석 사용성. 상시 모니터링/배포 자동화는 현재 제품 범위에서 제외.
@@ -43,7 +43,7 @@
 
 1. [JSON 입력 지원] RTO/RPO/SLO, 평균·피크 RPS, 피크 동시 연결, 지연 목표, 운영 우선순위·리전·데이터 분류. [미완료] 전용 입력 폼 UI
 2. 서버리스 / Fargate / EC2 / 관리형 서비스 대안을 구체적 제약과 함께 비교
-3. [초안 완료] 설계 결정 기록(ADR): 선택 사유, 제외 사유, 가정과 미검증 조건 분리
+3. [일부 완료] EC2 포함 후보별 적합/차단/미확인 조건 비교 및 미승인 ADR. [미완료] 실배포/성능 데이터 기반 최적안 승인
 4. [일부 완료] 명시적 요구와 참조 설계의 충돌은 차단. [미완료] 실제 IAM·네트워크 정책에서 위험 접근 확인
 
 **완료 기준:** 시나리오별 금지 제약 검출과 대안 선택을 회귀 테스트로 검증.

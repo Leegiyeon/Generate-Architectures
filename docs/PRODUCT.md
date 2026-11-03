@@ -22,6 +22,7 @@
   ② 요구사항 파일이 있으면 적용. 없으면 미확인 항목을 질문으로 출력
        → 추가 입력 후 수동 재분석 가능
   ③ Static / Serverless / Container / Mobile 참조 패턴 검토
+       → EC2 추가 비교 후보, 선정/제외 근거는 architecture-decision-matrix.json/md
        → 지금은 4종 후보 비교. 2~3개 세부 배포 대안 설계는 #11~#12
   ④ 규칙 기반 제약 검사 + (명시 동의 시) 보조 AI 검토
        → 실제 AWS 리소스·계정은 조회하지 않음
@@ -58,6 +59,7 @@
 - `decision-record.md` — 선택된 참조 패턴과 근거·미확인 문제를 담은 **미승인 ADR 초안**.
 - `application-graph.svg/png/json` — 정적 분석으로 확인되는 일부 코드 구조·호출 관계.
 - `validation.md/json` — 참조 패턴과 입력 간 정적 충돌 및 미측정 항목. 합격/인증 결과 아님.
+- `architecture-decision-matrix.json/md` — Static/Lambda/ECS Fargate/EC2/모바일 API 후보 선정·제외 이유. 승인 전이며 자동 전환 없음.
 - `evidence-contract.json`, `evidence-report.md`, `requirements-gaps.json` — 관측 사실/설정 단서/사용자 명시입력/기본값/가정/미확인 조건.
 - `cost-estimate.md/json`, `iac-policy.md/json`, `ai-review.md/json` — 기능이 비활성화되었으면 **미실행/미산정 표시**.
 

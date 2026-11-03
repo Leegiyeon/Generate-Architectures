@@ -179,3 +179,9 @@ validation.json / validation.md / decision-record.md
 `scripts/render_aws_topology.py`: Diagrams 패키지에 포함된 서비스 PNG 아이콘을 논리 AWS Cloud/VPC/AZ/Subnet 클러스터 안에 배치하고, SVG 내에 PNG를 인라인 저장합니다. 미지원 네트워크 구성은 텍스트로 표시합니다. 정확한 실제 정책의 검증은 수행하지 않습니다.
 
 `network-policy.md`에 보안그룹 접근 의도, Route Table 계획 미완성 상태, AWS 공식 설계 근거와 검토 항목을 요약합니다. `aws-topology.json`의 `design_rule_ids`는 근거를 추적하는 설계 규칙이지 컴플라이언스 통과 증명이 아닙니다. 다음은 서비스 선택 근거 개선(#12)과 운영/스케일링 설계(#13)입니다.
+
+## 서비스별 AWS Architecture Decision Matrix (Issue #12 1차)
+
+`scripts/architecture_decision_engine.py`는 현재의 참조 패턴 선택을 **유지한 채** Static/S3+CloudFront, Lambda+API Gateway, ECS Fargate+ALB, EC2+ALB 및 Mobile API를 비교합니다. `max_job_duration_seconds`, `requires_host_control`, DB 사용 단서, SSR 유무, 트래픽/운영 선호 등에서 **현재 템플릿에 해당하는 충돌**을 찾습니다. EC2는 현재 다이어그램에 없는 검토 후보이고, 비용/성능 측정 결과가 없어 정량 점수·자동 순위가 없습니다.
+
+출력 `architecture-decision-matrix.json/md`에는 후보별 `blockers`, `review_required`, `rationale`, `tradeoffs` 및 미검증 상태가 포함됩니다. 선택된 현재 참조 템플릿에 명시적인 블로커가 있으면 `validation.json`에도 `DEC-001`을 추가하고 자동 채택을 차단합니다. AI 보조 의견은 패턴 변경 권한이 없으며, 사람의 별도 ADR 승인이 필요합니다. 자세한 설명: [DECISIONS.md](DECISIONS.md).
