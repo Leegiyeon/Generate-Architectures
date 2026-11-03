@@ -26,7 +26,7 @@ GitHub 저장소의 **확인 가능한 근거**와 **사용자가 직접 제공�
 | --- | --- | --- |
 | 저장소 구조 분석 | Node/Next.js/Vite/Python/Java/Go/Docker/Expo 등 설정 파일 탐지 | 함수별 호출·데이터 흐름 전체를 파악하지는 못함 |
 | 근거 수집 | API 경로, 관계형 DB 관련 파일/패키지, 인증·작업 큐·IaC 단서 수집 | 파일 경로와 제한된 설정 파일에서만 추출 |
-| 요구사항 분석 | 워크로드, 배포 선호, 예산, 리전, 가용성, RTO/RPO, 데이터 분류 입력 검증 | 입력하지 않은 값은 추정하거나 확정하지 않음 |
+| 요구사항 분석 | 워크로드, 배포 선호, 평균·피크 RPS, 운영 우선순위, 예산, 리전, 가용성, RTO/RPO, 데이터 분류 입력 검증 | 입력하지 않은 값은 추정하거나 확정하지 않음 |
 | 설계 비교 | Static / Serverless / Container / Mobile 참조 패턴 비교 | 실제 AWS 서비스 구성의 적합성 보장 불가 |
 | 안전한 판단 | Next.js SSR 미확인 시 정적 호스팅으로 단정하지 않음; 관계형 DB 요구와 패턴 충돌 시 경고 | 실제 실행·성능 테스트 없이 결론 확정 불가 |
 | Well-Architected 및 Validator | 6개 원칙의 **검증 전 체크리스트**, 참조 설계/요구사항 정적 충돌 검출 | 실제 AWS 자원·IAM·보안 정책·비용·성능 검증 미수행 |
@@ -65,6 +65,11 @@ GitHub Actions 수동 실행 (push/PR 이벤트는 테스트만)
   "region": "ap-northeast-2",
   "monthly_budget_usd": 200,
   "expected_monthly_requests": 100000,
+  "average_rps": 10,
+  "peak_rps": 200,
+  "peak_concurrent_connections": 100,
+  "latency_target_ms": 500,
+  "operations_preference": "balanced",
   "availability_target_percent": 99.9,
   "rto_minutes": 240,
   "rpo_minutes": 60,
@@ -107,7 +112,10 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output 
 | --- | --- |
 | `recommendation.md` | 한글 설계 결정, 대안 비교, 확인 근거, 위험과 사용자 질문 |
 | `repository-analysis.json` | 확인된 파일·기술·단서와 스캔 제한 |
-| `requirements-used.json` | 실제 설계 판단에 사용한 사용자 입력 |
+| `requirements-used.json` | 실제 설계 판단에 사용한 값(사용자 명시값 + 시스템 기본값) |
+| `evidence-contract.json` | AST/설정 관찰 근거, 사용자 명시값, 기본값, 미확인 조건의 출처 계약 |
+| `requirements-gaps.json` | 추가 사용자 입력 질문 및 파서 분석 상태 |
+| `evidence-report.md` | 한국어 근거 및 미확인 조건 보고서 |
 | `architecture.json` | 선택 패턴·대안·Well-Architected 검토 항목 |
 | `architecture.png` | AWS 아이콘 다이어그램 이미지 |
 | `architecture.svg` | AWS 서비스 아이콘이 내장된 독립 실행형 SVG |
@@ -208,3 +216,18 @@ Architecture Validator는 AI 추천의 정확성을 보증하는 도구가 아�
 Terraform 보안 검사는 `--terraform-plan .architecture/terraform-plan.json` 옵션을 통해 실행합니다. **원본 Terraform plan에는 비밀정보가 포함될 수 있으므로 Git에 올리지 마세요.** 이 도구는 Terraform을 실행하거나 AWS 계정을 조회하지 않으며 일부 리소스의 명시적 정책만 검사합니다.
 
 설치·비용·보안·유지보수 체크리스트는 **[비용·보안·운영 관리 가이드](docs/COST_SECURITY_OPERATIONS.md)** 를 참고하세요.
+
+## 13. P0 — 근거 계약과 추가 요구사항 질문 (Issue #10)
+
+정적 분석 결과를 `evidence-contract.json`으로 정리합니다. **코드 직접 관찰(Fxxxx)**, **설정 파일 기반 단서(Ixxxx)**, **명시적 사용자 입력(Rxxxx)**, **시스템 기본값**, **설계 가정(Axxxx)**, **미확인 질문(Uxxxx)**을 별개로 표시합니다.
+
+- 모든 직접 관찰에는 상대경로와 가능한 행 번호가 포함되지만 실제 운영 호출과 동일하다고 보증하지 않습니다.
+- `environment=dev` 등 입력하지 않은 기본값을 사용자의 결정이라고 표시하지 않습니다.
+- 평균·피크 RPS, 피크 동시 연결, 지연 목표 및 운영 우선순위는 요구사항 파일에서 입력할 수 있습니다. 피크 RPS는 평균 이상이어야 합니다.
+- DB/인증 코드 단서가 발견되거나 사용자가 해당 조건을 명시했다면 같은 질문을 반복하지 않습니다.
+- 파서 오류가 있으면 `partial` 상태를 표시하고 미탐지를 기능 부재로 판단하지 않습니다.
+- 외부 AI에는 소스코드·파일경로·함수명을 보내지 않으며, 기본값을 사용자 입력인 것처럼 전송하지 않습니다.
+
+신규 산출물: `evidence-contract.json`, `evidence-report.md`, `requirements-gaps.json`. 업데이트된 [요구사항 입력 예시](.architecture/requirements.example.json)를 참고하세요.
+
+**다음 작업(#11):** 실제 코드 근거와 요구사항을 연결해 VPC·Subnet·AZ를 포함한 상세 AWS To-Be 설계를 구현합니다. 현재는 정적 분석과 기본 참조 설계이며 실제 AWS에 배포된 구조가 아닙니다.
