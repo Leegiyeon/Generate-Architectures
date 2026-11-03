@@ -43,7 +43,8 @@ class ProductFlowTests(unittest.TestCase):
         for key in ("미구현", "현재 제공", "AWS 자동", "최초 1회", "수동"):
             self.assertIn(key, product)
         # 고가치 미래 산출물을 '현재 구현'으로 과장하지 않음
-        self.assertIn("상세 VPC/Subnet/AZ 구축 설계가 아니라", readme)
+        self.assertIn("상세 논리 설계 제안", readme)
+        self.assertIn("실제 계정 구성이나 구축 검증 결과는 아닙니다", readme)
         self.assertIn("지금은 4종 후보 비교", product)
 
 
