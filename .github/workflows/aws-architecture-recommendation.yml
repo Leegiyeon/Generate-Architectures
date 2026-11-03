@@ -9,6 +9,12 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      analysis_goal:
+        description: "분석 목적 (신규 AWS 구축 / 온프레미스 AWS 이전 사전검토)"
+        type: choice
+        required: true
+        options: [new_aws, migrate_onprem]
+        default: new_aws
       workload:
         description: "분석할 워크로드 유형"
         type: choice
@@ -96,6 +102,7 @@ jobs:
         uses: ./
         with:
           workload: ${{ inputs.workload || 'auto' }}
+          analysis_goal: ${{ inputs.analysis_goal || 'new_aws' }}
           requirements_file: ${{ inputs.requirements_file || '' }}
           monthly_budget_usd: ${{ inputs.monthly_budget_usd || '' }}
           # PR/push 자동 실행에서는 항상 AI 사용 안 함: 사용자 동의 없이 외부 정보 전송 금지
