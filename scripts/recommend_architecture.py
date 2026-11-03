@@ -15,6 +15,8 @@ if __package__:
     from .cost_scenarios import correlate_topology_costs
     from .alternative_cost_comparison import (read_alternative_cost_input,
                                               compare_alternatives, markdown_comparison)
+    from .capacity_evidence import (read_capacity_evidence, analyze_capacity_evidence,
+                                    markdown_capacity)
     from .iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from .architecture_validator import validate_architecture, markdown_validation, markdown_adr
     from .evidence_contract import build_evidence_contract, markdown_evidence
@@ -38,6 +40,8 @@ else:
     from cost_scenarios import correlate_topology_costs
     from alternative_cost_comparison import (read_alternative_cost_input,
                                             compare_alternatives, markdown_comparison)
+    from capacity_evidence import (read_capacity_evidence, analyze_capacity_evidence,
+                                  markdown_capacity)
     from iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from architecture_validator import validate_architecture, markdown_validation, markdown_adr
     from evidence_contract import build_evidence_contract, markdown_evidence
@@ -87,7 +91,8 @@ def design(found, kind, budget):
 
 def run(repo, output, workload="auto", budget=None, requirements_file=None,
         ai_enabled=False, ai_model="gpt-6-luna", cost_input=None,
-        live_pricing=False, terraform_plan=None, alternative_cost_input=None):
+        live_pricing=False, terraform_plan=None, alternative_cost_input=None,
+        capacity_evidence=None):
     """구현 범위: 읽기 전용 정적 분석 및 검토용 AWS 참조 설계 생성."""
     root = Path(repo).resolve()
     if not root.is_dir():
@@ -220,10 +225,27 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     )
     # 대안 비용 비교는 명시적인 동일 월 업무량과 실행 패턴별 사용량이 입력될 때만 수행.
     # 기존 cost_estimate와 ADR은 변경하지 않으며 가격 미확인/제약 충돌 시 비교를 거부합니다.
+    alternative_data = read_alternative_cost_input(root, alternative_cost_input)
     alternative_cost = compare_alternatives(
-        read_alternative_cost_input(root, alternative_cost_input),
-        requirements, decision_matrix, live=live_pricing,
+        alternative_data, requirements, decision_matrix, live=live_pricing,
     )
+    # 집계 부하 테스트는 사용자가 별도 제출하는 선택형 증거입니다.
+    # 시험 결과와 비용 모델이 다르면 차액/비용 순위를 자동 제시하지 않습니다.
+    capacity_data = read_capacity_evidence(root, capacity_evidence)
+    capacity_report = analyze_capacity_evidence(capacity_data, requirements, alternative_data)
+    alternative_cost["capacity_evidence_status"] = capacity_report["status"]
+    alternative_cost["capacity_evidence_supplied"] = capacity_data is not None
+    if (capacity_data is not None and alternative_data is not None and
+            not capacity_report["all_observed_targets_met"]):
+        alternative_cost["comparisons"] = []
+        alternative_cost["status"] = "capacity_evidence_review_required"
+    result["capacity_evidence"] = {
+        "file": "capacity-evidence.json",
+        "status": capacity_report["status"],
+        "all_observed_targets_met": capacity_report["all_observed_targets_met"],
+        "evidence_authenticity_verified": False,
+        "production_ready": False,
+    }
     result["alternative_cost_comparison"] = {
         "file": "alternative-cost-comparison.json",
         "status": alternative_cost["status"],
@@ -281,6 +303,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         ("ai-review.json", ai_review),
         ("cost-estimate.json", cost_report),
         ("alternative-cost-comparison.json", alternative_cost),
+        ("capacity-evidence.json", capacity_report),
         ("iac-policy.json", iac_report),
         ("validation.json", validation),
         ("repository-analysis.json", profile),
@@ -299,6 +322,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     (out / "cost-estimate.md").write_text(markdown_cost(cost_report), encoding="utf-8")
     (out / "alternative-cost-comparison.md").write_text(
         markdown_comparison(alternative_cost), encoding="utf-8")
+    (out / "capacity-evidence.md").write_text(
+        markdown_capacity(capacity_report), encoding="utf-8")
     (out / "iac-policy.md").write_text(markdown_iac(iac_report), encoding="utf-8")
     (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
     (out / "decision-record.md").write_text(markdown_decision_record(adr), encoding="utf-8")
@@ -366,6 +391,10 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- 대안별 월간 비용은 사용자가 입력한 항목만 산정하며 AWS 전체 총액이 아닙니다.\n"
     report += "- 대안별 차단 조건 및 패치/IAM/Auto Scaling 등 운영 책임을 별도로 표시합니다.\n"
     report += "- 파일: `alternative-cost-comparison.json/md` (실측·승인·자동 선정 없음)\n"
+    report += "\n## 19. 입력된 부하 시험의 용량·지연·오류율 검토\n\n"
+    report += "- 테스트 집계값: " + capacity_report["status"] + "\n"
+    report += "- 진위·운영환경·AWS 쿼터·Auto Scaling 검증 없음.\n"
+    report += "- 파일: `capacity-evidence.json/md` (실측 입력 시 참고용 산술 제안만)\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:
@@ -378,7 +407,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     bundle = generate_user_bundle(out, result, topology, graph, contract,
                                   decision_matrix, adr, operations_plan,
                                   cost_report, validation,
-                                  alternative_comparison=alternative_cost)
+                                  alternative_comparison=alternative_cost,
+                                  capacity_evidence=capacity_report)
     result["user_report"] = bundle
     (out / "architecture.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -403,13 +433,16 @@ def main():
     parser.add_argument("--cost-input", default=None, help="비기밀 월 사용량과 단가 출처 JSON (선택)")
     parser.add_argument("--alternative-cost-input", default=None,
                         help="동일 업무량 ECS/EC2/Lambda 비용·유지보수 비교 JSON (선택)")
+    parser.add_argument("--capacity-evidence", default=None,
+                        help="사용자가 제출한 집계 부하 테스트 결과 JSON (선택, 실행 없음)")
     parser.add_argument("--live-pricing", action="store_true", help="AWS Price List API 실시간 조회 (명시적 활성화, 읽기 권한 필요)")
     parser.add_argument("--terraform-plan", default=None, help="terraform show -json으로 만든 로컬 plan JSON 파일 (민감 정보 포함 주의)")
     args = parser.parse_args()
     try:
         run(args.repo, args.output, args.workload, args.budget, args.requirements,
             args.enable_ai, args.ai_model, args.cost_input,
-            args.live_pricing, args.terraform_plan, args.alternative_cost_input)
+            args.live_pricing, args.terraform_plan, args.alternative_cost_input,
+            args.capacity_evidence)
     except (ValueError, OSError) as exc:
         parser.error(str(exc))
 
