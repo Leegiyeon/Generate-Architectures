@@ -28,14 +28,13 @@
 
 기존 중간 JSON·다이어그램 파일 등 개발자용 결과물은 Artifact에 유지하며 처음부터 열 필요가 없습니다.
 
+**보고서 자동 품질 검사:** 실행마다 `report-qa.json`을 생성하고 HTML 내부 링크, SVG/PNG 구조, 참조 연결, 파일 해시를 확인합니다. 이 검사는 **실제 브라우저에서의 글꼴·겹침·클리핑을 확인한 것은 아닙니다**.
+
 ### 온프레미스 이전 모드를 선택했다면
 
 기존 서버의 구성을 직접 입력할 수 있습니다. [최소 Inventory 예시](examples/onprem-inventory.example.json)를 대상 저장소의 `.architecture/onprem-inventory.json`에 복사·수정하고 `migrate_onprem`으로 실행하면 **별도 As-Is 구성도(SVG)와 현재 구성 표**를 생성합니다. 모르는 값은 `unknown`으로 남기세요. [입력 방법과 개인정보 주의사항](docs/ONPREM_INVENTORY.md)을 참고하세요.
 
-**Inventory는 사용자 선언(미검증)**이며, DB 서버 위치나 연결을 코드만으로 추정하지 않습니다. 실제 서버 조사·마이그레이션 전략/전환 가능성 평가는 여전히 미구현입니다.
-
-
-**현재 버전은 온프레미스 서버/네트워크/DB를 실제로 조사하지 않습니다.** 따라서 앱 코드에서 DB 연결 라이브러리를 발견하더라도, 현재 DB 서버 위치·성능·데이터 크기·방화벽 구성·이전 가능 여부를 **알 수 없습니다**.
+**Inventory는 검증되지 않은 사용자 선언**입니다. 실제 서버에 접속하지 않으며, DB 위치·네트워크·성능을 코드만으로 확인하지 않습니다. Rehost/Replatform 비교는 *검토 초안*이고 실제 이전 적합성은 미검증입니다.
 
 `migrate_onprem`은 이전 **목적**을 기록하고, 사용자 입력 Inventory가 있다면 **선언형 As-Is 도면**도 보여줍니다. **Rehost/Replatform의 변경사항·위험·수동 전환 체크리스트를 제공하지만 최적 전략, 이전 가능성 및 실제 데이터 이전/다운타임은 검증하지 않습니다.** 입력 Inventory 및 As-Is 기능은 [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34)에서 구현했습니다. [#35 Migration Assessment](https://github.com/Leegiyeon/Generate-Architectures/issues/35)에서 사용자 선언 기반 AWS 이전 후보 비교 초안을 생성합니다. 실제 AWS 이전은 자동으로 진행하지 않습니다.
 
