@@ -171,3 +171,11 @@ validation.json / validation.md / decision-record.md
 코드 기반 As-Is Application Graph, AWS 아이콘 서비스 참조도, To-Be 상세 논리 토폴로지는 각각 독립된 산출물입니다. 상세 토폴로지는 모든 노드/간선에 `proposed_not_deployed` / `proposed_not_verified` 상태를 유지합니다. 구축 전 NAT 또는 PrivateLink, SG/IAM, Route Table, 실제 AZ/CIDR, ACM/TLS, RDS DB subnet group 및 비용을 별도 확인해야 합니다.
 
 상세 문서: [TOPOLOGY.md](TOPOLOGY.md). 실제 VPC/서브넷/네트워크 보안 구현, 트래픽 및 장애 복구 정책은 다음 단계(#11~#13)에서 고도화합니다.
+
+## 네트워크 정책·AWS 아이콘 통합 설계
+
+`scripts/topology_network_policy.py`: `aws-topology.json`의 모든 노드/간선에 AWS 설계 규칙 ID를 부여하고 사용자가 명시한 ALB 공개/내부 범위, NAT 또는 VPC Endpoint, 보안그룹/라우트 의도를 분리해 기록합니다. 포트·CIDR·라우트·자원 ID를 입력하지 않은 경우 실제 배포 값으로 채우지 않습니다. VPC Endpoint만으로 일반 인터넷 API를 호출하는 조건은 충돌로 표시합니다.
+
+`scripts/render_aws_topology.py`: Diagrams 패키지에 포함된 서비스 PNG 아이콘을 논리 AWS Cloud/VPC/AZ/Subnet 클러스터 안에 배치하고, SVG 내에 PNG를 인라인 저장합니다. 미지원 네트워크 구성은 텍스트로 표시합니다. 정확한 실제 정책의 검증은 수행하지 않습니다.
+
+`network-policy.md`에 보안그룹 접근 의도, Route Table 계획 미완성 상태, AWS 공식 설계 근거와 검토 항목을 요약합니다. `aws-topology.json`의 `design_rule_ids`는 근거를 추적하는 설계 규칙이지 컴플라이언스 통과 증명이 아닙니다. 다음은 서비스 선택 근거 개선(#12)과 운영/스케일링 설계(#13)입니다.
