@@ -2,7 +2,7 @@
 
 new_aws: 저장소 코드 기반 AWS To-Be 참조 설계
 migrate_onprem: 저장소 코드 기반 후보 + 현행 온프레미스 정보 미확인 명시
-Inventory/실제 Migration Assessment는 별도 후속 기능이며 여기서 수행하지 않음.
+Inventory는 사용자의 선언에 한정. 이 모듈은 마이그레이션 실증/승인을 수행하지 않음.
 """
 
 GOALS = {
@@ -21,12 +21,12 @@ GOALS = {
     },
     "migrate_onprem": {
         "label": "온프레미스에서 AWS로 이전",
-        "scope": "저장소 코드 기반 AWS To-Be 후보만 생성 (온프레미스 현황 미진단)",
+        "scope": "저장소 코드 기반 AWS To-Be 후보 + 입력된 온프레미스 As-Is/이전 검토 초안 (실환경 미진단)",
         "status": "onprem_inventory_and_migration_assessment_unavailable",
         "limitations": [
             "온프레미스 서버·DB 위치·OS·CPU·메모리·네트워크·외부 연동을 조회하지 않았습니다.",
-            "현재 버전은 온프레미스 Inventory 입력·As-Is 인프라 도면·마이그레이션 전략 평가를 지원하지 않습니다.",
-            "Rehost/Replatform의 적합성, 데이터 이전·다운타임·전환/롤백 가능성을 검증하지 않았습니다.",
+            "온프레미스 Inventory 입력 시 As-Is 및 Rehost/Replatform 비교 초안을 만들지만 실환경 검증은 하지 않습니다.",
+            "Rehost/Replatform 중 최적 전략, 데이터 이전·다운타임·전환/롤백 가능성을 검증하지 않았습니다.",
         ],
         "next_actions": [
             "기존 서버·DB·스토리지와 외부 연결·데이터 규모를 별도로 정리합니다.",
