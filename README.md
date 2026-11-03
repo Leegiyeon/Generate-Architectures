@@ -30,9 +30,14 @@
 
 ### 온프레미스 이전 모드를 선택했다면
 
+기존 서버의 구성을 직접 입력할 수 있습니다. [최소 Inventory 예시](examples/onprem-inventory.example.json)를 대상 저장소의 `.architecture/onprem-inventory.json`에 복사·수정하고 `migrate_onprem`으로 실행하면 **별도 As-Is 구성도(SVG)와 현재 구성 표**를 생성합니다. 모르는 값은 `unknown`으로 남기세요. [입력 방법과 개인정보 주의사항](docs/ONPREM_INVENTORY.md)을 참고하세요.
+
+**Inventory는 사용자 선언(미검증)**이며, DB 서버 위치나 연결을 코드만으로 추정하지 않습니다. 실제 서버 조사·마이그레이션 전략/전환 가능성 평가는 여전히 미구현입니다.
+
+
 **현재 버전은 온프레미스 서버/네트워크/DB를 실제로 조사하지 않습니다.** 따라서 앱 코드에서 DB 연결 라이브러리를 발견하더라도, 현재 DB 서버 위치·성능·데이터 크기·방화벽 구성·이전 가능 여부를 **알 수 없습니다**.
 
-`migrate_onprem`은 이전 **목적**을 명확히 기록하고 AWS 후보를 생성하되, **As-Is 인프라 도면, Rehost/Replatform 적합성 판단, 데이터 이전/다운타임·전환 계획은 제공하지 않습니다.** 이 기능은 [#34 Inventory/As-Is](https://github.com/Leegiyeon/Generate-Architectures/issues/34)와 [#35 Migration Assessment](https://github.com/Leegiyeon/Generate-Architectures/issues/35)에서 개발할 예정입니다.
+`migrate_onprem`은 이전 **목적**을 기록하고, 사용자 입력 Inventory가 있다면 **선언형 As-Is 도면**도 보여줍니다. **Rehost/Replatform 적합성 판단, 데이터 이전/다운타임·전환 계획은 아직 제공하지 않습니다.** 입력 Inventory 및 As-Is 기능은 [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34)에서 구현했습니다. 향후 [#35 Migration Assessment](https://github.com/Leegiyeon/Generate-Architectures/issues/35)에서 AWS 이전 전략/위험을 비교할 예정입니다.
 
 ## 필요할 때만 요구사항 보완
 
@@ -58,6 +63,7 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output 
 | 문서 | 필요한 경우 |
 | --- | --- |
 | [제품 동작/지원 범위](docs/PRODUCT.md) | 신규·온프레미스 모드 차이와 현재 한계 |
+| [온프레미스 현재 구성 입력](docs/ONPREM_INVENTORY.md) | 비기밀 Inventory, As-Is 도면 |
 | [간편 제품 로드맵](docs/LEAN_MIGRATION_ROADMAP.md) | 다음 개발 우선순위 |
 | [사용자 보고서](docs/REPORTING.md) | HTML/산출물 확인법 |
 | [요구사항·비용 입력](docs/COST_SCENARIOS.md) | 고급 요금 시나리오 |
