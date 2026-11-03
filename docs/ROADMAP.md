@@ -1,5 +1,7 @@
 # 제품 로드맵: AI Solutions Architect Agent
 
+> **2026-11-03 제품 방향 업데이트:** 기능 개수보다 사용성·정적 근거·안전한 마이그레이션 판단을 우선합니다. 최신 개발 우선순위는 **[간편한 AWS 설계·온프레미스 이전 MVP 로드맵](LEAN_MIGRATION_ROADMAP.md)**이 기준입니다. ① 간편 시작 [#33](https://github.com/Leegiyeon/Generate-Architectures/issues/33) → ② 온프레미스 Inventory/As-Is [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34) → ③ AWS Migration Assessment [#35](https://github.com/Leegiyeon/Generate-Architectures/issues/35) → ④ 사용자 보고서·시각 QA [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14). 기존 #15·#16은 검증/비용 고도화로 유지하고, 로컬 수집 [#36](https://github.com/Leegiyeon/Generate-Architectures/issues/36)과 AWS Inspector #17은 선택형 후속입니다. **신규 기능은 계획이며 아직 구현되지 않았습니다.**
+
 > 아래는 구현 방향이며, **미완료 항목은 실제 제공 기능이 아닙니다.** SAA 자격 보유 전문가의 모든 판단을 자동 대체한다는 의미가 아닙니다.
 
 ## 현재 제품 방향 — Architecture Designer 우선 (Issue #9)

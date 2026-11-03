@@ -1,5 +1,7 @@
 # Generate-Architectures — 제품 목적 및 사용자 업무 흐름
 
+> **업데이트된 MVP 계획(미구현):** 단순한 GitHub Action 온보딩을 통해 신규 AWS 설계 및 온프레미스 → AWS 이전을 각각 선택하고, 사용자 입력 Inventory·정적 근거 기반 As-Is/To-Be 비교를 한 장 보고서로 제공합니다. 개발/검수 우선순위는 [LEAN_MIGRATION_ROADMAP.md](LEAN_MIGRATION_ROADMAP.md)를 따릅니다. 아래 기존 Designer/Inspector 설명은 **현재 구현 범위**를 다룹니다.
+
 > **제품 정의:** GitHub 저장소와 사용자가 명시한 요구사항으로 AWS **권장 설계 초안과 선정 근거**를 제공하는 설계 지원 도구입니다. AWS 환경의 운영·자동 배포 도구가 아닙니다.
 >
 > **현 단계:** 정적 코드 분석과 4종 참조 패턴, AWS 아이콘 다이어그램, 근거·리스크·ADR 초안 제공. 상세 VPC/Subnet/AZ의 **논리 제안 기반은 구현 중**이고 프로젝트별 트래픽/운영 설계는 [Issue #11](https://github.com/Leegiyeon/Generate-Architectures/issues/11)~[#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14)에서 구현할 목표입니다.
