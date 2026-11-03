@@ -150,6 +150,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
             "권장 참조 설계 — 승인 전 추가 검증 필요")
     question_list=[x["question"] for x in contract["unknowns"]]
     ops_questions=[x["question"] for x in operations["questions"]]
+    visible_questions=list(dict.fromkeys(question_list+ops_questions))[:5]
     selected_title=selected["title"]
     candidates=[c for c in decision_matrix["candidates"]
                 if c["id"] in decision_matrix["alternative_candidates"]]
@@ -219,8 +220,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
          "- **검증 전**: 서비스별 비용·IAM/SG·부하·복구/장애 시험·SLO 미검증.",
          "- **미실행**: AWS 자원 생성/변경/삭제·Terraform apply·계정 자격증명 입력을 수행하지 않음.",
          "", "## 5. 우선 확인할 질문", ""]
-    md.extend("- "+markdown_value(x) for x in question_list[:5])
-    md.extend("- "+markdown_value(x) for x in ops_questions[:2] if x not in question_list[:5])
+    md.extend("- "+markdown_value(x) for x in visible_questions)
     md+=["", "## 6. 수동 재분석", "",
          "1. 설계 차단/누락 조건을 확인하고 저장소의 .architecture/requirements.json에 비기밀 값을 추가합니다.",
          "2. GitHub → Actions → AWS 아키텍처 검토 자동화 → Run workflow를 수동 실행합니다.",
@@ -244,7 +244,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
     if migration_waiting:
         md[4:4] = [
             "", "## 온프레미스 정보 확인 전 — 마이그레이션 판단 보류", "",
-            "**현재 서버/DB/네트워크·스토리지를 조사하지 않았습니다. "
+            "**실제 서버/DB/네트워크·스토리지를 조사하지 않았습니다. "
             "As-Is 인프라 및 Rehost/Replatform 비교 기능은 아직 제공되지 않습니다.**", "",
         ]
         md.extend(["", "## 온프레미스 이전 전에 확인할 내용", ""] +
@@ -425,8 +425,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         ("<p class='caution'>코드 파싱 일부 실패: 미관측을 부재로 해석할 수 없습니다.</p>"
          if contract["status"]=="partial" else "")+"</section>"
         "<section class='panel' id='next'><h2>우선 확인 사항 및 재분석</h2>"
-        "<h3>추가 요구사항 (우선순위 최대 5개)</h3><ul>"+li(question_list,5)+"</ul>"
-        "<h3>운영 검증 질문</h3><ul>"+li(ops_questions,2)+"</ul>"
+        "<h3>우선 확인할 질문 최대 5개</h3><ul>"+li(visible_questions,5)+"</ul>"
         "<h3>수동 재분석</h3><ol>"
         "<li>저장소의 .architecture/requirements.json에 비기밀 업무 요구와 운영 조건을 보완합니다.</li>"
         "<li>GitHub → Actions → AWS 아키텍처 검토 자동화 → <b>Run workflow</b>를 실행합니다.</li>"
