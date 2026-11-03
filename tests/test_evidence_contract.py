@@ -142,6 +142,25 @@ class EvidenceContractTests(unittest.TestCase):
             self.assertNotIn("confidential_function",clean)
             self.assertNotIn("app.py",clean)
 
+
+    def test_user_confirmed_rendering_and_document_strategy_stop_repeat_questions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = repo_with(tmp, {
+                "package.json": json.dumps({"dependencies": {"next": "15", "mongoose": "*"}}),
+                "next.config.js": "module.exports = {}",
+                "requirements.json": json.dumps({
+                    "rendering_mode": "ssr",
+                    "document_database_strategy": "keep_existing",
+                }),
+            })
+            contract, _, _, _, _, _ = contract_for(root, "requirements.json")
+            answered = {x["key"] for x in contract["user_requirements"]}
+            missing = {x["key"] for x in contract["unknowns"]}
+            self.assertIn("rendering_mode", answered)
+            self.assertIn("document_database_strategy", answered)
+            self.assertNotIn("rendering_mode", missing)
+            self.assertNotIn("document_database_strategy", missing)
+
     def test_pipeline_emits_questions_and_evidence_artifacts(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=repo_with(Path(tmp)/"repo",{
