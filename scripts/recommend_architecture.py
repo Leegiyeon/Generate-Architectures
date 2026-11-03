@@ -22,6 +22,7 @@ if __package__:
                                                build_decision_record, markdown_decision_record)
     from .data_access_decision import assess_data_access, markdown_data_access
     from .ec2_alternative import design_ec2_alternative, markdown_ec2_alternative
+    from .operations_designer import design_operations, markdown_operations
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -40,6 +41,7 @@ else:
                                               build_decision_record, markdown_decision_record)
     from data_access_decision import assess_data_access, markdown_data_access
     from ec2_alternative import design_ec2_alternative, markdown_ec2_alternative
+    from operations_designer import design_operations, markdown_operations
 
 
 def scan(root):
@@ -190,6 +192,19 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         "blockers": validation["counts"]["blocker"],
         "review_required": validation["counts"]["review_required"],
     }
+    # Security/Scaling/Operations Designer: 현 To-Be에 존재하는 실제 서비스 제안만 대상으로 합니다.
+    # 계정 설정/부하/장애 시험이 없으므로 모든 지표·경보·IAM·RTO 달성은 검증 전.
+    operations_plan = design_operations(
+        result, topology, requirements, contract,
+        decision_matrix=decision_matrix, data_review=data_review)
+    result["operations_plan"] = {
+        "file": "security-operations.json",
+        "status": operations_plan["status"],
+        "controls": len(operations_plan["security_and_operations"]),
+        "scaling_policies": len(operations_plan["scaling"]["policies"]),
+        "alarms": len(operations_plan["alerts"]),
+        "production_ready": False,
+    }
     # 비용은 요금 출처와 사용량이 명시된 경우만 계산하며, 누락 단가는 0으로 처리하지 않음.
     cost_report = estimate_costs(read_cost_inputs(root, cost_input), live=live_pricing)
     # Terraform plan 파일은 민감 원문을 포함할 수 있어 결과에는 익명화된 위험만 기록.
@@ -233,6 +248,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         ("aws-topology.json", topology),
         ("architecture-decision-matrix.json", decision_matrix),
         ("data-access-decision.json", data_review),
+        ("security-operations.json", operations_plan),
         ("decision-record.json", adr),
         ("evidence-contract.json", contract),
         ("requirements-gaps.json", {
@@ -255,6 +271,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     (out / "network-policy.md").write_text(markdown_network_policy(topology), encoding="utf-8")
     (out / "architecture-decision-matrix.md").write_text(markdown_decision_matrix(decision_matrix), encoding="utf-8")
     (out / "data-access-decision.md").write_text(markdown_data_access(data_review), encoding="utf-8")
+    (out / "security-operations.md").write_text(markdown_operations(operations_plan), encoding="utf-8")
     (out / "cost-estimate.md").write_text(markdown_cost(cost_report), encoding="utf-8")
     (out / "iac-policy.md").write_text(markdown_iac(iac_report), encoding="utf-8")
     (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
@@ -313,6 +330,11 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- ADR 상태: " + adr["status"] + " (사람 승인 필요)\n"
     report += "- 파일: `data-access-decision.json/md`, `decision-record.json/md`\n"
     report += "- EC2 대안: " + ("ec2-alternative/ (별도 미승인 To-Be)" if ec2_alternative else "현재 패턴에 비적용") + "\n"
+    report += "\n## 17. 보안·확장성·운영 및 복구 설계 (추가 산출물)\n\n"
+    report += "- 운영 통제 제안: " + str(len(operations_plan["security_and_operations"])) + "개\n"
+    report += "- 트래픽/오토스케일 정책 검토: " + str(len(operations_plan["scaling"]["policies"])) + "개\n"
+    report += "- CloudWatch 경보 후보: " + str(len(operations_plan["alerts"])) + "개\n"
+    report += "- 파일: `security-operations.json/md` (임계값·실측·AWS IAM·SLO 검증 전)\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:
