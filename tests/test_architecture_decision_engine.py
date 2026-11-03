@@ -106,8 +106,11 @@ class ArchitectureDecisionTests(unittest.TestCase):
             later=compare_architectures(a,profile,req,c)
             self.assertEqual(result,later)
             self.assertFalse(any(x["approved"] for x in result["candidates"]))
-            self.assertIn("DEC-COST-UNVERIFIED", {x["rule_id"] for x in later["candidates"][0]["review_required"]}
-                          if "monthly_budget_usd" in req else {"DEC-COST-UNVERIFIED"})
+            self.assertTrue(all(c["cost_status"] == "not_estimated"
+                                for c in later["candidates"]))
+            self.assertFalse(any(x["rule_id"] == "DEC-COST-UNVERIFIED"
+                                 for c in later["candidates"]
+                                 for x in c["review_required"]))
         finally:tmp.cleanup()
 
     def test_full_pipeline_uses_human_approval_gate_without_auto_changed_selection(self):
