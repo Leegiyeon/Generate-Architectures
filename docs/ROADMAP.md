@@ -76,3 +76,5 @@
 - [Issue #16](https://github.com/Leegiyeon/Generate-Architectures/issues/16): **10종 가상 프로젝트 Golden CI 회귀 기반** 구축. 수동 브라우저 시각 QA·실제 오탐/미탐 분석/성능 실측은 남아 있음.
 
 - [Issue #15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) **2차 진전**: Price List Query의 단일 SKU/단위에서 연속된 OnDemand 계층별 USD 가격·기준일 기록, 보수적 미지원 차원 차단 및 가상 공식 형식 회귀 추가. **미완료**: 공식 SKU별 라이브 검증/특별 계약·Free Tier·서비스 조합/대안 비교, 실제 워크로드 기반 용량.
+
+- [Issue #15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) 3차 진전: 사용자 제공 **동일 월 업무량의 ECS/EC2/Lambda 비용 항목 비교**, 서비스별 운영/보안/패치 책임, 요구사항·입력 금액·기본 비용 분류 충돌 차단 구현. **후속:** 동일 워크로드에서 실제 처리량/용량과 공식 리전별 SKU 가격 및 전체 청구 범위가 검증된 비교는 미완료.
