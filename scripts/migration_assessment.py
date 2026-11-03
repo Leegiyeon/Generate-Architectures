@@ -72,7 +72,8 @@ def _replatform(server, index, profile):
         changes.append(_change(
             server, "proxy", "modify", "Application Load Balancer (후보)",
             "기존 웹서버의 라우팅·TLS 종료·URL 재작성/인증 기능을 ALB로 대체할 수 있는지 검증 전입니다.", index))
-    if role in ("database", "mixed") and db not in ("none",):
+    # DB 엔진이 명시되었다면 서버 역할이 application/storage여도 실제 DB 선언을 누락하지 않음.
+    if db not in ("none", "unknown") or role in ("database", "mixed") and db == "unknown":
         if db in SUPPORTED_RDS:
             changes.append(_change(
                 server, "database", "modify",
@@ -157,7 +158,11 @@ def assess_migration(as_is, profile, requirements, topology, cost):
     if "unknown" in declared_engines:
         risk("MIG-DB", "DB 종류/실제 배치 미확정",
              "DB가 현재 어느 서버에 있고 엔진·버전·확장 및 데이터 크기는 무엇인가요?",
-             ["as-is-inventory.json#/servers"], "blocker")
+             ["as-is-inventory.json#/servers"],
+             "blocker" if (profile.get("signals", {}).get("relational_database") or
+                           profile.get("signals", {}).get("document_database") or
+                           any(s["role"] in ("database", "mixed") for s in servers))
+             else "review_required")
     if declared_engines & (SUPPORTED_RDS | {"mongodb", "other"}):
         risk("MIG-DATA", "데이터 이전·정합성 미검증",
              "DB 데이터 실제 크기, 트랜잭션/복제·백업/복구와 전환 중 무결성 검증은 가능한가요?",
