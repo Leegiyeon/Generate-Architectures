@@ -1,50 +1,39 @@
-# 대상 프로젝트에 복사: .github/workflows/aws-architecture.yml
-name: AWS 아키텍처 최초 분석 (수동)
+# 이 파일을 대상 저장소의 .github/workflows/aws-architecture.yml로 복사하세요.
+# Actions > AWS Architecture Review > Run workflow에서 목적을 선택하면 됩니다.
+name: AWS Architecture Review
 
-# 1. 기본: 사용자가 설계를 요청하는 시점에만 실행. 매 PR 재분석은 선택형 예시를 참고하세요.
 on:
   workflow_dispatch:
+    inputs:
+      analysis_goal:
+        description: "무엇을 검토하시나요?"
+        type: choice
+        required: true
+        options:
+          - new_aws
+          - migrate_onprem
+        default: new_aws
 
-# 2. 권한: 코드 읽기만 허용. 이 워크플로는 AWS를 배포하지 않음
 permissions:
   contents: read
 
-# 3. 대상 저장소를 분석한 뒤 산출물을 다운로드 가능한 Artifact로 저장
 jobs:
-  recommendation:
+  review:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # 3-1. 현재 저장소 파일을 분석 대상으로 체크아웃
-      - name: 분석할 저장소 체크아웃
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      # 3-2. 재사용 Action 실행 (운영 시에는 @main 대신 검증된 SHA/릴리스 태그 고정 권장)
-      # 3-2-1. 요구사항 JSON이 없다면 requirements_file 항목을 제거해도 됩니다.
-      - name: 설계 검토 및 AWS 아이콘 다이어그램 생성
-        uses: Leegiyeon/Generate-Architectures@main
+      # 실제 운영 적용 전에는 @main 대신 검증된 커밋 SHA/릴리스 태그로 고정하세요.
+      - uses: Leegiyeon/Generate-Architectures@main
         with:
-          workload: auto
-          # 요구사항 파일을 만든 경우에만 아래 항목의 주석을 해제하세요.
+          analysis_goal: ${{ inputs.analysis_goal }}
+          # 요구사항 파일이 있는 경우에만 사용:
           # requirements_file: .architecture/requirements.json
-          # AI 보조 검토는 기본 비활성화입니다. 코드 메타데이터 외부 전송에 동의하는 경우에만 활성화하세요.
-          # enable_ai: "true"
-          # ai_model: gpt-6-luna
-          # 비기밀 비용 시나리오 입력 파일이 있다면 지정합니다.
-          # cost_input: .architecture/cost.json
-          # AWS 가격표 실시간 조회는 임시 자격증명을 별도로 구성한 경우에만 허용
-          # live_pricing: "true"
-          # 민감한 Terraform plan JSON을 Git 커밋으로 전달하지 마세요.
-          # terraform_plan: .architecture/terraform-plan.json
-        # enable_ai 활성화 시 GitHub Secrets의 OPENAI_API_KEY를 환경변수로 별도 전달합니다.
-        # env:
-        #   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      # 3-3. 한국어 보고서, 설정 근거 JSON, 다이어그램 PNG/SVG 등 저장
-      - name: 설계 결과 파일 보관
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: aws-architecture-recommendation
           path: architecture-output/
