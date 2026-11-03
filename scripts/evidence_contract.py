@@ -125,7 +125,7 @@ def build_evidence_contract(profile, graph, requirements, explicit_fields=(), ar
         missing("document_database_strategy",
                 "현재 문서형 DB를 유지하나요, AWS에서 다른 데이터 서비스를 검토하나요?",
                 "document_database_migration_not_decided")
-    if signals.get("nextjs") and not signals.get("next_static_export"):
+    if signals.get("nextjs") and not signals.get("next_static_export") and "rendering_mode" not in explicit:
         missing("rendering_mode", "Next.js에서 SSR·서버 액션·정적 export 중 무엇을 사용하나요?",
                 "runtime_rendering_not_confirmed")
     if graph.get("errors") or graph.get("scan_truncated") or profile.get("scan_truncated"):
