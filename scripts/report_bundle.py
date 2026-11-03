@@ -83,7 +83,7 @@ def cost_capacity_markdown(cost, operations, topology):
 def generate_user_bundle(out, architecture, topology, graph, contract,
                          decision_matrix, adr, operations, cost, validation,
                          alternative_comparison=None, capacity_evidence=None,
-                         analysis_goal=None):
+                         analysis_goal=None, onprem_as_is=None):
     """모든 기존 산출물이 생성된 후 실행하는 오프라인 읽기 전용 보고 단계."""
     out=Path(out)
     # Legacy callers default to new AWS intent; both modes remain review-only.
@@ -94,6 +94,9 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
             from analysis_goal import build_analysis_goal
         analysis_goal = build_analysis_goal("new_aws")
     migration_waiting = analysis_goal["goal"] == "migrate_onprem"
+    has_declared_as_is = bool(onprem_as_is and onprem_as_is["status"] != "needs_input")
+    if has_declared_as_is and not migration_waiting:
+        raise ValueError("온프레미스 As-Is는 migrate_onprem 모드에서만 표시할 수 있습니다.")
     selected=next(c for c in decision_matrix["candidates"] if c["is_current_reference"])
     if (decision_matrix["selected_reference"] != adr["chosen_reference_detail"] or
         adr["gate"]["architecture"] != validation["decision_gate"] or
@@ -145,7 +148,9 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
     blocked=(validation["decision_gate"]=="blocked" or
              topology["status"]=="blocked_for_review" or
              decision_matrix["status"]=="blocked_for_review")
-    status=("온프레미스 현황 미확인 — AWS 이전 적합성 판단 불가" if migration_waiting else
+    status=("온프레미스 사용자 입력 확인(미검증) — AWS 이전 적합성 판단 불가"
+            if migration_waiting and has_declared_as_is else
+            "온프레미스 현황 미확인 — AWS 이전 적합성 판단 불가" if migration_waiting else
             "조건 충돌 — 설계 수정 및 검토 필요" if blocked else
             "권장 참조 설계 — 승인 전 추가 검증 필요")
     question_list=[x["question"] for x in contract["unknowns"]]
@@ -164,7 +169,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
         "status":status, "production_ready":False, "aws_account_checked":False,
         "analysis_goal":analysis_goal["goal"],
         "migration_assessment_performed":False,
-        "onprem_inventory_analyzed":False,
+        "onprem_inventory_analyzed":has_declared_as_is,
         "chosen_option":architecture["option_id"],
         "decision_gate":validation["decision_gate"],
         "topology_status":topology["status"],
@@ -178,6 +183,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
         "requirements_unknown":len(question_list),
         "parser_partial":contract["status"]=="partial",
         "primary_files":[],
+        "supplementary_files":[],
     }
     for name,description,kind in FILES:
         path=destination/name
@@ -187,6 +193,15 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
             "path":"deliverables/"+name,"description":description,"kind":kind,
             "sha256":hashlib.sha256(path.read_bytes()).hexdigest(),
         })
+    if migration_waiting and onprem_as_is is not None:
+        for name in ("as-is-inventory.json", "as-is-inventory.md", "as-is-topology.svg"):
+            file = out / name
+            if not file.is_file() or not file.stat().st_size:
+                raise ValueError("온프레미스 As-Is 결과물 생성 실패: " + name)
+            manifest["supplementary_files"].append({
+                "path": name, "source": "user_declared_unverified",
+                "sha256": hashlib.sha256(file.read_bytes()).hexdigest(),
+            })
     (out/"artifact-index.json").write_text(
         json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
@@ -240,8 +255,20 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
                    "- 측정값의 진위·실환경 동일성·AWS 쿼터·Auto Scaling은 검증하지 않습니다.",
                    "- [집계 부하 테스트 분석 보고서](capacity-evidence.md)",
                    ""])
+    # 사용자 입력 As-Is를 코드 관측/실제 환경 검증과 절대로 혼동하지 않습니다.
+    if migration_waiting and has_declared_as_is:
+        md[4:4] = [
+            "", "## 현재 환경 As-Is — 사용자 직접 입력(검증 전)", "",
+            "**기존 서버/DB·연결은 사용자가 선언한 정보입니다. 실제 서버·네트워크를 조사하지 않았습니다.**",
+            "- [별도 As-Is 구성도](as-is-topology.svg) / [현재 인프라 표와 코드 단서](as-is-inventory.md)",
+            "- [AWS To-Be 후보](deliverables/01-aws-to-be.svg)는 기존 환경이 아닌 제안입니다.",
+            "- Rehost/Replatform·데이터 전환·다운타임 검증은 미구현이며 별도 검토가 필요합니다.",
+            "",
+        ]
+        md.extend(["", "## 온프레미스 추가 확인 사항", ""] +
+                  ["- "+markdown_value(x) for x in onprem_as_is["questions"][:5]])
     # 온프레미스 모드는 AWS To-Be 설계도의 존재를 이전 검증으로 오해하지 않도록 합니다.
-    if migration_waiting:
+    elif migration_waiting:
         md[4:4] = [
             "", "## 온프레미스 정보 확인 전 — 마이그레이션 판단 보류", "",
             "**실제 서버/DB/네트워크·스토리지를 조사하지 않았습니다. "
@@ -340,6 +367,35 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
             "</tbody></table><div class='links'><a href='capacity-evidence.md'>"
             "부하 테스트 집계·용량 계획 검토</a></div>"
         )
+    declared_as_is_html = ""
+    if migration_waiting and has_declared_as_is:
+        svg_data = base64.b64encode((out/"as-is-topology.svg").read_bytes()).decode("ascii")
+        declared_servers = "".join(row(
+            host["id"], host["role"], host["os"],
+            str(host["cpu_cores"]) + " / " + str(host["memory_gb"]) + " GB",
+            {"postgresql": "PostgreSQL", "mysql": "MySQL", "mariadb": "MariaDB",
+             "mongodb": "MongoDB", "sqlserver": "SQL Server", "oracle": "Oracle DB"}.get(
+                host["db_engine"], host["db_engine"]),
+            host["access"], "사용자 입력(검증 전)",
+        ) for host in onprem_as_is["servers"])
+        declared_as_is_html = (
+            "<section class='panel' id='onprem-as-is'>"
+            "<h2>온프레미스 현재 구성 As-Is — 사용자 선언</h2>"
+            "<p class='caution'>실제 서버에 접속하지 않았습니다. 사용자 입력과 코드 단서는 "
+            "서로 별도 출처이며 AWS To-Be 제안과도 다릅니다.</p>"
+            "<img class='diagram' alt='사용자 선언 온프레미스 As-Is 구성도' "
+            "src='data:image/svg+xml;base64," + svg_data + "'>"
+            "<table><thead><tr><th>서버 별칭</th><th>역할</th><th>OS</th>"
+            "<th>CPU / RAM</th><th>DB</th><th>접근</th><th>출처</th>"
+            "</tr></thead><tbody>" + declared_servers + "</tbody></table>"
+            "<p>서버 간 연결: 사용자가 명시한 " + str(len(onprem_as_is["connections"])) +
+            "건만 표시합니다. 미입력은 연결이 없다는 증거가 아닙니다.</p>"
+            "<p>코드 관측 단서 " + str(len(onprem_as_is["code_observations"])) +
+            "건은 어떤 서버에서 실행되는지 자동 확정하지 않습니다.</p>"
+            "<h3>추가 확인</h3><ul>" + li(onprem_as_is["questions"],5) + "</ul>"
+            "<div class='links'><a href='as-is-topology.svg'>As-Is 확대</a>"
+            "<a href='as-is-inventory.md'>입력 구성/코드 근거</a></div></section>"
+        )
     migration_notice = (
         "<section class='panel' id='migration-warning'><h2>온프레미스 → AWS 이전: 현재 판단 범위</h2>"
         "<p class='caution'><b>기존 서버·DB·네트워크 정보가 확인되지 않았습니다.</b> "
@@ -347,7 +403,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "Rehost·Replatform 및 다운타임/데이터 이전 위험은 현재 분석하지 못합니다.</p>"
         "<h3>다음에 확인할 내용</h3><ul>" +
         li(analysis_goal["next_actions"],3) + "</ul></section>"
-        if migration_waiting else ""
+        if migration_waiting and not has_declared_as_is else ""
     )
     html_doc=(
         "<!doctype html><html lang='ko'><head><meta charset='utf-8'>"
@@ -364,7 +420,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "<a href='#decision'>② 선정 근거</a><a href='#ops'>③ 보안·운영</a>"
         "<a href='#cost'>④ 비용·용량</a><a href='#evidence'>As-Is/To-Be</a>"
         "<a href='#next'>재분석</a></nav></header><main>"
-        + migration_notice +
+        + migration_notice + declared_as_is_html +
         "<section id='overview' class='grid'>"
         "<div class='card'><strong>권장 참조안</strong><b>"+safe(architecture["pattern"])+
         "</b><br><small>사람 승인 전</small></div>"
