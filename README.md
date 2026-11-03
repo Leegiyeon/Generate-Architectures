@@ -117,6 +117,7 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output 
 | `requirements-gaps.json` | 추가 사용자 입력 질문 및 파서 분석 상태 |
 | `evidence-report.md` | 한국어 근거 및 미확인 조건 보고서 |
 | `architecture.json` | 선택 패턴·대안·Well-Architected 검토 항목 |
+| `architecture-decision-matrix.json/md` | Static/Lambda/ECS/EC2/모바일 후보의 선정·제외 근거, 검토 필요 조건 |
 | `architecture.png` | 기존 AWS 아이콘 참조도 |
 | `aws-topology.json` | 근거/가정과 서비스·네트워크 경계를 구조화한 To-Be 제안 |
 | `aws-topology.svg/png/dot` | 논리 VPC·AZ·서브넷 경계/제안 흐름 다이어그램 |
@@ -252,3 +253,15 @@ Terraform 보안 검사는 `--terraform-plan .architecture/terraform-plan.json` 
 `aws-topology.svg/png`은 **VPC/두 AZ/Subnet/서비스 아이콘이 통합된 한 장의 설계 후보**로 개선했습니다. 별도로 `network-policy.md`가 **ALB 공개/내부 선택, Private ECS NAT·Endpoint 아웃바운드, 컨테이너/DB 포트와 Security Group 통신 경계**를 사용자 입력 근거와 함께 제공합니다.
 
 컨테이너 서비스는 `alb_scheme`(`internet_facing` / `internal`) 및 `egress_strategy`(`undecided` / `nat_gateway` / `vpc_endpoints_only` / `nat_plus_endpoints`)를 설정할 수 있습니다. AWS에서 실제 통신 가능한지는 별도 계정·IAM·SG·라우트 검증이 필요합니다. 외부 인터넷 API 호출이 필요한데 VPC Endpoint만 선택한 경우 충돌을 표시합니다. 자세한 설명은 [TOPOLOGY.md](docs/TOPOLOGY.md)에 있습니다.
+
+## 16. AWS 서비스 선정·제외 근거 비교 (Issue #12 1차)
+
+AWS Architecture Decision Engine은 기존 참조 설계의 선택을 **자동 변경하지 않고**, Static(CloudFront+S3) / Lambda(API Gateway) / ECS Fargate(ALB) / EC2(ALB) / 모바일 백엔드의 **적합 조건·배제 이유·미확인 정보를 비교**합니다.
+
+- 장기 작업 실행시간(`max_job_duration_seconds`)과 호스트 직접 제어 필요(`requires_host_control`)를 선택적으로 명시할 수 있습니다.
+- 관계형 DB/API/Next.js SSR 요구가 있는데 현재 템플릿에 DB 계층이 없거나 정적 실행 계층만 있으면 **현재 참조안 자동 채택 차단**으로 기록합니다.
+- AWS Lambda의 일반 구성 900초 제약을 참고하되 특별한 Lambda 실행 모델/비동기 호출에는 별도 제한이 있으므로 서비스 전체가 불가능하다고 단정하지 않습니다.
+- EC2는 **운영 관리 부담과 호스트 제어 요구 비교용**이며 현 단계에서 자동 AWS To-Be 배포 설계로 선정하지 않습니다.
+- 예상 청구액, 속도, SLO 점수/승인 결과를 생성하지 않습니다. 사용자 승인 없이 추천안을 바꾸거나 AWS를 배포하지 않습니다.
+
+`architecture-decision-matrix.json/md`와 [상세 의사결정 기준](docs/DECISIONS.md)을 참고하세요. **Issue #12는 1차 구현이며 복합 백엔드·서비스별 정확한 배포 패턴과 실측 가격/성능 비교는 후속 과제**입니다.
