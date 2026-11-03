@@ -46,3 +46,7 @@ AWS 공식 설명에 따르면 Fargate의 CPU/메모리/추가 스토리지, EC2
 - https://aws.amazon.com/api-gateway/pricing/
 
 실제 서비스 이전 검토는 API/DB 기능 동등성, 트래픽/부하·Service Quotas, RTO/RPO, IAM·SG·암호화·운영자 패치 책임과 해당 지역 가격을 확인한 후 사람이 승인해야 합니다.
+
+## 제출된 부하 테스트와의 연결 (#15 4차)
+
+선택형 capacity_evidence 파일을 함께 입력하면 동일 workload_id·AWS 리전·peak_rps·후보 구성이 일치하는지 확인합니다. 제출된 집계 처리량, p95 지연, 오류율, 시험 시간 중 하나라도 기준에 못 미치면 기존 입력 비용 모델의 차액 비교를 보류하며 capacity_evidence_review_required로 표시합니다. 모든 조건을 만족하더라도 실제 운영 성능/계정 쿼터는 검증되지 않았으므로 여전히 입력 항목의 산술 차액만 표시합니다. [부하 테스트 집계 입력 규격](CAPACITY_EVIDENCE.md).
