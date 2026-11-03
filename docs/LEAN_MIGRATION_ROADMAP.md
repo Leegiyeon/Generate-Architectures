@@ -2,7 +2,7 @@
 
 > **제품 목표:** 사용자가 GitHub 프로젝트를 처음 AWS에 배포하거나 기존 온프레미스 서비스의 AWS 이전을 검토할 때, **3단계 안에 무엇을 바꿀지/왜 바꿀지/어떤 위험이 있는지** 알 수 있게 합니다.
 >
-> **상태:** 아래 신규 모드·Inventory·마이그레이션 분석은 아직 **미구현**입니다. 현재 제공하는 기능은 저장소 정적 분석 → AWS To-Be 참조 설계·선정 근거·보안·비용 입력 기반 보고서입니다. 이 문서의 완료 기준은 향후 개발 목표입니다.
+> **상태:** 신규 2모드와 비기밀 Inventory/As-Is 사용자 선언 표시 기능은 구현했습니다. **실제 서버 자동 진단, Migration Assessment와 실AWS 검증은 여전히 미구현**입니다. 현재 제공하는 기능은 저장소 정적 분석 → AWS To-Be 참조 설계·선정 근거·보안·비용 입력 기반 보고서입니다. 이 문서의 완료 기준은 향후 개발 목표입니다.
 
 ## 핵심 사용자 경험: 3단계만
 
@@ -39,8 +39,8 @@
 
 | 순서 | 우선순위 | GitHub Issue | 작업과 MVP 완료 조건 | 상태 |
 | --- | --- | --- | --- | --- |
-| 1 | P0 | [#33](https://github.com/Leegiyeon/Generate-Architectures/issues/33) | **간편 시작/2모드**: 대상 저장소 Workflow 1개 + 1회 실행 + 1개 결과 HTML. 무계정/무시크릿; 기존 Action 하위 호환 | 미구현 |
-| 2 | P0 | [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34) | **온프레미스 Inventory/As-Is**: 직접 입력한 현재 인프라 + 실제 코드 단서를 구분. 정보 부족 시 연결·호스트·DB를 지어내지 않음 | 미구현 |
+| 1 | P0 | [#33](https://github.com/Leegiyeon/Generate-Architectures/issues/33) | **간편 시작/2모드**: 대상 저장소 Workflow 1개 + 1회 실행 + 1개 결과 HTML. 무계정/무시크릿; 기존 Action 하위 호환 | 구현·외부 저장소 E2E 대기 |
+| 2 | P0 | [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34) | **온프레미스 Inventory/As-Is**: 직접 입력한 현재 인프라 + 실제 코드 단서를 구분. 정보 부족 시 연결·호스트·DB를 지어내지 않음 | 선언형 As-Is 구현, 실제 시각 QA 대기 |
 | 3 | P0 | [#35](https://github.com/Leegiyeon/Generate-Architectures/issues/35) | **Migration Assessment**: Rehost와 Replatform, 유지/변경/이전·보안/데이터 전환 위험 및 승인 전 단계별 Runbook 후보 | 미구현 |
 | 4 | P0 | [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) | **사용자 보고서 단순화·시각 QA**: 모드별 ①~④ 보고서, 근거/가정 구분, 한글/아이콘/그래프 잘림 실제 확인 | 기능 일부 구현, QA 대기 |
 | 5 | P1 | [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) | **정확성 게이트**: 신규/온프레미스 가상 시나리오+실제 공개 저장소 샘플로 누락/오탐·허위 확정 방지 | 10종 합성 회귀 구현, 실사 QA 대기 |
