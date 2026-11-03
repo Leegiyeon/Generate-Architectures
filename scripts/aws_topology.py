@@ -3,7 +3,11 @@
 VPC/서브넷/AZ는 클라우드에 배포되지 않은 논리적 구성입니다.
 실제 AZ 이름·CIDR·라우팅/보안그룹·할당량·청구액은 추정하지 않습니다.
 """
-from collections import Counter
+try:
+    from .topology_network_policy import enrich_topology
+except ImportError:
+    from topology_network_policy import enrich_topology
+
 
 
 def design_aws_topology(architecture, profile, requirements, contract):
@@ -12,6 +16,7 @@ def design_aws_topology(architecture, profile, requirements, contract):
     observed_refs = [x["id"] for x in contract["observations"]
                      if x["category"].startswith("ast_")][:10]
     region = requirements.get("region")
+    scheme = requirements.get("alb_scheme", "internet_facing")
     ha = (requirements.get("operations_preference") == "high_availability" or
           requirements.get("availability_target_percent", 0) >= 99.9 or
           requirements.get("environment") == "production")
@@ -40,7 +45,9 @@ def design_aws_topology(architecture, profile, requirements, contract):
             "status": "proposed_not_verified",
         })
 
-    node("client", "사용자 / 클라이언트", "client")
+    node("client", "내부 호출자 (연결 경로 확인 필요)" if
+         option == "containers" and scheme == "internal" else
+         "사용자 / 클라이언트", "client")
     node("aws", "AWS Cloud" + (" · " + region if region else " · 리전 미확정"), "boundary")
     node("observability", "CloudWatch 로그·지표 (검토 후보)", "management", "aws")
     if not region:
@@ -89,15 +96,31 @@ def design_aws_topology(architecture, profile, requirements, contract):
     elif option == "containers":
         # ALB는 최소 두 AZ의 public subnets에 연계해야 합니다.
         node("vpc", "VPC (CIDR 미확정)", "vpc", "aws")
-        node("alb", "Public ALB · 2 AZ subnet 연계", "network", "vpc")
-        link("client", "alb", "HTTPS 443 (ACM 인증서·WAF 정책 미확정)")
+        is_public = scheme == "internet_facing"
+        node("alb", ("Internet-facing" if is_public else "Internal") +
+             " ALB · 두 논리 AZ의 서브넷", "network", "vpc")
+        node("waf", "AWS WAF (선택 Web ACL)", "security", "aws")
+        link("waf", "alb", "WAF Web ACL 연결 후보", "policy")
+        link("client", "alb", ("HTTPS 443 / 공개 DNS·TLS 인증서 확인 필요" if is_public else
+                               "사내/VPN/전용망을 통한 내부 ALB 연결 경로 미확정"))
+        if "alb_scheme" not in req_refs:
+            reviews.append({
+                "id": "NET-ALB-SCHEME", "title": "ALB 접근 범위가 확인되지 않음",
+                "action": "외부 공개 API인지 사내 전용 API인지 확인하고 alb_scheme을 명시하세요.",
+            })
+        if not is_public:
+            reviews.append({
+                "id": "NET-INTERNAL-ENTRY", "title": "Internal ALB 접근 경로 미정",
+                "action": "VPC 내부 호출자, VPN, Direct Connect, TGW 등 인입 네트워크를 검증하세요.",
+            })
         for az in ("a", "b"):
             upper = az.upper()
             node("az_" + az, "논리 AZ-" + upper + " (실제 AZ ID 아님)", "az", "vpc")
             node("public_" + az, "Public Subnet " + upper, "subnet_public", "az_" + az)
             node("app_" + az, "Private App Subnet " + upper, "subnet_private", "az_" + az)
-            link("alb", "public_" + az, "ALB의 public subnet 배치", "placement")
-            link("public_" + az, "app_" + az, "ALB → ECS 트래픽 경계 (실제 SG/라우트 별도 확인)", "trust_boundary")
+            link("alb", ("public_" if is_public else "app_") + az,
+                 ("외부용 ALB의 public 서브넷 연결" if is_public else
+                  "Internal ALB의 private 서브넷 연결"), "placement")
         # 운영 가용성 요구가 없으면 ECS 다중 AZ의 task 복제를 확정하지 않습니다.
         selected = ("a", "b") if ha else ("a",)
         for az in selected:
@@ -158,7 +181,7 @@ def design_aws_topology(architecture, profile, requirements, contract):
     for n in nodes.values():
         if n["parent"] is not None and n["parent"] not in nodes:
             raise ValueError("토폴로지의 소속 영역을 찾지 못했습니다.")
-    return {
+    topology = {
         "schema_version": "1.0",
         "status": "proposed_unverified",
         "pattern": option,
@@ -175,6 +198,9 @@ def design_aws_topology(architecture, profile, requirements, contract):
         ],
         "counts": {"nodes":len(nodes), "edges":len(links)},
     }
+    # 네트워크 경계/트래픽 정책을 사용자 입력과 명시적인 AWS 설계 규칙으로 보강합니다.
+    # 미확인 항목은 배포 구성으로 확정하지 않고 검토 대상으로 기록합니다.
+    return enrich_topology(topology, requirements, contract)
 
 
 def markdown_topology(topology):
