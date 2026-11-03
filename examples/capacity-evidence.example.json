@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "synthetic-api-20261103",
+  "tested_on": "2026-11-03",
+  "environment": "isolated_test",
+  "region": "ap-northeast-2",
+  "workload_id": "api_example",
+  "targets": {
+    "peak_rps": 100,
+    "p95_latency_ms": 250,
+    "max_error_rate_percent": 1,
+    "min_test_duration_seconds": 300
+  },
+  "allow_linear_extrapolation": false,
+  "results": [
+    {
+      "candidate": "fargate",
+      "sustained_rps": 120,
+      "p95_latency_ms": 180,
+      "error_rate_percent": 0.2,
+      "duration_seconds": 900,
+      "observed_capacity_units": 2,
+      "avg_duration_ms": null,
+      "scale_out_observed": false
+    },
+    {
+      "candidate": "ec2",
+      "sustained_rps": 110,
+      "p95_latency_ms": 190,
+      "error_rate_percent": 0.3,
+      "duration_seconds": 900,
+      "observed_capacity_units": 2,
+      "avg_duration_ms": null,
+      "scale_out_observed": false
+    },
+    {
+      "candidate": "lambda",
+      "sustained_rps": 140,
+      "p95_latency_ms": 170,
+      "error_rate_percent": 0.2,
+      "duration_seconds": 900,
+      "observed_capacity_units": 60,
+      "avg_duration_ms": 180,
+      "scale_out_observed": false
+    }
+  ]
+}
