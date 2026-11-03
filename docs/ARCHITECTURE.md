@@ -235,3 +235,11 @@ v1 비용 JSON은 호환 유지, `cost-estimate.json/md`와 `deliverables/04-cos
 `scripts/cost_scenarios.py`는 모든 시나리오가 하나의 가격표를 공유하도록 1항목 1조회로 처리하고 구간별 수량에 각각의 단가를 곱해 합산합니다. 가격 조회는 수동 opt-in이며 사용자 AWS 자격증명은 출력물/보고서에 기록하지 않습니다. 기본 v1 단가 계산은 기존 방식과 동일하게 유지합니다.
 
 이는 실제 AWS 비용 완전성 판정이 아닙니다. `topology_coverage`와 `complete_for_entire_architecture=false`는 그대로 유지합니다. AWS Price List가 제공하지 않는 할인/프리티어/계정 집계·사용량 측정은 별도의 실측 진단 영역입니다.
+
+## 동일 업무량 기반 ECS/EC2/Lambda 비용/운영 대안 (Issue #15)
+
+`scripts/alternative_cost_comparison.py`는 명시된 단일 월 워크로드와 서비스별 v2 가격 수량 입력을 유효성 검사하고, 기존 `estimate_costs`를 사용해 각 AWS 실행 패턴의 입력 항목 비용만 계산합니다. 비교 입력 파일은 저장소 내부 일반 JSON만 허용하며, 64KB 제한·심볼릭 링크/경로 이탈 거부·엄격한 키 및 리전·수량 형식을 요구합니다.
+
+비교된 후보가 기존 결정 매트릭스에서 사용자 요구 충돌로 차단되거나, 입력 리전/피크 RPS·월 요청 수가 맞지 않거나, AWS 가격·기본 비용 분류가 누락되면 모델 차액을 표시하지 않습니다. 모든 값이 있더라도 `modeled_items_comparable_unverified` 상태에 한정하며 `recommended_by_cost=null`, `production_ready=false`, `auto_selected=false`, `capacity_benchmarked=false`입니다. 선택된 다이어그램과 ADR을 변경하지 않습니다.
+
+CLI/Action 입력 `alternative_cost_input`은 선택적이며, 기본 상태는 `needs_input`입니다. `alternative-cost-comparison.json/md`와 사용자용 오프라인 HTML/비용 상세 보고서에 결과를 반영합니다. 상세 설명은 [ALTERNATIVE_COST_COMPARISON.md](ALTERNATIVE_COST_COMPARISON.md).
