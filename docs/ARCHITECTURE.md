@@ -1,10 +1,10 @@
-# 시스템 설계·데이터 흐름 (2026-11-02 기준)
+# 시스템 설계·데이터 흐름 (현재 구현과 향후 목표 구분)
 
 ## 설계 목표와 경계
 
 이 프로젝트는 **AWS Solutions Architect의 반복적인 초안 작성·검토 문서화 작업을 지원**하기 위한 자동화 도구입니다. 저장소 내용만으로 알 수 없는 업무 SLA, 데이터 지역, 보안·운영 책임, 트래픽은 **사용자에게 질문**합니다. 설계의 최종 승인권은 사용자에게 있습니다.
 
-현재 구현은 **오프라인 결정적 규칙 엔진**입니다. LLM 서비스 호출, AWS 계정 조회, AWS 가격표 조회, Terraform/CDK 수정, 실제 배포, 성능 측정 기능은 없습니다. 파일 이름만 보고 '보안 적합' 또는 '월 XX달러 보장'처럼 말하지 않습니다.
+**기본 실행**은 저장소 정적 분석과 재현 가능한 규칙 엔진만 사용합니다. 사용자가 명시적으로 활성화하면 OpenAI 보조 검토와 제한된 AWS Price List 단가 조회를 수행할 수 있으며, Terraform plan JSON에 대한 일부 정적 정책 검사도 지원합니다. **실제 AWS 계정/운영 자원 조회, AWS 리소스 변경, Terraform/CDK 자동 배포, 실측 성능 검증은 제공하지 않습니다.** 파일 이름만 보고 보안 적합이나 월간 비용을 보장하지 않습니다.
 
 ## 컴포넌트와 입출력
 
@@ -14,9 +14,9 @@
 | 2 | `scripts/requirements_model.py` | 선택 요구사항 JSON, CLI 값 | 검증된 요구사항 및 부족한 질문 | 입력 값의 유효성·일관성 검사 |
 | 3 | `scripts/architecture_advisor.py` | 저장소 근거 + 요구사항 | 선택된 참조 패턴, 4개 대안, 제한사항, 6원칙 체크리스트, 한국어 보고서 | 검토용 결정과 설명 |
 | 4 | `scripts/render_aws_icons.py` | 서비스 목록 및 연결 관계 | `architecture.png`, `architecture.svg`, `architecture.dot` | 서비스 아이콘 시각화 |
-| 5 | `scripts/recommend_architecture.py` | CLI / Action 입력 | JSON 3종 및 Markdown, 다이어그램 | 실행 파이프라인 조율 |
-| 6 | `action.yml` / `.github/workflows/...` | GitHub 이벤트 | 다운로드 가능한 Actions Artifact, PR 댓글 | 자동 실행 및 결과 전달 |
-| 7 | `app/server.py` | 유효한 GitHub App 웹훅 | 대상 저장소의 workflow_dispatch | GitHub App 외부 이벤트 연결 (호스팅·등록 별도) |
+| 5 | `scripts/recommend_architecture.py` | CLI / Action 입력 | 다양한 JSON/Markdown 및 다이어그램 | 실행 파이프라인 조율 |
+| 6 | `action.yml` / `.github/workflows/...` | **수동 설계 실행**, push/PR 테스트 | 수동 실행 시에만 다운로드 가능한 Actions Artifact | 최초/선택형 설계와 자동 코드 품질 검사를 분리 |
+| 7 | `app/server.py` | 유효한 GitHub App 웹훅 | 대상 저장소의 workflow_dispatch | **서버 코드만 존재** (호스팅·등록·설치 미완료) |
 
 ### 실제 파일을 읽는 방식
 
@@ -134,3 +134,11 @@ validation.json / validation.md / decision-record.md
 - Terraform 계획 검사 결과의 `limited_checks_no_findings`는 **지원한 소수 규칙에서 명시적 위험을 찾지 못했다**는 의미만 갖습니다. 보안 통과를 뜻하지 않으며 `production_ready`는 항상 `false`입니다.
 
 실제 운영의 보안/가격 검증 및 IAM 권한, 유지보수는 [COST_SECURITY_OPERATIONS.md](COST_SECURITY_OPERATIONS.md)에 기술합니다.
+
+## 제품 단계별 기술 경계 (Issue #9)
+
+기본 사용자 업무 흐름은 **수동 GitHub Actions 실행 → 리포지토리 사실 수집 → 누락된 사용자 요구 확인 → AWS 참조 설계 및 대안 → 근거·검증 전 보고서 → Artifact 다운로드**입니다. GitHub `push`/PR에는 기존 코드 테스트만 실행되고 전체 아키텍처 생성은 수행되지 않습니다. 외부 저장소에서 필요한 경우에만 선택형 PR 분석 예시를 설치합니다.
+
+현 단계의 4개 참조 패턴과 서비스 아이콘은 **실구축용 VPC·Subnet·AZ 상세 토폴로지가 아닙니다**. 이를 포함한 상세 설계, 대안 선정 근거, 보안·트래픽·유지보수 청사진은 [#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11)~[#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14)에서 구현합니다.
+
+**선택형 Local AWS Inspector는 미구현**이며, 추후 AWS CLI Profile/SSO 기반 읽기 전용 로컬 진단으로 분리합니다. Access Key 직접 입력 웹페이지, 중앙 계정 비밀키 저장, 실제 AWS 리소스 생성/수정/삭제는 제품 범위에서 제외합니다. [전체 사용자 여정 문서](PRODUCT.md)를 단일 제품 정의의 근거로 사용합니다.

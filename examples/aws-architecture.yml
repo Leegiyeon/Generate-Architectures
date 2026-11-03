@@ -1,12 +1,9 @@
 # 대상 프로젝트에 복사: .github/workflows/aws-architecture.yml
-name: AWS 아키텍처 자동 검토
+name: AWS 아키텍처 최초 분석 (수동)
 
-# 1. 트리거: PR이 생성/변경되거나 사용자가 수동 실행할 때 검토
-# GitHub App 웹훅을 사용할 경우 중복 실행 방지를 위해 pull_request를 제거하세요.
+# 1. 기본: 사용자가 설계를 요청하는 시점에만 실행. 매 PR 재분석은 선택형 예시를 참고하세요.
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
 
 # 2. 권한: 코드 읽기만 허용. 이 워크플로는 AWS를 배포하지 않음
 permissions:
