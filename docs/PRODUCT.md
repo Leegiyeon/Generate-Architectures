@@ -28,7 +28,7 @@
        → 실제 AWS 리소스·계정은 조회하지 않음
   ⑤ AWS 서비스 아이콘+VPC/상징 AZ/Subnet 통합 논리도 + 근거/대안/리스크 보고서 생성
        → SG/라우트/NAT 정책은 제안 수준이며 운영·확장성 검증은 #12~#14에서 보강
-  ⑥ Actions Artifact에서 결과 다운로드
+  ⑥ Actions Artifact에서 결과 다운로드 후 START-HERE.html 우선 열기
        → 사용자가 직접 검토/승인, AWS 배포 작업 없음
 ```
 
@@ -55,7 +55,8 @@
 **현재 제공**
 
 - `architecture.svg/png` — AWS **참조 설계의 서비스 구성도**. VPC/서브넷/AZ 단위의 실제 구축·운영 검증 결과 아님. 추가 `aws-topology.svg/png`는 상징적인 AZ를 포함한 **네트워크 논리 제안**.
-- `recommendation.md` — 선택 이유·대안 비교·보안/가용성 확인 사항을 포함한 한국어 검토 보고서.
+- **`START-HERE.html` / `START-HERE.md` / `deliverables/` — 사용자용 한 장 요약과 4개 주요 설계 결과물. `recommendation.md`는 기존 개발자용 상세 보고서로 유지.**
+- `recommendation.md` — 선택 이유·대안 비교·보안/가용성 확인 사항을 포함한 한국어 상세 검토 보고서.
 - `decision-record.md` — 선택된 참조 패턴과 근거·미확인 문제를 담은 **미승인 ADR 초안**.
 - `application-graph.svg/png/json` — 정적 분석으로 확인되는 일부 코드 구조·호출 관계.
 - `validation.md/json` — 참조 패턴과 입력 간 정적 충돌 및 미측정 항목. 합격/인증 결과 아님.
@@ -101,3 +102,7 @@
 ## 보안·확장성·운영 제안 (Issue #13)
 
 새로 제공하는 security-operations.json/md에는 선택한 AWS To-Be 토폴로지와 실제로 연결되는 IAM/SG·Auto Scaling 후보·CloudWatch 알림·백업·복구·롤백 검토 사항을 포함합니다. 운영 임계값·최소/최대 태스크 수·API 쿼터·SLA는 실제 AWS 계정/부하 시험 없이 결정하지 않습니다. 이 산출물은 운영 적합성 인증이 아니라 검토용 제안입니다.
+
+## 통합 사용자 보고서 (Issue #14)
+
+수동 실행 후 `START-HERE.html`을 열면 ① AWS 상세 To-Be 설계도, ② 서비스 선정·제외 근거와 ADR, ③ 보안/운영/트래픽, ④ 비용/용량·미확인 정보를 한 화면에서 순서대로 확인할 수 있습니다. `START-HERE.md`는 동일 요약을 텍스트로 제공합니다. 필수 데이터 입력이 없거나 일부 단가만 산정되면 검증 전/미산정/부분합으로 표시합니다. As-Is 코드 관찰과 To-Be 설계 제안은 별도입니다. 세부 운영 문서는 [REPORTING.md](REPORTING.md)를 참고하세요.
