@@ -32,6 +32,7 @@ if __package__:
     from .analysis_goal import build_analysis_goal
     from .onprem_inventory import read_inventory, assess_inventory, markdown_inventory
     from .render_onprem_as_is import render_as_is_svg
+    from .migration_assessment import assess_migration, markdown_migration
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -60,6 +61,7 @@ else:
     from analysis_goal import build_analysis_goal
     from onprem_inventory import read_inventory, assess_inventory, markdown_inventory
     from render_onprem_as_is import render_as_is_svg
+    from migration_assessment import assess_migration, markdown_migration
 
 
 def scan(root):
@@ -130,7 +132,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         goal_report["limitations"] = [
             "현재 환경은 사용자 입력 Inventory에 한정해 정리했으며 실제 운영 서버를 조사하지 않았습니다.",
             "Inventory와 코드 단서만으로 DB 배치·네트워크 연결 또는 이전 적합성을 확정하지 않습니다.",
-            "Rehost/Replatform·데이터 이전·다운타임/롤백 Migration Assessment는 별도 후속 기능입니다.",
+            "Rehost/Replatform 정적 비교 초안은 가능하지만 실제 데이터 이전·다운타임/롤백/이전 적합성은 미검증입니다.",
         ]
     result = decide(profile, requirements)
     if inventory_report is not None:
@@ -260,6 +262,24 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         estimate_costs(read_cost_inputs(root, cost_input), live=live_pricing),
         topology, requirements,
     )
+    # 온프레미스 사용자의 직접 선언 정보만으로 두 개의 전략을 비교합니다.
+    # 가격·실제 운영 환경·DB 이전·서버 기능 동등성은 검증하지 않습니다.
+    migration_report = (assess_migration(
+        inventory_report, profile, requirements, topology, cost_report)
+        if analysis_goal == "migrate_onprem" else None)
+    if migration_report is not None:
+        goal_report["migration_review_generated"] = (
+            migration_report["status"] != "needs_inventory")
+        result["migration_assessment"] = {
+            "file": "migration-assessment.json",
+            "status": migration_report["status"],
+            "draft_generated": goal_report["migration_review_generated"],
+            "verified": False, "recommended_strategy": None,
+            "blockers": len(migration_report.get("blocking_risk_ids", [])),
+            "migration_ready": False,
+        }
+        result["analysis_goal"]["migration_review_generated"] = (
+            goal_report["migration_review_generated"])
     # 대안 비용 비교는 명시적인 동일 월 업무량과 실행 패턴별 사용량이 입력될 때만 수행.
     # 기존 cost_estimate와 ADR은 변경하지 않으며 가격 미확인/제약 충돌 시 비교를 거부합니다.
     alternative_data = read_alternative_cost_input(root, alternative_cost_input)
@@ -334,6 +354,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     result["application_graph"]["diagram"] = diagram_info
     for name, value in (
         ("analysis-goal.json", goal_report),
+        *((("migration-assessment.json", migration_report),) if migration_report is not None else ()),
         ("application-graph.json", graph),
         ("aws-topology.json", topology),
         ("architecture-decision-matrix.json", decision_matrix),
@@ -357,6 +378,9 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     ):
         (out / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n",
                                 encoding="utf-8")
+    if migration_report is not None:
+        (out / "migration-assessment.md").write_text(
+            markdown_migration(migration_report), encoding="utf-8")
     (out / "ai-review.md").write_text(markdown_ai_review(ai_review), encoding="utf-8")
     (out / "evidence-report.md").write_text(markdown_evidence(contract), encoding="utf-8")
     (out / "aws-topology.md").write_text(markdown_topology(topology), encoding="utf-8")
@@ -377,6 +401,12 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
               "> " + goal_report["scope"] + "\n\n" +
               ("**주의: 온프레미스 인프라/마이그레이션 적합성 미검증.**\n\n"
                if goal_report["goal"] == "migrate_onprem" else "") + report)
+    if migration_report is not None:
+        report += "\n## 온프레미스 AWS 이전 대안 비교(미검증)\n\n"
+        report += "- 상태: " + migration_report["status"] + "\n"
+        report += "- 후보: " + ", ".join(x["id"] for x in migration_report["strategies"]) + "\n"
+        report += "- 실제 이전 가능성·전환시간/비용·DB 정합성은 검증/확정하지 않았습니다.\n"
+        report += "- 상세: `migration-assessment.json/md`\n"
     report += "\n## 9. 코드 기반 애플리케이션 그래프 (추가 산출물)\n\n"
     report += "- 분석 파일 수: " + str(graph["scanned_source_files"]) + "\n"
     report += "- API: " + str(graph["counts"]["nodes"].get("route", 0))
@@ -459,7 +489,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
                                   alternative_comparison=alternative_cost,
                                   capacity_evidence=capacity_report,
                                   analysis_goal=goal_report,
-                                  onprem_as_is=inventory_report)
+                                  onprem_as_is=inventory_report,
+                                  migration_assessment=migration_report)
     result["user_report"] = bundle
     (out / "architecture.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
