@@ -1,6 +1,6 @@
 # 온프레미스 As-Is 구성 입력 (P0 · Issue #34)
 
-**목적:** 온프레미스 서비스를 AWS로 이전하기 전에 기존 서버·DB·저장소·연결 정보를 **사용자가 확인한 범위만** 표시합니다. AWS에 접속하거나 온프레미스 서버를 진단하지 않습니다. Rehost/Replatform 및 마이그레이션 가능성 판정은 아직 제공되지 않습니다.
+**목적:** 온프레미스 서비스를 AWS로 이전하기 전에 기존 서버·DB·저장소·연결 정보를 **사용자가 확인한 범위만** 표시합니다. AWS에 접속하거나 온프레미스 서버를 진단하지 않습니다. Rehost/Replatform 두 대안의 미검증 비교 초안은 제공하지만, 실제 마이그레이션 가능성 판정은 제공하지 않습니다.
 
 ## 사용 방법 — 3단계
 
@@ -62,4 +62,4 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output 
 
 **보안 주의**: 이 JSON은 비기밀 구조화 데이터만 의도했더라도 조직의 내부 자산 정보를 드러낼 수 있습니다. GitHub 저장소 공개 범위와 Actions Artifact 열람 권한을 확인하세요. 실제 식별자/계정/인증정보를 올리지 말고 필요하면 비공개 저장소에서 사용하세요.
 
-**다음 단계 #35**: As-Is와 AWS To-Be의 차이, Rehost/Replatform·DB 이전·컷오버 위험을 비교하는 Migration Assessment. **현재 Inventory 사용이 AWS 이전 가능성을 인증하지 않습니다.**
+**#35 이전 검토 초안**: 입력된 As-Is 구성과 Rehost/Replatform 후보의 차이, DB·보안·컷오버 위험 및 수동 검증 체크리스트를 제공합니다. [가이드](MIGRATION_ASSESSMENT.md). **Inventory 입력이나 비교 초안이 실제 이전 가능성을 인증하지 않습니다.**
