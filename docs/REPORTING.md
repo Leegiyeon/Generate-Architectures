@@ -60,3 +60,7 @@ GitHub → Actions → **AWS 아키텍처 검토 자동화** → **Run workflow*
 ## 대표 10종 오프라인 시각 QA 옵션
 
 workflow_dispatch의 `golden_qa=true`는 실제 운영 저장소가 아닌 고정 가상 fixture 10종에 대한 START-HERE.html/SVG/PNG 결과를 별도 Artifact로 만듭니다. 코드를 자동 배포하지 않으며 GitHub Actions 기본 수동 설계 실행에 영향을 주지 않습니다. 확인 절차는 [GOLDEN_QA.md](GOLDEN_QA.md) 참고. **인간의 시각 검수 완료 전에는 QA 완료로 표시하지 않습니다.**
+
+## 동일 워크로드 대안 비교 (#15)
+
+선택적 비교 입력 `alternative_cost_input`이 지정되면 사용자 HTML/Markdown의 비용 영역에 ECS Fargate/EC2/Lambda 대안의 입력된 월 비용·미확정 요금/서비스 분류·유지보수 책임을 표시합니다. 모든 단가·요구사항·비용 분류가 확인됐을 때에만 **입력 항목 한정 차액**을 표시하고, 실제 AWS 비용 우열·서비스 변경/자동 승인은 수행하지 않습니다. [이용 방법](ALTERNATIVE_COST_COMPARISON.md).
