@@ -25,9 +25,10 @@ OPTIONAL_NUMBERS = {
     "latency_target_ms": (1, 600000),
     "container_port": (1, 65535),
     "database_port": (1, 65535),
+    "max_job_duration_seconds": (1, 604800),
 }
 OPTIONAL_BOOL = {"requires_authentication", "requires_relational_database", "requires_persistent_storage",
-                 "external_outbound_required"}
+                 "external_outbound_required", "requires_host_control"}
 OPTIONAL_STRINGS = {"region"}
 KNOWN = set(FIELDS) | set(OPTIONAL_NUMBERS) | OPTIONAL_BOOL | OPTIONAL_STRINGS
 
