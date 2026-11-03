@@ -29,6 +29,7 @@ if __package__:
     from .ec2_alternative import design_ec2_alternative, markdown_ec2_alternative
     from .operations_designer import design_operations, markdown_operations
     from .report_bundle import generate_user_bundle
+    from .report_quality_gate import write_report_quality
     from .analysis_goal import build_analysis_goal
     from .onprem_inventory import read_inventory, assess_inventory, markdown_inventory
     from .render_onprem_as_is import render_as_is_svg
@@ -58,6 +59,7 @@ else:
     from ec2_alternative import design_ec2_alternative, markdown_ec2_alternative
     from operations_designer import design_operations, markdown_operations
     from report_bundle import generate_user_bundle
+    from report_quality_gate import write_report_quality
     from analysis_goal import build_analysis_goal
     from onprem_inventory import read_inventory, assess_inventory, markdown_inventory
     from render_onprem_as_is import render_as_is_svg
@@ -492,6 +494,9 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
                                   onprem_as_is=inventory_report,
                                   migration_assessment=migration_report)
     result["user_report"] = bundle
+    # 파일 구조·링크·도면 참조와 미검증 상태만 자동 검사합니다.
+    # 사람의 실브라우저 시각 검수나 AWS 운영 검증을 통과했다고 표시하지 않습니다.
+    result["report_quality"] = write_report_quality(out)
     (out / "architecture.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     report = ("[사용자용 보고서] START-HERE.html / START-HERE.md\n"

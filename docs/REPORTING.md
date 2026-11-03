@@ -68,3 +68,11 @@ workflow_dispatch의 `golden_qa=true`는 실제 운영 저장소가 아닌 고�
 ## 사용자 부하 시험 집계 기반 용량 근거 (Issue #15)
 
 수동 Action 입력 capacity_evidence가 있는 경우 START-HERE.html에 AWS 후보별 RPS, p95(ms), 오류율, 제한된 시험 기준 충족 상태를 표로 표시하고, 추가 보고서 capacity-evidence.md를 제공합니다. 기존 비용 상세 deliverables/04-cost-capacity.md에도 집계된 확인 사항을 합칩니다. 이 자료가 제출된 테스트의 진위/동등성·실서비스 부하/오토스케일/Service Quotas 또는 AWS 자원 배포를 보증하지는 않습니다. [가이드](CAPACITY_EVIDENCE.md).
+
+## 첫 화면 간소화와 자동 구조 품질 검사 (2026-11-03)
+
+`START-HERE.html`은 첫 화면에 선택한 목적·권장 참조 패턴·차단 상태·비용 미산정 여부를 먼저 보여줍니다. 이어 기존 구성(온프레미스인 경우), AWS To-Be, 주요 선정/제외 이유, 보안·운영, 비용·다음 행동 순서로 검토합니다. 추가적인 비용 항목, 보안 통제 리스트, Rehost/Replatform 서버별 상세 변경표는 **외부 JS가 필요 없는 펼침 영역(details)**으로 제공합니다. 사용자가 입력하지 않은 비용/부하 데이터는 확대 테이블을 만들지 않습니다.
+
+매 분석 실행 시 `report-qa.json` 생성 전 검증이 실패하면 결과 생성 자체를 오류로 처리합니다. 확인하는 항목은 오프라인 HTML 내부 앵커·파일 링크, 이미지 ALT/CSP/외부 스크립트 금지, AWS/As-Is SVG XML+viewBox, PNG 헤더·해상도, 토폴로지 노드/엣지 참조 일치, Artifact 해시, 신규/이전 모드별 미검증 메시지입니다.
+
+**중요:** `status=automated_structural_checks_passed`는 파일 구조 QA만 성공했다는 뜻이며 `browser_rendered=false`, `manual_visual_review_completed=false`, `real_repository_accuracy_audited=false`, `aws_account_checked=false`를 유지합니다. 실제 데스크톱/모바일 화면의 한글·폰트·아이콘·클리핑 수동 감사와 외부 실제 저장소 분석 정확도 검증은 #14/#16의 후속 작업입니다.

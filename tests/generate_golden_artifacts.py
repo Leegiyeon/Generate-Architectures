@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from test_golden_workloads import CASES
 from scripts.recommend_architecture import run
+from scripts.report_quality_gate import audit_report
 
 
 def main():
@@ -50,7 +51,7 @@ def main():
             # 한 장 시각 QA에 필요한 파일만 모으되 SVG/PNG는 동일 실행에서 복사합니다.
             for name in ("START-HERE.html","START-HERE.md","aws-topology.svg",
                          "aws-topology.png","application-graph.svg",
-                         "validation.md","architecture.json"):
+                         "validation.md","architecture.json","report-qa.json"):
                 shutil.copyfile(workspace/name,dst/name)
             (dst/"deliverables").mkdir(exist_ok=True)
             for name in ("01-aws-to-be.svg","01-aws-to-be.png",
@@ -63,6 +64,11 @@ def main():
                          "recommendation.md","artifact-index.json",
                          "cost-estimate.json"):
                 shutil.copyfile(workspace/name,dst/name)
+            # Golden export 자체에서도 로컬 링크/CSV·SVG·PNG 해시 QA를 다시 실행합니다.
+            # 브라우저에서 눈으로 본 것은 아니므로 시각 QA는 계속 미완료입니다.
+            local_qa = audit_report(dst)
+            if local_qa["status"] != "automated_structural_checks_passed":
+                raise ValueError("골든 HTML 구조/자산 품질 검사 실패: " + case["id"])
             entry={
                 "id":case["id"],"expected_pattern":case["expected"],
                 "detected_pattern":result["option_id"],
@@ -71,17 +77,24 @@ def main():
                 "embedded_icons":result["aws_topology"]["embedded_icons"],
                 "observed_sources":result["application_graph"]["source_files"],
                 "parser_errors":result["application_graph"]["parser_errors"],
+                "synthetic_fixture_expected_pattern_verified":True,
+                "automated_structure_qa":local_qa["status"],
                 "manual_visual_reviewed":False,
+                "browser_rendered":False,
+                "real_repository_accuracy_audited":False,
                 "deployment_executed":False,
             }
             overview.append(entry)
     (out/"golden-index.json").write_text(json.dumps({
         "schema_version":"1.0","cases":overview,
         "manual_visual_review_completed":False,
+        "synthetic_fixtures_passed":len(overview),
+        "real_repository_samples":0,
+        "browser_rendered":False,
         "aws_account_checked":False,
         "note":"생성된 10개 HTML/SVG/PNG 파일은 사람이 열어 레이아웃/문자/아이콘을 검토해야 합니다.",
     },ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    lines=["# 대표 프로젝트 10종 시각 감사 (미완료 체크리스트)", "",
+    lines=["# 대표 프로젝트 10종 자동 구조 검증 및 시각 감사", "",
            "> 자동 파일 생성은 성공했지만 실제 브라우저의 한글/아이콘/잘림 품질은 사용자가 확인해야 합니다.",
            "", "| 사례 | AWS 패턴 | Browser HTML | SVG 보기 | 시각 QA 완료 |",
            "| --- | --- | --- | --- | --- |"]
@@ -90,7 +103,7 @@ def main():
         lines.append("| "+ident+" | "+entry["detected_pattern"]+
                      " | [HTML]("+ident+"/START-HERE.html) | [SVG]("+
                      ident+"/aws-topology.svg) | ☐ |")
-    lines+=["", "각 사례에서 ① 한글 글자 깨짐 ② 아이콘 누락 ③ 선·라벨 클리핑/겹침 "
+    lines+=["", "**자동 통과:** 합성 데이터에서 예상 패턴 및 HTML 링크·SVG/PNG·보고서 해시 일치 여부. 실제 코드 오탐률/미탐률을 측정한 것이 아닙니다.", "", "각 사례에서 ① 한글 글자 깨짐 ② 아이콘 누락 ③ 선·라벨 클리핑/겹침 "
              "④ 모바일 확대 ⑤ 정상 링크 ⑥ As-Is/To-Be 구분 ⑦ 비용·보안 미검증 문구를 확인하세요.",
             "", "**수동 감사 완료 전 golden-index.json의 manual_visual_review_completed는 false입니다.**",
             ""]
