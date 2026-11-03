@@ -4,6 +4,10 @@ description: 저장소 근거와 명시적 요구사항을 분석하고 한글 �
 
 # 1. 입력: 워크로드와 사용자 제공 요구사항. 빈 파일 경로는 분석만 진행합니다.
 inputs:
+  analysis_goal:
+    description: "필수 선택 1개: 신규 AWS 구축(new_aws) / 온프레미스 AWS 이전(migrate_onprem)"
+    required: false
+    default: new_aws
   workload:
     description: "auto / web / backend / mobile (auto는 코드 근거로 판단)"
     required: false
@@ -84,6 +88,7 @@ runs:
       shell: bash
       env:
         INPUT_WORKLOAD: ${{ inputs.workload }}
+        INPUT_ANALYSIS_GOAL: ${{ inputs.analysis_goal }}
         INPUT_BUDGET: ${{ inputs.monthly_budget_usd }}
         INPUT_REQUIREMENTS: ${{ inputs.requirements_file }}
         INPUT_OUTPUT_DIR: ${{ inputs.output_dir }}
@@ -97,7 +102,7 @@ runs:
         ACTION_SCRIPT: ${{ github.action_path }}/scripts/recommend_architecture.py
       run: |
         set -euo pipefail
-        set -- --repo . --output "$INPUT_OUTPUT_DIR" --workload "$INPUT_WORKLOAD"
+        set -- --repo . --output "$INPUT_OUTPUT_DIR" --workload "$INPUT_WORKLOAD" --analysis-goal "$INPUT_ANALYSIS_GOAL"
         if [[ -n "$INPUT_BUDGET" ]]; then
           set -- "$@" --budget "$INPUT_BUDGET"
         fi
