@@ -221,3 +221,9 @@ scripts/report_bundle.py는 모든 JSON·Markdown·AWS SVG/PNG가 생성된 **�
 `correlate_topology_costs`는 현재 AWS To-Be 노드와 ALB/ECS/RDS/Lambda/NAT/Endpoint/전송·로그/백업 등의 비용 **분류 태그**가 존재하는지만 검사합니다. 리전 불일치 및 누락 분류를 표시하고, `complete_for_entire_architecture=false`를 유지합니다. 상품/SKU/추가 요금·무료 한도·할인/세금 등의 전체 비용 검증은 아직 수행하지 않습니다.
 
 v1 비용 JSON은 호환 유지, `cost-estimate.json/md`와 `deliverables/04-cost-capacity.md`, `START-HERE.html`에 v2 시나리오 비교가 추가됩니다. 상세 입력 및 한계: [COST_SCENARIOS.md](COST_SCENARIOS.md).
+
+## 10개 대표 아키텍처 가상 fixture 회귀 (Issue #16 기반)
+
+`tests/test_golden_workloads.py`는 10가지 기술 스택을 임시 프로젝트로 만들어 `run()`을 실행하고 AWS To-Be와 코드 AST 분석, DB 전환 금지, ADR/보안·비용 미승인, HTML 내부 링크, AWS SVG XML/image base64 및 PNG 서명·합리적인 이미지 크기, 결과물 해시의 일치 여부를 검사합니다. 이 CI 회귀는 실제 AWS 계정/실서비스/부하/브라우저의 시각적 적합성을 보증하지 않습니다.
+
+`tests/generate_golden_artifacts.py`는 사용자가 원할 때만 10개 HTML/SVG/PNG를 만든 후 golden-index.json에 `manual_visual_review_completed=false`를 명시합니다. 기본 push/PR은 자동 CI만, 별도 workflow_dispatch golden_qa 입력이 있는 경우에만 골든 QA 결과를 업로드합니다. 상세: [GOLDEN_QA.md](GOLDEN_QA.md).
