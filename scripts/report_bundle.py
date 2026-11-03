@@ -302,7 +302,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
         return "<tr>"+"".join("<td>"+safe(x)+"</td>" for x in cells)+"</tr>"
     alt_html="".join(row(x["title"],x["status"],
                           "; ".join(z["reason"] for z in x["blockers"][:2])
-                          or x["tradeoffs"][0]) for x in candidates)
+                          or x["tradeoffs"][0]) for x in candidates[:2])
     if not alt_html:
         alt_html="<tr><td colspan='3'>검토 가능한 대안 없음</td></tr>"
     cost_html="".join(row(x["id"],x["quantity"]+" "+x["unit"],
@@ -319,7 +319,7 @@ nav{display:flex;flex-wrap:wrap;gap:9px;margin-top:17px}nav a{border:1px solid #
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.card{margin:0}.card strong{display:block;font-size:13px;color:#2d587c}.card b{font-size:18px}
 h2{font-size:21px;color:#163e64;margin-top:0}h3{font-size:16px}.pill{display:inline-block;border-radius:16px;background:#d8e9fe;color:#144575;padding:3px 10px}
 .caution{padding:12px;border-left:4px solid #d19c2d;background:#fff6e1;border-radius:5px}
-.diagram{display:block;width:100%;height:auto;max-height:760px;object-fit:contain}
+.diagram{display:block;width:100%;height:auto;object-fit:contain}.table-scroll{max-width:100%;overflow-x:auto}details{margin:12px 0;border:1px solid #dce5ee;border-radius:8px;padding:9px 12px}details summary{cursor:pointer;font-weight:600;color:#194973}details[open] summary{margin-bottom:12px}
 .links{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.links a{background:#e9f2fc;padding:7px 12px;border-radius:7px}
 table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:10px;border-bottom:1px solid #e0e7ef;vertical-align:top}th{background:#edf3f8}
 li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px;color:#54708e}
@@ -330,7 +330,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         raise ValueError("렌더링된 AWS 설계도가 비어 있습니다.")
     # 시나리오별 금액은 사용자 직접 입력한 수량에 한해서만 출력합니다.
     scenario_html = ""
-    if "scenarios" in cost:
+    if "scenarios" in cost and (cost["lines"] or cost.get("complete")):
         comparison = []
         for key, label in (("minimum", "최소"), ("baseline", "기준"), ("peak", "피크")):
             value = cost["scenarios"][key]
@@ -423,10 +423,10 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
                 x["to_be_candidate"], x["reason"],
             ) for x in option["changes"][:10])
             option_parts.append(
-                "<h3>" + safe(option["title"]) + "</h3>"
-                "<table><thead><tr><th>현재 서버</th><th>구성</th><th>검토 변경</th>"
+                "<details><summary>" + safe(option["title"]) + " · 변경사항 자세히</summary>"
+                "<div class='table-scroll'><table><thead><tr><th>현재 서버</th><th>구성</th><th>검토 변경</th>"
                 "<th>AWS 후보</th><th>선택 근거/검증 전제</th></tr></thead><tbody>" +
-                changes + "</tbody></table>"
+                changes + "</tbody></table></div></details>"
             )
         risk_html = li(
             [x["title"] + " — " + x["question"]
@@ -437,6 +437,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
             "<p class='caution'>사용자 선언 및 코드 단서 기반 참고안입니다. "
             "어느 방식이 적합한지 자동 선정하지 않았으며 DB 호환·다운타임·"
             "실제 이전 비용·보안·성능은 미검증입니다.</p>" +
+            "<p>Rehost: 기존 서버 실행환경 보존 검토 · Replatform: AWS 관리형 서비스 일부 전환 검토</p>" +
             "".join(option_parts) +
             "<h3>우선 검토 위험(최대 5개)</h3><ul>" + risk_html + "</ul>"
             "<p>전환 절차: 사전 조사 → 테스트 → 데이터 이전 계획 → 검증 → Cutover → Rollback. "
@@ -468,7 +469,6 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "<a href='#decision'>② 선정 근거</a><a href='#ops'>③ 보안·운영</a>"
         "<a href='#cost'>④ 비용·용량</a><a href='#evidence'>As-Is/To-Be</a>"
         "<a href='#next'>재분석</a></nav></header><main>"
-        + migration_notice + declared_as_is_html + migration_comparison_html +
         "<section id='overview' class='grid'>"
         "<div class='card'><strong>권장 참조안</strong><b>"+safe(architecture["pattern"])+
         "</b><br><small>사람 승인 전</small></div>"
@@ -476,20 +476,20 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "건</b><br><small>추가 확인 질문 "+str(len(question_list))+"개</small></div>"
         "<div class='card'><strong>월간 비용 상태</strong><b>"+safe(cost["status"])+
         "</b><br><small>"+safe(cost_summary)+"</small></div></section>"
+        + migration_notice + declared_as_is_html + migration_comparison_html +
         "<section class='panel' id='diagram'><h2>① AWS To-Be 설계도</h2>"
         "<p class='muted'>논리 VPC/가용 영역·서비스 연결. 실제 클라우드 구성·주소·라우팅 검증 결과가 아닙니다.</p>"
         "<div class='links'><a href='deliverables/01-aws-to-be.svg'>SVG 확대</a>"
-        "<a href='deliverables/01-aws-to-be.png'>PNG</a>"
-        "<a href='aws-topology.json'>노드/연결 근거 JSON</a></div>"
+        "<a href='deliverables/01-aws-to-be.png'>PNG</a></div>"
         "<img class='diagram' alt='AWS To-Be 서비스와 네트워크 제안' src='data:image/svg+xml;base64,"+
         image+"'>"
         "<p class='caution'>"+safe(topology["status"])+" · 서비스/영역 "+str(topology["counts"]["nodes"])+
         "개 · 논리 연결 "+str(topology["counts"]["edges"])+"개. AWS 계정에서 확인하지 않았습니다.</p></section>"
         "<section class='panel' id='decision'><h2>② 서비스 선정 및 제외 근거</h2>"
         "<h3>"+safe(selected_title)+" (현재 참조 패턴)</h3>"
-        "<ul>"+li(selected["rationale"])+"</ul>"
-        "<h3>대안 비교</h3><table><thead><tr><th>후보</th><th>상태</th><th>제외/검토 이유</th>"
-        "</tr></thead><tbody>"+alt_html+"</tbody></table>"
+        "<ul>"+li(selected["rationale"],3)+"</ul>"
+        "<h3>대안 비교 (최대 2개)</h3><div class='table-scroll'><table><thead><tr><th>후보</th><th>상태</th><th>제외/검토 이유</th>"
+        "</tr></thead><tbody>"+alt_html+"</tbody></table></div>"
         "<div class='links'><a href='deliverables/02-architecture-decisions.md'>"
         "서비스 선정·DB 대안·ADR 전체</a></div></section>"
         "<section class='panel' id='ops'><h2>③ 보안·트래픽·운영</h2>"
@@ -500,8 +500,8 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         str(len(operations["scaling"]["policies"]))+"개</b><br><small>임계값 미정</small></div>"
         "<div class='card'><strong>경보 후보</strong><b>"+
         str(len(operations["alerts"]))+"개</b><br><small>미생성</small></div></div>"
-        "<h3>주요 통제</h3><ul>"+li([x["title"] for x in operations["security_and_operations"]],9)+
-        "</ul><div class='links'><a href='deliverables/03-security-operations.md'>"
+        "<details><summary>보안·운영 통제 목록 자세히</summary><ul>"+li([x["title"] for x in operations["security_and_operations"]],9)+
+        "</ul></details><div class='links'><a href='deliverables/03-security-operations.md'>"
         "보안·운영 보고서</a><a href='network-policy.md'>네트워크 정책 제안</a></div></section>"
         "<section class='panel' id='cost'><h2>④ 비용·용량</h2>"
         "<p class='caution'>"+safe(cost_summary)+
@@ -525,14 +525,15 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "</tbody></table><div class='links'>"
         "<a href='application-graph.svg'>As-Is 코드 구조</a>"
         "<a href='evidence-report.md'>근거·미확인 조건</a>"
-        "<a href='validation.md'>정적 제약 보고서</a></div>"+
+        "<a href='validation.md'>정적 제약 보고서</a>"
+        "<a href='aws-topology.json'>AWS 노드/연결 근거 JSON</a></div>"+
         ("<p class='caution'>코드 파싱 일부 실패: 미관측을 부재로 해석할 수 없습니다.</p>"
          if contract["status"]=="partial" else "")+"</section>"
         "<section class='panel' id='next'><h2>우선 확인 사항 및 재분석</h2>"
         "<h3>우선 확인할 질문 최대 5개</h3><ul>"+li(visible_questions,5)+"</ul>"
         "<h3>수동 재분석</h3><ol>"
         "<li>저장소의 .architecture/requirements.json에 비기밀 업무 요구와 운영 조건을 보완합니다.</li>"
-        "<li>GitHub → Actions → AWS 아키텍처 검토 자동화 → <b>Run workflow</b>를 실행합니다.</li>"
+        "<li>대상 저장소 → Actions → AWS Architecture Review → <b>Run workflow</b>를 실행합니다.</li>"
         "<li>Artifacts에서 aws-architecture-recommendation을 다운로드하고 이 보고서를 확인합니다.</li>"
         "</ol><div class='links'><a href='START-HERE.md'>한국어 요약</a>"
         "<a href='recommendation.md'>개발자 상세 보고서</a>"
