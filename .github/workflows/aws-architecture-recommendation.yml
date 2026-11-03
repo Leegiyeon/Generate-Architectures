@@ -1,7 +1,7 @@
-# Generate-Architectures 자체 CI: 코드 변경 시 품질검사 후 설계 산출물 생성
+# Generate-Architectures: push/PR은 자동 테스트만, 아키텍처 설계 분석은 사용자가 수동 요청할 때만 실행
 name: AWS 아키텍처 검토 자동화
 
-# 1. 트리거: 기본 브랜치 변경, PR, 수동 실행 (외부 저장소는 action.yml 사용)
+# 1. 트리거: push/PR은 CI 검증, workflow_dispatch는 사용자가 명시적으로 설계 생성
 on:
   push:
     branches: [main]
@@ -47,7 +47,7 @@ on:
 permissions:
   contents: read
 
-# 3. 작업 흐름: 준비 -> 테스트 -> 분석 -> 파일 보관 -> PR 알림
+# 3. 작업 흐름: 의존성 준비 -> 테스트(상시) -> [수동 실행 시에만] 설계 생성 및 보관
 jobs:
   recommend:
     runs-on: ubuntu-latest
@@ -76,8 +76,10 @@ jobs:
       - name: 자동 테스트
         run: python3 -m unittest discover -s tests -v
 
-      # 3-6. 동일한 Action을 사용하므로 외부 저장소와 실행 방식 일치
-      - name: 설계 분석 및 다이어그램 생성
+      # 3-6. push/PR에서는 코드 품질검사만 실행. 사용자의 수동 요청에서만 전체 설계 분석을 수행
+      # 기존 CI 자동 검증을 유지하면서 모델 호출과 분석 리소스 낭비를 줄입니다.
+      - name: 설계 분석 및 다이어그램 생성 (수동 실행)
+        if: github.event_name == 'workflow_dispatch'
         uses: ./
         with:
           workload: ${{ inputs.workload || 'auto' }}
@@ -93,8 +95,10 @@ jobs:
           # Secrets는 수동 실행에서 동의한 경우에만 노출; 일반 PR은 비활성화
           OPENAI_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_ai && secrets.OPENAI_API_KEY || '' }}
 
-      # 3-7. 정적 설계 제약 검사(validation.json/md), ADR, 한글 보고서 및 PNG/SVG/DOT 업로드
-      - name: 생성 파일 업로드
+      # 3-7. 사용자가 수동으로 설계 생성을 요청한 경우에만 Artifact 보관
+      # push/PR은 분석을 생성하지 않으므로 별도 Artifact도 업로드하지 않습니다.
+      - name: 생성 파일 업로드 (수동 실행)
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: aws-architecture-recommendation
@@ -102,29 +106,3 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-# 4. PR 결과 댓글은 별도의 최소 권한 작업에서 처리. 이 작업은 PR 소스를 실행하지 않습니다.
-  comment:
-    needs: recommend
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      # 4-1. 별도 job에만 쓰기 권한 제공: 테스트하는 PR 코드에는 쓰기 토큰 미전달
-      - name: PR 설계 결과 댓글 갱신
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const {owner, repo} = context.repo;
-            const issue_number = context.issue.number;
-            const marker = '<!-- aws-architecture-recommendation -->';
-            const body = marker + '\\nAWS 아키텍처 검토용 초안 생성 완료. ' +
-              '[설계 보고서 및 PNG/SVG 확인](' + context.serverUrl + '/' + owner + '/' + repo +
-              '/actions/runs/' + context.runId + ').\\n' +
-              '주의: 실제 AWS 배포·비용·보안·성능 검증을 수행한 것으로 간주하지 마세요.';
-            const comments = await github.paginate(github.rest.issues.listComments, {owner, repo, issue_number, per_page: 100});
-            const previous = comments.find(c => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker));
-            if (previous) await github.rest.issues.updateComment({owner, repo, comment_id: previous.id, body});
-            else await github.rest.issues.createComment({owner, repo, issue_number, body});
