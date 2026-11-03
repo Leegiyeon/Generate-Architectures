@@ -30,7 +30,8 @@ DOCS = {
 }
 
 
-def compare_architectures(architecture, profile, requirements, contract, topology=None):
+def compare_architectures(architecture, profile, requirements, contract, topology=None,
+                          data_review=None):
     selected = CURRENT.get(architecture["option_id"])
     if selected is None:
         raise ValueError("알 수 없는 AWS 참조 패턴 선택")
@@ -50,6 +51,7 @@ def compare_architectures(architecture, profile, requirements, contract, topolog
     rendering = requirements.get("rendering_mode")
     can_static = profile.get("static_candidate", False)
     min_ops = requirements.get("operations_preference") == "minimize_maintenance"
+    access_pattern = (data_review or {}).get("data_access_pattern", "undecided")
 
     items=[]
     for ident, title, services, tradeoff in CANDIDATES:
@@ -141,6 +143,18 @@ def compare_architectures(architecture, profile, requirements, contract, topolog
             if workload == "mobile":
                 why("모바일 클라이언트의 인증·백엔드 API 후보를 검토합니다.",
                     [signal_ref["mobile"]] if "mobile" in signal_ref else [])
+        # 데이터 접근 패턴은 DB 선택 증거가 아닙니다. 현재 참조 패턴이 미지원인 경우 검토를 요구합니다.
+        if access_pattern == "document_queries" and ident in ("lambda", "mobile_api"):
+            review("DEC-DOCSTORE-MODEL", "문서형 DB 조회를 DynamoDB에 그대로 적용할 수 없습니다. 기존 쿼리와 호환성을 검토하세요.",
+                   ("data_access_pattern",))
+        if access_pattern == "relational_transactions" and ident == "static":
+            refuse("DEC-STATIC-TRANSACTIONS", "관계형 트랜잭션을 처리할 실행·DB 계층이 정적 웹 템플릿에 없습니다.",
+                   ("data_access_pattern",))
+        if access_pattern == "relational_transactions" and ident in ("lambda", "mobile_api"):
+            refuse("DEC-RDB-TEMPLATE", "관계형 트랜잭션 요구가 있으나 현재 참조 템플릿은 관계형 DB를 연결하지 않습니다.",
+                   ("data_access_pattern",))
+        if access_pattern == "key_value" and ident == "ec2":
+            review("DEC-EC2-KEYVALUE", "키 조회 업무만으로 OS 관리가 필요한 EC2를 선택할 근거는 확인되지 않았습니다.")
         # 정확한 사용자 트래픽을 받더라도 실측 용량 없이 적합 판정을 하지 않습니다.
         if requirements.get("peak_rps") is not None:
             review("DEC-CAPACITY-UNMEASURED",
@@ -215,3 +229,100 @@ def markdown_decision_matrix(result):
     rows.extend("- " + line for line in result["limitations"])
     rows += ["", "실제 채택은 운영 요구, 비용, AWS 실제 계정의 보안 및 부하 테스트를 확인한 뒤 결정합니다.", ""]
     return "\n".join(rows)
+
+
+
+def build_decision_record(architecture, validation, decision_matrix,
+                          data_review, contract):
+    """ADR은 '제안'과 '사용자 승인'을 분리하며 기본 요구값을 사용자 입력으로 오해하지 않음."""
+    user_input = [
+        {"key": item["key"], "value": item["value"], "evidence_id": item["id"]}
+        for item in contract["user_requirements"]
+    ]
+    selected = next(
+        item for item in decision_matrix["candidates"]
+        if item["is_current_reference"]
+    )
+    return {
+        "schema_version": "1.0", "id": "ADR-0001",
+        "status": "proposed_pending_human_approval",
+        "chosen_reference": architecture["option_id"],
+        "chosen_reference_detail": selected["id"],
+        "automatic_deployment_allowed": False,
+        "approval": {"required": True, "approved": False,
+                     "approved_by": None, "approved_at": None},
+        "observed_code_evidence_ids": [
+            x["id"] for x in contract["observations"][:20]],
+        "explicit_user_requirements": user_input,
+        "unconfirmed_defaults": list(contract["system_defaults"]),
+        "selection_rationale": list(selected["rationale"]),
+        "constraints": list(selected["blockers"]),
+        "unconfirmed_conditions": list(selected["review_required"]),
+        "considered_alternatives": [
+            {"id": option["id"], "status": option["status"],
+             "rejection_reasons": option["blockers"],
+             "tradeoffs": option["tradeoffs"]}
+            for option in decision_matrix["candidates"] if not option["is_current_reference"]
+        ],
+        "data_access": {
+            "pattern": data_review["data_access_pattern"],
+            "source": data_review["pattern_source"],
+            "selected_data_store": None,
+            "migration_approved_for_automatic_change": False,
+            "review_required": list(data_review["review_required"]),
+        },
+        "gate": {
+            "architecture": validation["decision_gate"],
+            "candidate_selection": decision_matrix["status"],
+            "production_ready": False,
+        },
+        "future_approval_requirements": [
+            "사용자 명시 요구와 참조 패턴의 충돌 해결",
+            "DB 스키마·쿼리·데이터 전환 전략 확인 및 별도 승인",
+            "네트워크 보안·가용성·트래픽/부하·운영 비용 검증",
+            "AWS 리소스 자동 변경/배포는 본 제품에서 수행하지 않음",
+        ],
+    }
+
+
+def markdown_decision_record(record):
+    lines = [
+        "# ADR-0001: AWS 참조 설계 결정 기록", "",
+        "> **승인 전 / 실제 배포 아님**. AI 제안도 자동 반영하지 않습니다.",
+        "", "- 상태: " + record["status"],
+        "- 현재 참조 패턴: " + record["chosen_reference"],
+        "- 대안 비교: " + record["chosen_reference_detail"],
+        "- 검토 게이트: " + record["gate"]["architecture"], "",
+        "## 1. 사용자가 명시한 요구사항", "",
+    ]
+    for item in record["explicit_user_requirements"]:
+        lines.append("- " + item["evidence_id"] + " " + item["key"] +
+                     ": " + str(item["value"]))
+    if not record["explicit_user_requirements"]:
+        lines.append("- 명시적 입력 없음. 아래 기본값은 사용자가 승인한 값이 아닙니다.")
+    lines += ["", "## 2. 시스템 기본값 (사용자 승인 아님)", ""]
+    for item in record["unconfirmed_defaults"]:
+        lines.append("- " + item["key"] + ": " + str(item["value"]))
+    lines += ["", "## 3. 선정 근거 / 코드 관찰 출처", ""]
+    lines.extend("- " + x for x in record["selection_rationale"])
+    lines.append("- 관찰 근거 ID: " +
+                 (", ".join(record["observed_code_evidence_ids"]) or "미관찰"))
+    lines += ["", "## 4. 배포 대안 선정·제외 이유", "",
+              "| 후보 | 검토 상태 | 제외/추가 검토 근거 |",
+              "| --- | --- | --- |"]
+    for item in record["considered_alternatives"]:
+        reason = "; ".join(x["reason"] for x in item["rejection_reasons"])
+        if not reason:
+            reason = "; ".join(item["tradeoffs"])
+        lines.append("| " + item["id"] + " | " + item["status"] +
+                     " | " + reason.replace("|", "/") + " |")
+    lines += ["", "## 5. 저장소와 데이터 모델", "",
+              "- 접근 패턴: " + record["data_access"]["pattern"],
+              "- 출처: " + record["data_access"]["source"],
+              "- 자동 마이그레이션: 사용하지 않음", "",
+              "## 6. 승인 전 필수 조치", ""]
+    for item in record["constraints"]:
+        lines.append("- [차단 " + item["rule_id"] + "] " + item["reason"])
+    lines.extend("- " + item for item in record["future_approval_requirements"])
+    lines += ["", "실제 인프라 변경은 수행하지 않으며 사용자 승인은 별도 절차로 관리합니다.", ""]
+    return "\n".join(lines)
