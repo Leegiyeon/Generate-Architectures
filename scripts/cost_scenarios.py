@@ -28,7 +28,7 @@ def validate_scenario_config(doc):
             "id", "service", "unit", "quantities", "rate"
         }:
             raise ValueError("v2 항목에는 id/service/unit/quantities/rate가 필요합니다.")
-        if item["service"] not in SERVICES or not isinstance(item["service"], str):
+        if not isinstance(item["service"], str) or item["service"] not in SERVICES:
             raise ValueError("지원하지 않는 비용 서비스 분류입니다.")
         q = item["quantities"]
         if not isinstance(q, dict) or set(q) != set(SCENARIOS):
@@ -96,7 +96,7 @@ def estimate_scenarios(config, *, live=False, client=None):
             "status": "scenario_estimate" if complete else "partial_unpriced",
             "complete_for_provided_items": complete,
             "monthly_total_usd": str(subtotal) if complete else None,
-            "priced_subtotal_usd": str(subtotal) if lines else None,
+            "priced_subtotal_usd": str(subtotal) if any(x["status"] == "estimated" for x in lines) else None,
             "unpriced_count": unknown,
             "lines": lines,
         }
