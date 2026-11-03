@@ -158,7 +158,7 @@ validation.json / validation.md / decision-record.md
 
 `analyzed_at_utc`와 `coverage`는 파서 오류, 파일/그래프 분석 상한, 미지원 영역을 포함합니다. 직접 관찰은 `static_observed`, 설정 감지는 `configuration_indicator`처럼 분류하고 **근거 없는 백분율 confidence는 만들지 않습니다**.
 
-`parse_requirements(return_provenance=True)`는 기존 호출자의 사전 호환성을 유지하면서 사용자 명시 입력 키 목록을 반환합니다. `run()`은 공통 계약으로 질문을 결정하며, 이미 코드에서 탐지된 인증·DB 단서나 이미 입력된 값을 다시 요구하지 않습니다. 다만 구성 요소 발견은 실제 구현·보안 정책 적합성 검증이 아닙니다.
+`parse_requirements(return_provenance=True)`는 기존 호출자의 사전 호환성을 유지하면서 사용자 명시 입력 키 목록을 반환합니다. 사용자 확인 완료된 `rendering_mode` 및 `document_database_strategy`도 보존하여 이후 동일한 질문을 다시 하지 않습니다. `run()`은 공통 계약으로 질문을 결정하며, 이미 코드에서 탐지된 인증·DB 단서나 이미 입력된 값을 다시 요구하지 않습니다. 다만 구성 요소 발견은 실제 구현·보안 정책 적합성 검증이 아닙니다.
 
 수동 AI 리뷰에서는 데이터 보호를 위해 source path, 함수 이름, 원본 코드가 아닌 정적 기술 신호·AST 개수·**명시적** 요구사항만 전송하며 시스템 기본값을 사용자 입력으로 표시하지 않습니다.
 
