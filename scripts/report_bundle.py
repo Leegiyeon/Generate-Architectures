@@ -10,6 +10,11 @@ import json
 from pathlib import Path
 import shutil
 
+try:
+    from .cost_scenarios import scenario_markdown
+except ImportError:
+    from cost_scenarios import scenario_markdown
+
 FILES = (
     ("01-aws-to-be.svg", "AWS To-Be 상세 논리도", "diagram"),
     ("01-aws-to-be.png", "AWS To-Be 이미지", "diagram"),
@@ -71,6 +76,8 @@ def cost_capacity_markdown(cost, operations, topology):
              "- 모든 Auto Scaling 임계값·최소/최대 용량·실측 쿼터는 실제 부하 테스트와 계정 확인 전까지 미확정입니다.",
              "- 비용 시나리오를 변경한 뒤 사용자가 수동 재분석할 수 있습니다.",
              "", cost["note"], ""]
+    if "scenarios" in cost:
+        rows += ["", scenario_markdown(cost)]
     return "\n".join(rows)
 
 def generate_user_bundle(out, architecture, topology, graph, contract,
@@ -221,6 +228,29 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
     image=base64.b64encode((out/"aws-topology.svg").read_bytes()).decode("ascii")
     if not image:
         raise ValueError("렌더링된 AWS 설계도가 비어 있습니다.")
+    # 시나리오별 금액은 사용자 직접 입력한 수량에 한해서만 출력합니다.
+    scenario_html = ""
+    if "scenarios" in cost:
+        comparison = []
+        for key, label in (("minimum", "최소"), ("baseline", "기준"), ("peak", "피크")):
+            value = cost["scenarios"][key]
+            comparison.append(row(
+                label,
+                value["priced_subtotal_usd"] if value["priced_subtotal_usd"] is not None else "미산정",
+                value["monthly_total_usd"] if value["monthly_total_usd"] is not None else "미산정",
+                value["unpriced_count"],
+            ))
+        coverage = cost.get("topology_coverage", {})
+        scenario_html = (
+            "<h3>사용자 입력 최소·기준·피크 시나리오</h3>"
+            "<table><thead><tr><th>시나리오</th><th>부분합 USD</th><th>입력 항목 합계 USD</th>"
+            "<th>미산정 항목</th></tr></thead><tbody>" +
+            "".join(comparison) + "</tbody></table>"
+            "<p class='caution'>To-Be 비용 분류 누락: " +
+            safe(", ".join(coverage.get("missing_categories", [])) or
+                 "분류상 없음 (SKU·사용량 검증 전)") +
+            ". 전체 AWS 청구액 검증이 아닙니다.</p>"
+        )
     html_doc=(
         "<!doctype html><html lang='ko'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -274,6 +304,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "<br>입력 SKU만 계산하며 실제 AWS 총액, 할인/세금/데이터 전송, RPS 처리량을 보장하지 않습니다.</p>"
         "<table><thead><tr><th>항목</th><th>사용량</th><th>가격 상태</th><th>금액 USD</th></tr>"
         "</thead><tbody>"+cost_html+"</tbody></table>"
+        + scenario_html +
         "<p>입력 피크 RPS: <b>"+
         (safe(operations["scaling"]["demand"]["peak_rps"])
          if operations["scaling"]["demand"]["peak_rps"] is not None else "미입력")+
