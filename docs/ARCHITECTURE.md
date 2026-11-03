@@ -213,3 +213,11 @@ scripts/report_bundle.py는 모든 JSON·Markdown·AWS SVG/PNG가 생성된 **�
 원본 선택 패턴/ADR, 정적 Validator 게이트/토폴로지 상태/운영 CloudWatch 노드, 완전하지 않은 비용 모델의 월 총액 제시가 서로 모순되면 사용자 보고서 생성을 실패시킵니다. 보고서에서 실제 AWS 계정/보안/용량/복원 실증을 수행했다고 표시하지 않습니다. 비용의 완결성은 입력된 상품/사용량 범위로 한정됩니다.
 
 사용자 가이드: [REPORTING.md](REPORTING.md).
+
+## AWS 비용 시나리오 v2 기반 구현 (Issue #15)
+
+`scripts/cost_scenarios.py`는 사용자 입력의 월 최소/기준/피크 수량을 엄격 검증하고, 기존 `scripts/cost_estimator.py`의 AWS 공식 출처·리전·단가 보안 정책을 재사용합니다. 동일한 AWS Price List SKU/단가는 3개 시나리오에서 1회만 조회하도록 구성하며 실시간 조회는 기본 비활성화합니다.
+
+`correlate_topology_costs`는 현재 AWS To-Be 노드와 ALB/ECS/RDS/Lambda/NAT/Endpoint/전송·로그/백업 등의 비용 **분류 태그**가 존재하는지만 검사합니다. 리전 불일치 및 누락 분류를 표시하고, `complete_for_entire_architecture=false`를 유지합니다. 상품/SKU/추가 요금·무료 한도·할인/세금 등의 전체 비용 검증은 아직 수행하지 않습니다.
+
+v1 비용 JSON은 호환 유지, `cost-estimate.json/md`와 `deliverables/04-cost-capacity.md`, `START-HERE.html`에 v2 시나리오 비교가 추가됩니다. 상세 입력 및 한계: [COST_SCENARIOS.md](COST_SCENARIOS.md).
