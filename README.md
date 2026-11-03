@@ -8,7 +8,7 @@ GitHub 저장소의 **확인 가능한 근거**와 **사용자가 직접 제공�
 
 **무엇을 입력하나요?** GitHub 저장소와 (선택) 서비스 요구사항 JSON을 입력합니다. 별도의 AWS 계정/자격증명은 필요하지 않습니다.
 
-**무엇을 받나요?** AWS 서비스 아이콘 **참조 설계도**(`architecture.svg/png`)와 선정 근거·대안·위험·미확인 조건을 담은 **한국어 보고서**(`recommendation.md`), ADR 초안 등을 받습니다. 기존 아이콘 다이어그램은 **서비스 참조 패턴**이며, 새 `aws-topology.svg/png`는 **VPC/Subnet/상징적 AZ의 상세 논리 설계 제안**입니다. 둘 다 실제 계정 구성이나 구축 검증 결과는 아닙니다.
+**무엇을 받나요?** AWS 서비스 아이콘 **참조 설계도**(`architecture.svg/png`)와 선정 근거·대안·위험·미확인 조건을 담은 **한국어 보고서**(`recommendation.md`), ADR 초안 등을 받습니다. 기존 아이콘 다이어그램은 **서비스 참조 패턴**이며, 새 `aws-topology.svg/png`는 **VPC/Subnet/상징적 AZ 경계와 AWS 서비스 아이콘을 결합한 상세 논리 설계 제안**입니다. 둘 다 실제 계정 구성이나 구축 검증 결과는 아닙니다.
 
 **어떻게 실행하나요?** GitHub → **Actions → AWS 아키텍처 검토 자동화 → Run workflow** → 실행 완료 후 **Artifacts**에서 결과를 받습니다. **최초 1회 분석 및 필요시 수동 재분석**을 기본으로 합니다. 코드 변경 시의 push/PR 이벤트는 자동 테스트만 실행하고 아키텍처 분석은 반복하지 않습니다.
 
@@ -121,6 +121,7 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output 
 | `aws-topology.json` | 근거/가정과 서비스·네트워크 경계를 구조화한 To-Be 제안 |
 | `aws-topology.svg/png/dot` | 논리 VPC·AZ·서브넷 경계/제안 흐름 다이어그램 |
 | `aws-topology.md` | 한국어 제안 배치, 통신 관계와 미확정 정책 검토 |
+| `network-policy.md` | 명시적 ALB 접근 범위, SG/Private Outbound/NAT/Endpoint 선택과 미확정 네트워크 정책 |
 | `architecture.svg` | AWS 서비스 아이콘이 내장된 독립 실행형 SVG |
 | `architecture.dot` | Graphviz 원본 |
 
@@ -245,3 +246,9 @@ Terraform 보안 검사는 `--terraform-plan .architecture/terraform-plan.json` 
 - **정확성:** AZ-A/B는 설명용 기호입니다. 실제 AZ 이름·CIDR·Security Group·라우팅/NAT/VPC Endpoint·ACM·비용·피크 RPS에 따라 최종 구성이 바뀝니다.
 
 상세 원칙 및 남은 개발 과제는 [AWS 토폴로지 가이드](docs/TOPOLOGY.md)를 참고하세요. **Issue #11은 일부 완료 상태이며 AWS 최적 설계·실환경 검증이 완료된 것은 아닙니다.**
+
+## 15. 상세 AWS 아이콘 다이어그램과 네트워크 정책 (Issue #11 후속)
+
+`aws-topology.svg/png`은 **VPC/두 AZ/Subnet/서비스 아이콘이 통합된 한 장의 설계 후보**로 개선했습니다. 별도로 `network-policy.md`가 **ALB 공개/내부 선택, Private ECS NAT·Endpoint 아웃바운드, 컨테이너/DB 포트와 Security Group 통신 경계**를 사용자 입력 근거와 함께 제공합니다.
+
+컨테이너 서비스는 `alb_scheme`(`internet_facing` / `internal`) 및 `egress_strategy`(`undecided` / `nat_gateway` / `vpc_endpoints_only` / `nat_plus_endpoints`)를 설정할 수 있습니다. AWS에서 실제 통신 가능한지는 별도 계정·IAM·SG·라우트 검증이 필요합니다. 외부 인터넷 API 호출이 필요한데 VPC Endpoint만 선택한 경우 충돌을 표시합니다. 자세한 설명은 [TOPOLOGY.md](docs/TOPOLOGY.md)에 있습니다.

@@ -6,6 +6,35 @@
 import json
 from pathlib import Path
 import subprocess
+import diagrams
+
+try:
+    from .render_aws_icons import AWS_ICONS, CLIENT_ICONS, embed_icons
+except ImportError:
+    from render_aws_icons import AWS_ICONS, CLIENT_ICONS, embed_icons
+
+# 신뢰한 Diagrams 패키지의 번들 아이콘만 사용. 원격 아이콘과 임의 이미지 경로는 사용하지 않음.
+SERVICE_ICONS = {
+    "client": CLIENT_ICONS["User"], "observability": AWS_ICONS["CloudWatch"],
+    "cdn": AWS_ICONS["CloudFront"], "bucket": AWS_ICONS["S3"],
+    "waf": AWS_ICONS["AWS WAF"], "api": AWS_ICONS["API Gateway"],
+    "lambda": AWS_ICONS["Lambda"], "dynamodb": AWS_ICONS["DynamoDB"],
+    "cognito": AWS_ICONS["Amazon Cognito"],
+    "alb": AWS_ICONS["Application Load Balancer"],
+    "rds": AWS_ICONS["Amazon RDS"], "rds_standby": AWS_ICONS["Amazon RDS"],
+}
+
+def _icon_for(identifier):
+    component = SERVICE_ICONS.get(identifier)
+    if identifier.startswith("task_"):
+        component = AWS_ICONS["ECS Fargate"]
+    if component is None:
+        return None
+    root = Path(diagrams.__file__).resolve().parent.parent
+    icon = (root / component._icon_dir / component._icon).resolve()
+    if not icon.is_file() or icon.suffix.lower() != ".png" or not icon.is_relative_to(root):
+        raise ValueError("번들 AWS 아이콘 경로를 확인할 수 없습니다.")
+    return icon
 
 BOUNDARY_KINDS = {
     "boundary", "vpc", "az", "subnet_public", "subnet_private",
@@ -35,6 +64,8 @@ EDGE_STYLE = {
     "telemetry": ("#64748B", "dotted", "normal"),
     "replication": ("#7C3AED", "bold", "normal"),
     "authentication": ("#BE185D", "dashed", "normal"),
+    "routing_proposal": ("#B45309", "dashed", "normal"),
+    "dependency": ("#64748B", "dotted", "normal"),
 }
 
 
@@ -66,8 +97,16 @@ def render_aws_topology(topology, output):
         short = item["name"]
         if len(short) > 62:
             short = short[:59] + "..."
-        lines.append(names[item["id"]] + " [label=" + json.dumps(short, ensure_ascii=False) +
-                     ',shape=box,fillcolor="' + fill + '",color="' + border + '"];')
+        icon = _icon_for(item["id"])
+        if icon:
+            # Graphviz image에는 설치된 Diagrams 번들 PNG만 제공.
+            # SVG 반환 전에 로컬 PNG 참조를 Base64로 치환해 단독 열람 가능하게 합니다.
+            lines.append(names[item["id"]] + " [label=" + json.dumps(short, ensure_ascii=False) +
+                         ",shape=none,labelloc=b,imagescale=true,width=1.9,height=1.55,image=" +
+                         json.dumps(str(icon), ensure_ascii=False) + "];")
+        else:
+            lines.append(names[item["id"]] + " [label=" + json.dumps(short, ensure_ascii=False) +
+                         ',shape=box,fillcolor="' + fill + '",color="' + border + '"];')
 
     def walk(parent):
         for item in children.get(parent, []):
@@ -112,5 +151,10 @@ def render_aws_topology(topology, output):
         subprocess.run(["dot", "-T" + fmt, str(dot),
                         "-o", str(output / ("aws-topology." + fmt))],
                        check=True, timeout=45, capture_output=True)
+    # 모든 AWS 서비스 이미지가 SVG에서 로컬 파일에 의존하지 않도록 내장합니다.
+    icons = embed_icons(output / "aws-topology.svg")
+    if icons < sum(_icon_for(x["id"]) is not None for x in topology["nodes"]):
+        raise RuntimeError("일부 AWS 서비스 아이콘을 렌더링하지 못했습니다.")
     return {"svg": output/"aws-topology.svg",
-            "png": output/"aws-topology.png", "dot": dot}
+            "png": output/"aws-topology.png", "dot": dot,
+            "embedded_icons": icons}

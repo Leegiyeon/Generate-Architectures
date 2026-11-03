@@ -17,6 +17,7 @@ if __package__:
     from .evidence_contract import build_evidence_contract, markdown_evidence
     from .aws_topology import design_aws_topology, markdown_topology
     from .render_aws_topology import render_aws_topology
+    from .topology_network_policy import markdown_network_policy
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -30,6 +31,7 @@ else:
     from evidence_contract import build_evidence_contract, markdown_evidence
     from aws_topology import design_aws_topology, markdown_topology
     from render_aws_topology import render_aws_topology
+    from topology_network_policy import markdown_network_policy
 
 
 def scan(root):
@@ -162,7 +164,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         raise ValueError("보고서 경로는 저장소 루트 또는 상위 폴더일 수 없습니다.")
     out.mkdir(parents=True, exist_ok=True)
     diagram_info = render_application_diagram(graph, out)
-    render_aws_topology(topology, out)
+    topology_diagram = render_aws_topology(topology, out)
+    result["aws_topology"]["embedded_icons"] = topology_diagram["embedded_icons"]
     result["application_graph"]["diagram"] = diagram_info
     for name, value in (
         ("application-graph.json", graph),
@@ -185,6 +188,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     (out / "ai-review.md").write_text(markdown_ai_review(ai_review), encoding="utf-8")
     (out / "evidence-report.md").write_text(markdown_evidence(contract), encoding="utf-8")
     (out / "aws-topology.md").write_text(markdown_topology(topology), encoding="utf-8")
+    (out / "network-policy.md").write_text(markdown_network_policy(topology), encoding="utf-8")
     (out / "cost-estimate.md").write_text(markdown_cost(cost_report), encoding="utf-8")
     (out / "iac-policy.md").write_text(markdown_iac(iac_report), encoding="utf-8")
     (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
