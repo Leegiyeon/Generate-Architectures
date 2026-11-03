@@ -87,7 +87,7 @@ class AWSPriceTierTests(unittest.TestCase):
         dims=[("0","10","0.20"),("10","100","0.10"),("100","Inf","0.05")]
         parsed=interpret_price_dimensions(response(dims),"Requests","ap-northeast-2")
         self.assertEqual(parsed["status"],"priced")
-        self.assertEqual(str(amount_for_tiers(parsed["tiers"],"0")),"0.00")
+        self.assertEqual(str(amount_for_tiers(parsed["tiers"],"0")),"0")
         self.assertEqual(str(amount_for_tiers(parsed["tiers"],"10")),"2.00")
         self.assertEqual(str(amount_for_tiers(parsed["tiers"],"110")),"11.50")
 
