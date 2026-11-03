@@ -217,7 +217,7 @@ class InventoryTests(unittest.TestCase):
             index=json.loads((out/"artifact-index.json").read_text(encoding="utf-8"))
             self.assertTrue(index["onprem_inventory_analyzed"])
             self.assertEqual(len(index["primary_files"]),5)
-            self.assertEqual(len(index["supplementary_files"]),3)
+            self.assertEqual(len(index["supplementary_files"]),5) # As-Is 3개 + Migration Review 2개
             for item in index["supplementary_files"]:
                 self.assertEqual(hashlib.sha256((out/item["path"]).read_bytes()).hexdigest(),
                                  item["sha256"])
