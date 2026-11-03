@@ -257,3 +257,11 @@ ECS/EC2는 사용자가 선형 외삽을 명시적으로 허용한 경우에만 
 `scripts/onprem_inventory.py`에서 16KB 이하 비기밀 서버 정보(최대 8개)와 **명시적** 연결만 수용합니다. 숫자/허용 필드/ID/안전한 경로를 엄격하게 검사하며 IP·접근키·세부 ACL·원시 로그·도메인·비밀정보 필드는 받지 않습니다. 저장소의 DB 패키지/설정 단서는 별도 `code_observations`로 기록하며 실제 DB 서버 위치에 자동 매핑하지 않습니다. `scripts/render_onprem_as_is.py`는 자체완결형 SVG를 별도로 그립니다. AWS To-Be 논리도 및 결정/ADR은 변경하지 않습니다.
 
 `migrate_onprem`에서 기본 `.architecture/onprem-inventory.json`을 자동 탐색하고, 없으면 기존 `needs_input`/미확인 메시지와 승인 보류를 유지합니다. 결과물은 `as-is-inventory.json/md`, `as-is-topology.svg`, 사용자 HTML/Markdown과 `artifact-index.json` 보조 파일 해시입니다. 사용자 선언은 검증된 사실로 승격하지 않으며 Migration Assessment는 아직 구현되지 않았습니다. 자세한 입력 규격은 [ONPREM_INVENTORY.md](ONPREM_INVENTORY.md)에서 확인합니다.
+
+## 온프레미스 Migration Assessment 검토 초안 (#35)
+
+`scripts/migration_assessment.py`는 사용자 입력 As-Is(서버 별칭·역할/OS/DB/명시 연결), 코드 탐지 근거, 명시 요구·To-Be 참조 토폴로지를 합쳐 **Rehost(EC2 중심)와 Replatform(ECS/RDS/ALB 등 조건부)** 두 후보의 서버별 변경표를 생성합니다. Windows/미확인 OS의 ECS 이전, MongoDB와 DocumentDB 호환, 관계형 DB의 RDS 이전, 파일 서비스의 S3 전환을 자동 승인하거나 확정하지 않습니다.
+
+각 변경에는 `as-is-inventory.json#/servers/<index>` 등 원천 JSON 참조 및 `user_declared_unverified` / `repository_code_signal` 출처를 포함합니다. 위험에는 근거 참조 및 사용자가 확인할 질문을 기록합니다. `migration-assessment.json/md`와 START-HERE.html/md에 노출하며 Artifact 해시도 기록합니다. 스크립트는 네트워크/서버에 접속하지 않고 AWS MGN·DMS·SCT 등 마이그레이션 도구를 호출하지 않습니다.
+
+`migration_review_generated=true`는 **정적 비교 초안 생성**을 뜻하며 실제 이전 검증이 아닙니다. `migration_assessment_performed=false`(실환경 이전 타당성 실증은 미수행), `recommended_strategy=null`, `migration_approved=false`, `migration_ready=false`, 비용/다운타임은 `null`을 유지합니다. 별도 [이용 가이드](MIGRATION_ASSESSMENT.md).
