@@ -88,11 +88,11 @@ class AWSAlternativeCostTests(unittest.TestCase):
         self.assertEqual([c["id"] for c in report["candidates"]], ["fargate", "ec2"])
         by_id = {c["id"]: c for c in report["candidates"]}
         self.assertEqual(by_id["fargate"]["scenarios"]["baseline"]
-                         ["provided_items_total_usd"], "56.0")
+                         ["provided_items_total_usd"], "56.00")
         self.assertEqual(by_id["ec2"]["scenarios"]["baseline"]
-                         ["provided_items_total_usd"], "36.0")
+                         ["provided_items_total_usd"], "36.00")
         self.assertEqual(report["comparisons"][1]["deltas_from_minimum_modeled_usd"],
-                         {"fargate": "20.0", "ec2": "0.0"})
+                         {"fargate": "20.00", "ec2": "0.00"})
         self.assertIn("OS·AMI·패치", markdown_comparison(report))
         self.assertIn("사용자 입력 비용", markdown_comparison(report))
         self.assertTrue(all(not x["approved"] for x in report["candidates"]))
@@ -115,7 +115,7 @@ class AWSAlternativeCostTests(unittest.TestCase):
         ec2 = next(c for c in report["candidates"] if c["id"]=="ec2")
         self.assertIsNone(ec2["scenarios"]["baseline"]["provided_items_total_usd"])
         self.assertEqual(ec2["scenarios"]["baseline"]["unpriced_items"],1)
-        self.assertEqual(ec2["scenarios"]["baseline"]["priced_subtotal_usd"],"26.0")
+        self.assertEqual(ec2["scenarios"]["baseline"]["priced_subtotal_usd"],"26.00")
         self.assertNotIn("월 전체 예상", markdown_comparison(report))
 
     def test_missing_shared_costs_disables_comparison(self):
@@ -125,7 +125,7 @@ class AWSAlternativeCostTests(unittest.TestCase):
         self.assertEqual(report["candidates"][0]["missing_categories"],
                          ["cloudwatch_logs", "data_transfer"])
         self.assertEqual(report["candidates"][0]["scenarios"]["baseline"]
-                         ["provided_items_total_usd"], "50.0")
+                         ["provided_items_total_usd"], "50.00")
 
     def test_template_blockers_prevent_cost_ranking(self):
         report=compare_alternatives(input_file(three=True),REQ,matrix(blocked="lambda"))
@@ -216,7 +216,7 @@ class AWSAlternativeCostTests(unittest.TestCase):
                            .read_text(encoding="utf-8"))
             self.assertIsNone(doc["recommended_by_cost"])
             self.assertEqual(doc["comparisons"][1]["deltas_from_minimum_modeled_usd"]
-                             ["fargate"],"20.0")
+                             ["fargate"],"20.00")
             html=(out/"START-HERE.html").read_text(encoding="utf-8")
             self.assertIn("동일 업무량",html)
             self.assertIn("alternative-cost-comparison.md",html)
