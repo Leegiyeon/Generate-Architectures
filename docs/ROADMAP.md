@@ -8,8 +8,8 @@
 | 1 | P0 | [#33](https://github.com/Leegiyeon/Generate-Architectures/issues/33) 신규 AWS/온프레미스 이전 2모드 + 최초 실행 UX | 구현 후 회귀 검증 필요 |
 | 2 | P0 | [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34) 최소 On-Prem Inventory + As-Is | 구현 (사용자 선언 기반) / 실브라우저 QA 대기 |
 | 3 | P0 | [#35](https://github.com/Leegiyeon/Generate-Architectures/issues/35) Migration Assessment·변경사항/위험 | Rehost·Replatform 정적 초안 구현 / 실브라우저 QA 대기 |
-| 4 | P0 | [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 단일 사용자 보고서·시각적 QA | 보고서 기반 구현, 수동 QA 필요 |
-| 5 | P1 | [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) 실제 사례 오탐·미탐/시각 QA | 합성 Golden E2E 구현 |
+| 4 | P0 | [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 단일 사용자 보고서·시각적 QA | 첫 화면 단순화·자동 구조 QA 강화, 수동 시각 QA 필요 |
+| 5 | P1 | [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) 실제 사례 오탐·미탐/시각 QA | 합성 Golden E2E+산출물 구조 QA, 실저장소 정확도/수동 시각 QA 필요 |
 | 6 | P1 | [#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) 비용·용량·공식 SKU 검증 | 입력 기반 계산 구현, 실측 검증 미완료 |
 | 7 | 선택 | [#36](https://github.com/Leegiyeon/Generate-Architectures/issues/36) 로컬 온프레미스 최소 진단 | 미구현 |
 | 8 | 후속 | [#17](https://github.com/Leegiyeon/Generate-Architectures/issues/17) 로컬 AWS 읽기 전용 진단 | 미구현 |
