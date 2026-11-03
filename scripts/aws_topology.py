@@ -179,7 +179,7 @@ def design_aws_topology(architecture, profile, requirements, contract):
 
 def markdown_topology(topology):
     out = ["# AWS 상세 네트워크·서비스 토폴로지 (참조 설계)", "",
-           "> 상태: 제안/미검증. 실제 AWS 인프라·CIDR·IAM·RDS 장애 복구·요금이 확인된 설계가 아닙니다.",
+           "> 상태: " + topology["status"] + " (실제 AWS 인프라·CIDR·IAM·RDS 복구·요금 미검증).",
            "", "- 참조 패턴: " + topology["pattern"],
            "- 리전: " + (topology["region"] or "사용자 확인 필요"),
            "- 고가용성 제안: " + ("2-AZ" if topology["high_availability_proposed"] else "미확정 또는 기본 배치"),
