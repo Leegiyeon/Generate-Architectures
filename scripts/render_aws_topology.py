@@ -97,7 +97,7 @@ def render_aws_topology(topology, output):
             raise ValueError("토폴로지 간선의 서비스 ID를 찾지 못했습니다.")
         # 영역(클러스터)은 실제 서비스가 아니므로 내부 앵커에 연결합니다.
         def endpoint(ident):
-            return ("anchor_" if indexed[ident]["kind"] in BOUNDARY_KIN else "") + names[ident]
+            return ("anchor_" if indexed[ident]["kind"] in BOUNDARY_KINDS else "") + names[ident]
         color, style, arrow = EDGE_STYLE.get(edge["kind"], ("#64748B","solid","normal"))
         note = edge["purpose"]
         if len(note) > 26:
