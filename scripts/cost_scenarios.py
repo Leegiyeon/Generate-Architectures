@@ -59,11 +59,22 @@ def validate_scenario_config(doc):
 
 
 def estimate_scenarios(config, *, live=False, client=None):
-    """동일한 단가는 한 번만 확인하고 사용자 수량 3세트에 재사용."""
+    """입력한 3가지 월 사용량의 SKU 단가/계층 요금표를 재사용합니다.
+
+    - 수동 단가 및 비활성 Price List: 기존 안전 검증/미산정 출력을 그대로 사용
+    - 실시간 GetProducts opt-in: 항목당 한 번만 조회, 단일 SKU가 명확할 때만
+      시작/끝 구간에 따라 graduated-tier 가격을 계산
+    - 모든 결과는 항목 한정 가격이며 계정 전체 AWS 총액으로 표현하지 않음
+    """
     try:
         from .cost_estimator import estimate_costs
+        from .aws_price_dimensions import lookup_price_dimensions, amount_for_tiers
     except ImportError:
         from cost_estimator import estimate_costs
+        from aws_price_dimensions import lookup_price_dimensions, amount_for_tiers
+
+    # 레거시 계산기는 AWS Price List를 호출하지 않도록 항상 live=False.
+    # v2는 별도 가격 차원 파서에서 한 항목당 정확히 한 번만 조회합니다.
     unit_config = {
         "region": config["region"],
         "items": [
@@ -71,53 +82,105 @@ def estimate_scenarios(config, *, live=False, client=None):
             for x in config["items"]
         ],
     }
-    resolved = estimate_costs(unit_config, live=live, client=client)
-    scenarios={}
-    for key in SCENARIOS:
-        lines=[]
-        subtotal=Decimal(0)
-        for item, price in zip(config["items"], resolved["lines"]):
-            unit_price = price["unit_price_usd"]
-            amount = (Decimal(str(item["quantities"][key])) * Decimal(unit_price)
-                      if unit_price is not None else None)
+    baseline = estimate_costs(unit_config, live=False)
+    if live and client is None and any(x["rate"]["kind"] == "aws_price_list"
+                                       for x in config["items"]):
+        try:
+            import boto3
+            from botocore.config import Config
+        except ImportError as exc:
+            raise ValueError("실시간 가격 조회에는 boto3가 필요합니다.") from exc
+        client = boto3.client(
+            "pricing", region_name="us-east-1",
+            config=Config(connect_timeout=3, read_timeout=8,
+                          retries={"max_attempts": 1}),
+        )
+
+    prepared = []
+    for item, line in zip(config["items"], baseline["lines"]):
+        value = dict(line)
+        value["price_model"] = "flat" if value["unit_price_usd"] is not None else "unpriced"
+        value["sku"] = None
+        value["price_effective_date"] = None
+        value["tier_schedule"] = []
+        value["price_calculation"] = "수량 × 확인된 단일 USD 단가" if (
+            value["unit_price_usd"] is not None) else None
+        if item["rate"]["kind"] == "aws_price_list" and live:
+            model = lookup_price_dimensions(
+                item["rate"], item["unit"], config["region"], client,
+            )
+            if model["status"] == "priced":
+                value["sku"] = model["sku"]
+                value["price_effective_date"] = model["effective_date"]
+                value["price_as_of"] = model["effective_date"]
+                value["tier_schedule"] = model["tiers"]
+                value["price_model"] = model["price_model"]
+                value["unit_price_usd"] = (
+                    model["tiers"][0]["usd_per_unit"]
+                    if model["price_model"] == "flat" else None
+                )
+                value["price_calculation"] = (
+                    "수량 × 조회된 OnDemand USD 단가" if model["price_model"] == "flat"
+                    else "각 사용량 구간의 교집합 × 해당 구간 USD 단가를 합산"
+                )
+                value["reason"] = None
+            else:
+                value["reason"] = model["reason"]
+        prepared.append(value)
+
+    scenarios = {}
+    for scenario in SCENARIOS:
+        lines = []
+        subtotal = Decimal("0")
+        for item, price in zip(config["items"], prepared):
+            quantity = Decimal(str(item["quantities"][scenario]))
+            if price["price_model"] == "tiered_graduated":
+                amount = amount_for_tiers(price["tier_schedule"], quantity)
+            elif price["unit_price_usd"] is not None:
+                amount = Decimal(price["unit_price_usd"]) * quantity
+            else:
+                amount = None
             if amount is not None:
                 subtotal += amount
-            line = dict(price)
-            line.update({
+            calculated = dict(price)
+            calculated.update({
                 "service": item["service"],
-                "quantity": str(item["quantities"][key]),
+                "quantity": str(item["quantities"][scenario]),
                 "monthly_amount_usd": str(amount) if amount is not None else None,
                 "status": "estimated" if amount is not None else "unpriced",
             })
-            lines.append(line)
-        unknown=sum(line["status"]=="unpriced" for line in lines)
-        complete=bool(lines) and unknown==0
-        scenarios[key]={
-            "status": "scenario_estimate" if complete else "partial_unpriced",
+            lines.append(calculated)
+        missing = sum(x["status"] == "unpriced" for x in lines)
+        has_priced = any(x["status"] == "estimated" for x in lines)
+        complete = bool(lines) and missing == 0
+        scenarios[scenario] = {
+            "status": "scenario_estimate" if complete else
+                      "needs_input" if not lines else "partial_unpriced",
             "complete_for_provided_items": complete,
             "monthly_total_usd": str(subtotal) if complete else None,
-            "priced_subtotal_usd": str(subtotal) if any(x["status"] == "estimated" for x in lines) else None,
-            "unpriced_count": unknown,
+            "priced_subtotal_usd": str(subtotal) if has_priced else None,
+            "unpriced_count": missing,
             "lines": lines,
         }
-    baseline=scenarios["baseline"]
-    # legacy report_bundle/validation callers get the baseline fields unchanged.
+    base = scenarios["baseline"]
     return {
-        "schema_version": "2.0",
-        "status": baseline["status"] if config["items"] else "needs_input",
-        "complete": baseline["complete_for_provided_items"],
-        "currency": "USD",
-        "region": config["region"],
-        "monthly_total_usd": baseline["monthly_total_usd"],
-        "priced_subtotal_usd": baseline["priced_subtotal_usd"],
-        "lines": baseline["lines"],
-        "unpriced_count": baseline["unpriced_count"],
+        "schema_version": "2.0", "status": base["status"],
+        "complete": base["complete_for_provided_items"],
+        "currency": "USD", "region": config["region"],
+        "monthly_total_usd": base["monthly_total_usd"],
+        "priced_subtotal_usd": base["priced_subtotal_usd"],
+        "lines": base["lines"], "unpriced_count": base["unpriced_count"],
         "scenarios": scenarios,
         "quantities_source": "user_provided_per_scenario",
-        "service_coverage_status": "not_checked",
-        "note": ("최소/기준/피크는 사용자가 직접 제공한 월 사용량입니다. "
-                 "피크 RPS에서 사용량을 자동 산출하지 않았으며, 입력 항목만 계산합니다. "
-                 "실제 총 청구액/예약형 할인·세금·트래픽/백업 전체 비용은 별도 확인이 필요합니다."),
+        "price_resolution": (
+            "opt_in_aws_pricelist_sku_on_demand" if live
+            else "offline_manual_quote_or_unpriced"
+        ),
+        "note": (
+            "최소/기준/피크는 사용자가 제공한 월 사용량입니다. 단일 SKU의 연속적인 "
+            "OnDemand 가격 계층만 계산합니다. 실제 계정 합산 무료 한도·교차 SKU 계층·"
+            "할인·약정·세금·누락 요금과는 다를 수 있으며 전체 AWS 청구액이 아닙니다."
+        ),
     }
 
 
@@ -179,6 +242,7 @@ def scenario_markdown(report):
     if "scenarios" not in report:
         return ""
     rows=["## 최소 / 기준 / 피크 사용자 입력 시나리오", "",
+          "- 단가·계산 모드: " + report.get("price_resolution", "미확정"),
           "> 피크 RPS와 시나리오별 월 사용량을 같은 값으로 간주하지 않습니다.",
           "", "| 시나리오 | 계산된 부분합 USD | 입력 항목 전부 계산된 경우 합계 USD | 단가 누락 항목 |",
           "| --- | ---: | ---: | ---: |"]
@@ -187,6 +251,22 @@ def scenario_markdown(report):
         rows.append("| "+title+" | "+(s["priced_subtotal_usd"] or "미산정")+" | "+
                     (s["monthly_total_usd"] if s["monthly_total_usd"] is not None
                      else "미산정") + " | "+str(s["unpriced_count"])+" |")
+    rows += ["", "## AWS 단가/상품 재현 정보", "",
+             "| 항목 | 방식 | 단일 SKU | 가격 적용일 | 월 단위 계산 |",
+             "| --- | --- | --- | --- | --- |"]
+    for line in report["scenarios"]["baseline"]["lines"]:
+        rows.append("| " + str(line["id"]) + " | " +
+                    str(line["price_model"]) + " | " +
+                    (str(line["sku"]) if line["sku"] else "미확정") + " | " +
+                    (str(line["price_effective_date"])
+                     if line["price_effective_date"] else "미확정") + " | " +
+                    (str(line["price_calculation"]) if line["price_calculation"]
+                     else "미산정") + " |")
+        if line["price_model"] == "tiered_graduated":
+            rows.append("- " + str(line["id"]) +
+                        " 계층 가격 (beginRange/endRange → USD/단위): " +
+                        ", ".join(x["begin"] + "–" + x["end"] + " → " +
+                                  x["usd_per_unit"] for x in line["tier_schedule"]))
     c=report.get("topology_coverage", {})
     rows+=["", "## AWS To-Be 구성요소 대비 비용 분류 확인", "",
            "- 커버리지: "+c.get("status","미검증"),

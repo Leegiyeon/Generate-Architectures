@@ -227,3 +227,11 @@ v1 비용 JSON은 호환 유지, `cost-estimate.json/md`와 `deliverables/04-cos
 `tests/test_golden_workloads.py`는 10가지 기술 스택을 임시 프로젝트로 만들어 `run()`을 실행하고 AWS To-Be와 코드 AST 분석, DB 전환 금지, ADR/보안·비용 미승인, HTML 내부 링크, AWS SVG XML/image base64 및 PNG 서명·합리적인 이미지 크기, 결과물 해시의 일치 여부를 검사합니다. 이 CI 회귀는 실제 AWS 계정/실서비스/부하/브라우저의 시각적 적합성을 보증하지 않습니다.
 
 `tests/generate_golden_artifacts.py`는 사용자가 원할 때만 10개 HTML/SVG/PNG를 만든 후 golden-index.json에 `manual_visual_review_completed=false`를 명시합니다. 기본 push/PR은 자동 CI만, 별도 workflow_dispatch golden_qa 입력이 있는 경우에만 골든 QA 결과를 업로드합니다. 상세: [GOLDEN_QA.md](GOLDEN_QA.md).
+
+## AWS Price List 단일 SKU graduated-tier 지원 (#15 2차)
+
+`scripts/aws_price_dimensions.py`는 AWS Price List Query API `GetProducts` 응답의 SKU, regionCode, OnDemand 단일 조건과 동일 단위의 연속 `beginRange/endRange` 차원을 검증합니다. 단위가 섞이거나 0→Inf 전 구간이 정의되지 않은 경우, 계정 단위 무료 티어/appliesTo 또는 다수 SKU는 `unpriced`로 처리합니다. 결과에는 SKU·가격 적용일·지원 구간만 기록하며 실제 API 예외/민감 원문은 출력하지 않습니다.
+
+`scripts/cost_scenarios.py`는 모든 시나리오가 하나의 가격표를 공유하도록 1항목 1조회로 처리하고 구간별 수량에 각각의 단가를 곱해 합산합니다. 가격 조회는 수동 opt-in이며 사용자 AWS 자격증명은 출력물/보고서에 기록하지 않습니다. 기본 v1 단가 계산은 기존 방식과 동일하게 유지합니다.
+
+이는 실제 AWS 비용 완전성 판정이 아닙니다. `topology_coverage`와 `complete_for_entire_architecture=false`는 그대로 유지합니다. AWS Price List가 제공하지 않는 할인/프리티어/계정 집계·사용량 측정은 별도의 실측 진단 영역입니다.

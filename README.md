@@ -312,3 +312,9 @@ Vite, Next.js Static/SSR, FastAPI, NestJS, Prisma/PostgreSQL, MongoDB, Serverles
 **수동 브라우저 QA(아직 미완료)**가 필요하면 Actions → Run workflow → **golden_qa=true**를 선택해, 별도 `aws-architecture-golden-fixtures` Artifact를 생성하고 `golden-index.md`에 있는 10개 사례를 검토할 수 있습니다. 코드 push/PR에서 이 선택형 대량 Artifact는 생성하지 않습니다.
 
 [대표 프로젝트 검증 및 수동 QA 가이드](docs/GOLDEN_QA.md). 가상 fixture 회귀 통과를 실제 고객 저장소·AWS 운영 적합성/수치 정확도로 주장하지 않습니다.
+
+## 22. AWS Price List 계층형 요금 해석 (#15 2차)
+
+최소/기준/피크 월 사용량(v2)을 입력하고 `live_pricing=true`를 **명시적으로 선택**하면, AWS Price List Query의 **단일 SKU·단일 OnDemand·동일 단위**에서 각 구간의 `beginRange/endRange`와 USD 단가가 명확한 경우에만 누적 구간별 예상 비용을 계산합니다. 상품 후보 중복, 여러 가격 차원 혼합, 리전 불일치 또는 계정 공유 무료 한도 등의 상황에서는 계산하지 않고 **미산정**으로 표시합니다. 기본값은 가격 API 조회 비활성화입니다.
+
+이 결과는 **입력된 서비스/사용량 범위의 부분 비용**입니다. 계정 전체 인프라 비용, 실제 청구액, 서비스별 최적/최저가 선정 또는 RPS 기반 용량 검증은 수행하지 않습니다. [계층 가격 공식·지원 조건](docs/COST_SCENARIOS.md)을 참고하세요.

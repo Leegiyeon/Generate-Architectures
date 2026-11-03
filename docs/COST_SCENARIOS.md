@@ -49,8 +49,31 @@ ALB는 시간당 요금 외 LCU 등 별도 차원이 있을 수 있고 RDS는 DB
 
 ## 후속 개발 (#15 미완료)
 
-- AWS 실제 SKU/상품 그룹별 요금 차원·계층형(Tiered) 가격/무료 한도 처리 및 AWS 공식 산술 사례 검증
+- 계층형 단일 SKU 요금은 **연속 구간에 한해 구현**, 공식 계정 데이터와 교차 SKU·프리티어·집계 요금의 실제 청구 검증 미완료
 - 동일 워크로드 기준 ECS/EC2/Lambda 대안의 규모·할당량과 리전별 이용 가능성 대조
 - CPU·메모리·동시성 실측을 피크 RPS와 연결한 정량 추정 및 신뢰도 검증
 
 가격을 임의 입력하거나 근거 없는 월 총액/서비스별 우열을 생성하지 않습니다.
+
+## Price List Query API 계층 요금 해석 — 2차 구현
+
+AWS 공식 [Price List의 티어 문서](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/finding-prices-in-service-price-list-files.html)는 하나의 SKU/OnDemand term에서 `priceDimensions`의 `beginRange`·`endRange`마다 USD 단가를 제공한다고 설명합니다.
+
+비용 시나리오 v2에서는 `live_pricing=true`를 명시한 경우에만 `GetProducts`를 조회하며, 가격표에 **정확한 SKU 하나, 온디맨드 조건 하나, 동일 청구 단위, 연속되는 범위 0→Inf**가 존재할 때 다음 공식을 적용합니다.
+
+```text
+월 입력 사용량 Q
+각 구간 사용량 = max(0, min(Q, endRange) - beginRange)
+구간별 USD = 각 구간 사용량 × pricePerUnit.USD
+월 입력 항목 비용 = 모든 구간별 USD 합계
+```
+
+예를 들어 **가상 수치**인 0~100 요청에 $0.20, 100~∞ 요청에 $0.10이라면, 150건은 100×0.20+50×0.10=$25입니다. **실제 AWS 요금이 아닙니다.**
+
+유효하지 않은 SKU/다수 상품·혼합 단위·중복/누락된 요금 구간·리전 불일치·결합형 프리티어 `appliesTo`·특별 계약 조건은 계산을 거부해 `unpriced`로 남깁니다. AWS Pricing Query API가 가격 차원에 계정 공유 무료 할당량/할인/약정 전체를 포함하는 것은 아니므로, 자동 적용하지 않습니다.
+
+`cost-estimate.json`과 `cost-estimate.md`에는 지원되는 경우 각 항목의 **SKU, 요금 적용일(effectiveDate), 월별 수량, 구간별 USD 단가, 계산 방식과 실제 미산정 사유**를 남깁니다. 조회된 응답 본문/계정 ID·인증키는 기록하지 않습니다. 가격표를 조회하지 않으면 기본값대로 **미산정**됩니다.
+
+**v1 단일 수량 형식은 기존 동작을 유지**하며 v1 계층 요금은 미산정입니다. 계층 해석은 현재 v2 입력 형식에 한정합니다. 여러 상품을 결합하는 스토리지/전송/요청 과금, AWS 전체 청구액, 공식 Pricing Calculator 실제 사례/운영 비용 대조는 아직 후속 검증 대상입니다.
+
+공식 자료: [AWS GetProducts API](https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html), [AWS 서비스 가격표 차원](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/reading-service-price-list-file-for-services.html).
