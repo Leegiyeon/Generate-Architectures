@@ -171,7 +171,8 @@ def audit_report(folder):
         for e in topology["edges"]
     ):
         raise ValueError("AWS 토폴로지의 중복 노드 또는 연결 대상 누락")
-    if topology["counts"] != {"nodes": len(nodes), "edges": len(topology["edges"])}:
+    if (topology["counts"].get("nodes") != len(nodes) or
+            topology["counts"].get("edges") != len(topology["edges"])):
         raise ValueError("AWS 토폴로지 노드·연결 수 일관성 위반")
     mode = manifest["analysis_goal"]
     if mode == "migrate_onprem":
