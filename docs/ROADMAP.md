@@ -6,7 +6,7 @@
 | 순서 | 우선순위 | 업무 | 상태 |
 | --- | --- | --- | --- |
 | 1 | P0 | [#33](https://github.com/Leegiyeon/Generate-Architectures/issues/33) 신규 AWS/온프레미스 이전 2모드 + 최초 실행 UX | 구현 후 회귀 검증 필요 |
-| 2 | P0 | [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34) 최소 On-Prem Inventory + As-Is | 미구현 |
+| 2 | P0 | [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34) 최소 On-Prem Inventory + As-Is | 구현 (사용자 선언 기반) / 실브라우저 QA 대기 |
 | 3 | P0 | [#35](https://github.com/Leegiyeon/Generate-Architectures/issues/35) Migration Assessment·변경사항/위험 | 미구현 |
 | 4 | P0 | [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 단일 사용자 보고서·시각적 QA | 보고서 기반 구현, 수동 QA 필요 |
 | 5 | P1 | [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) 실제 사례 오탐·미탐/시각 QA | 합성 Golden E2E 구현 |
