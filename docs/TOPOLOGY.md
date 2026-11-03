@@ -43,11 +43,43 @@
 
 AWS 관련 API 호출이나 Terraform apply는 없습니다. 이 그래프는 별도 네트워크/운영 검증과 인간 승인 없이 실제 인프라 변경의 근거로 사용하지 않습니다.
 
-## 다음 개선 항목 (Issue #11 계속)
+## 남은 범위와 다음 단계
 
-1. 실제 AWS 서비스 아이콘과 상세 AZ/Subnet 영역을 **하나의 통합 사용자 다이어그램으로 연결**.
-2. 서비스별 포트/SG/라우트/NAT·VPC Endpoint 선택을 요구사항 기반으로 비교하는 네트워크 설계 정책.
+1. [기반 구현] 실제 AWS 서비스 아이콘과 상세 AZ/Subnet 영역을 **통합 다이어그램으로 연결**. 일부 네트워크 제어 항목은 텍스트 노드로 표시.
+2. [기반 구현] 포트/SG 접근 범위·NAT·VPC Endpoint 선택에 대한 명시 입력과 규칙/미확인 표시. 실제 AWS 정책/라우트와의 대조는 미구현.
 3. SSR/정적 백엔드 분리·문서형 DB/관계형 DB 엔진 판단과 타깃 프로젝트의 코드 흐름 연결.
 4. AWS 공식 가이드와 견적·가용성 근거의 버전 관리, 10개 대표 프로젝트의 수동 리뷰.
 
-이는 현재 미구현이므로 제품 설명에서 배포 준비 완료나 검증된 최적 설계라고 표현하지 않습니다.
+상세 토폴로지 기반은 구현되었으나, 운영 계정의 배포 준비 완료나 검증된 최적 설계라고 표현하지 않습니다.
+
+
+## 통합 AWS 아이콘 토폴로지 및 네트워크 의도 (Issue #11 후속)
+
+\`aws-topology.svg/png\`은 이제 **VPC → 논리 AZ → Public/Private App/DB Subnet 경계 안에 지원되는 AWS 서비스 아이콘**을 그립니다. 이미지의 모든 서비스는 배포 확정이 아닌 **설계 후보**입니다. SVG에는 AWS 아이콘 이미지를 내장하여 GitHub Artifact 외부에서도 열 수 있습니다. IGW/NAT/Endpoint 등 전용 아이콘 매핑이 없는 항목은 명시적 레이블 상자로 표시됩니다. 기존 간결한 \`architecture.svg/png\`도 유지합니다.
+
+설계 구조와 사용자 선택:
+- **공개 ALB**(\`alb_scheme: internet_facing\`): Public Subnet 2개(AZ-A/B)와 IGW 제안, ALB→ECS 작업은 ALB SG만 허용하는 의도. ACM/TLS·Route Table·IGW 설정은 **미검증**입니다.
+- **내부 ALB**(\`alb_scheme: internal\`): Private App Subnet 2개와 내부 DNS/내부 네트워크 접근 제안, 기본 IGW를 만들지 않습니다. VPC/전용망/VPN/TGW 연결은 사용자 확인 필요.
+- **Private ECS outbound 미입력**: NAT/VPC Endpoint 중 무엇을 쓸지 **결정하지 않습니다**. \`NET-EGRESS-CHOICE\`로 표시합니다.
+- **NAT 선택**(\`egress_strategy: nat_gateway\`): 기존 IGW 외에 단일 작업 AZ 또는 HA 선택 시 **AZ별 NAT**를 후보로 추가합니다. EIP, 비용, Route Table·외부 API 전송 범위는 미확정입니다.
+- **VPC Endpoint 선택**(\`egress_strategy: vpc_endpoints_only\`): ECR API/DKR, S3 Gateway, CloudWatch Logs, 필요 시 Secrets Manager Endpoint 후보를 표시합니다. 실제 Private DNS·SG·AZ별 endpoint ENI·AWS 서비스 사용 현황은 미확정입니다.
+- **외부 인터넷 API가 필수인 경우**, endpoint-only는 일반 인터넷 아웃바운드를 제공하지 않으므로 \`NET-EGRESS-CONFLICT\`로 설계 후보를 **차단 검토**합니다. NAT+Endpoint 전략(\`nat_plus_endpoints\`)도 선택 가능합니다.
+- **보안그룹 의도**: Client→ALB TCP443(제안), ALB SG→ECS SG(\`container_port\` 명시 시만 포트 확정), ECS SG→RDS SG(\`database_port\` 명시 시만 포트 확정). **0.0.0.0/0 DB/SSH 공개 정책을 만들지 않습니다.**
+
+요구사항 JSON에 추가할 수 있는 필드:
+
+\`\`\`json
+{
+  "alb_scheme": "internet_facing",
+  "egress_strategy": "undecided",
+  "external_outbound_required": true,
+  "container_port": 8080,
+  "database_port": 5432
+}
+\`\`\`
+
+이 예시의 숫자는 사용자 프로젝트의 실제 컨테이너·DB 포트가 아닙니다. 코드를 기반으로 포트를 추론해 확정하지 않으므로 **사용자가 확인해 입력**해야 합니다. 값을 지정하지 않았을 때 포트·EGRESS는 미확정으로 출력됩니다.
+
+산출물 추가: \`network-policy.md\` — 제안된 SG 접근 범위, 미설정 Route Table 의도, 사용자가 확인해야 할 조건, 공식 AWS 근거 링크. \`aws-topology.json\`의 모든 노드와 연결선에는 **\`design_rule_ids\`**가 있고, 사용자 입력·코드 근거가 존재하는 경우에만 \`evidence_ids\`를 기록합니다. \`rule_catalog\`에는 규칙별 출처와 해석 제한이 포함됩니다.
+
+**미구현·검증 필요**: 실측 트래픽 기반 Auto Scaling/개별 AWS SKU 비용, SG/Route Table 실제 생성/검증, 전체 IAM, 실제 부하·장애 테스트, 세부 SSR 분리 및 DB 엔진 선택. 후속 Issue #12(선정 근거), #13(보안·확장·운영)으로 이어집니다.
