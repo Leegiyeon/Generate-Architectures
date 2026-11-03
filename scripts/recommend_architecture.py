@@ -30,6 +30,8 @@ if __package__:
     from .operations_designer import design_operations, markdown_operations
     from .report_bundle import generate_user_bundle
     from .analysis_goal import build_analysis_goal
+    from .onprem_inventory import read_inventory, assess_inventory, markdown_inventory
+    from .render_onprem_as_is import render_as_is_svg
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -56,6 +58,8 @@ else:
     from operations_designer import design_operations, markdown_operations
     from report_bundle import generate_user_bundle
     from analysis_goal import build_analysis_goal
+    from onprem_inventory import read_inventory, assess_inventory, markdown_inventory
+    from render_onprem_as_is import render_as_is_svg
 
 
 def scan(root):
@@ -94,9 +98,11 @@ def design(found, kind, budget):
 def run(repo, output, workload="auto", budget=None, requirements_file=None,
         ai_enabled=False, ai_model="gpt-6-luna", cost_input=None,
         live_pricing=False, terraform_plan=None, alternative_cost_input=None,
-        capacity_evidence=None, analysis_goal="new_aws"):
+        capacity_evidence=None, analysis_goal="new_aws", onprem_inventory=None):
     """구현 범위: 읽기 전용 정적 분석 및 검토용 AWS 참조 설계 생성."""
     goal_report = build_analysis_goal(analysis_goal)
+    if analysis_goal != "migrate_onprem" and onprem_inventory:
+        raise ValueError("onprem_inventory는 migrate_onprem 모드에서만 입력할 수 있습니다.")
     root = Path(repo).resolve()
     if not root.is_dir():
         raise ValueError("분석 대상 저장소가 존재하지 않습니다.")
@@ -114,12 +120,34 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
             {"path": n["path"], "line": n["line"], "route": n["name"]}
             for n in actual_routes[:20]
         ]
+    inventory_data = (read_inventory(root, onprem_inventory)
+                      if analysis_goal == "migrate_onprem" else None)
+    inventory_report = (assess_inventory(inventory_data, profile)
+                        if analysis_goal == "migrate_onprem" else None)
+    if inventory_data is not None:
+        goal_report["status"] = "onprem_user_declared_unverified"
+        goal_report["onprem_inventory_analyzed"] = True
+        goal_report["limitations"] = [
+            "현재 환경은 사용자 입력 Inventory에 한정해 정리했으며 실제 운영 서버를 조사하지 않았습니다.",
+            "Inventory와 코드 단서만으로 DB 배치·네트워크 연결 또는 이전 적합성을 확정하지 않습니다.",
+            "Rehost/Replatform·데이터 이전·다운타임/롤백 Migration Assessment는 별도 후속 기능입니다.",
+        ]
     result = decide(profile, requirements)
+    if inventory_report is not None:
+        result["onprem_as_is"] = {
+            "file": "as-is-inventory.json",
+            "diagram": "as-is-topology.svg",
+            "status": inventory_report["status"],
+            "verified": False,
+            "servers": len(inventory_report["servers"]),
+            "connections": len(inventory_report["connections"]),
+            "migration_assessment_performed": False,
+        }
     result["analysis_goal"] = {
         "file": "analysis-goal.json", "goal": goal_report["goal"],
         "status": goal_report["status"],
         "migration_assessment_performed": False,
-        "onprem_inventory_analyzed": False,
+        "onprem_inventory_analyzed": inventory_data is not None,
     }
     # 사실 / 사용자 명시입력 / 시스템 기본값 / 가정 / 미확인을 분리합니다.
     contract = build_evidence_contract(profile, graph, requirements, explicit_fields, result)
@@ -285,6 +313,13 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     if out == root or out == root.parent:
         raise ValueError("보고서 경로는 저장소 루트 또는 상위 폴더일 수 없습니다.")
     out.mkdir(parents=True, exist_ok=True)
+    if inventory_report is not None:
+        render_as_is_svg(inventory_report, out / "as-is-topology.svg")
+        (out / "as-is-inventory.json").write_text(
+            json.dumps(inventory_report, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8")
+        (out / "as-is-inventory.md").write_text(
+            markdown_inventory(inventory_report), encoding="utf-8")
     diagram_info = render_application_diagram(graph, out)
     topology_diagram = render_aws_topology(topology, out)
     if ec2_alternative is not None:
@@ -423,7 +458,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
                                   cost_report, validation,
                                   alternative_comparison=alternative_cost,
                                   capacity_evidence=capacity_report,
-                                  analysis_goal=goal_report)
+                                  analysis_goal=goal_report,
+                                  onprem_as_is=inventory_report)
     result["user_report"] = bundle
     (out / "architecture.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -438,6 +474,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
 def main():
     parser = argparse.ArgumentParser(description="AWS 아키텍처 분석 및 제안 (배포 없음)")
     parser.add_argument("--repo", default=".", help="분석할 GitHub 저장소 경로")
+    parser.add_argument("--onprem-inventory", default=None,
+                        help="온프레미스 별칭/자원/연결이 담긴 비기밀 JSON (이전 모드에서만)")
     parser.add_argument("--analysis-goal", choices=["new_aws", "migrate_onprem"],
                         default="new_aws",
                         help="신규 AWS 구성(new_aws) 또는 온프레미스 AWS 이전(migrate_onprem)")
@@ -460,7 +498,7 @@ def main():
         run(args.repo, args.output, args.workload, args.budget, args.requirements,
             args.enable_ai, args.ai_model, args.cost_input,
             args.live_pricing, args.terraform_plan, args.alternative_cost_input,
-            args.capacity_evidence, args.analysis_goal)
+            args.capacity_evidence, args.analysis_goal, args.onprem_inventory)
     except (ValueError, OSError) as exc:
         parser.error(str(exc))
 
