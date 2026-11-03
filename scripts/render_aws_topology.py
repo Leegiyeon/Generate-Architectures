@@ -78,6 +78,9 @@ def render_aws_topology(topology, output):
                              ';style="rounded";color="' + border +
                              '";bgcolor="' + fill +
                              '";fontname="Noto Sans CJK KR";fontsize=11;')
+                # 클러스터(영역)와의 관계를 표시할 연결용 포인트. 실제 서비스가 아님.
+                lines.append("anchor_" + names[item["id"]] +
+                             ' [label="",shape=point,style=invis,width=0.01,height=0.01];')
                 walk(item["id"])
                 if not children.get(item["id"]):
                     # 빈 Public Subnet도 논리적 배치 영역으로 표시해야 합니다.
@@ -92,19 +95,14 @@ def render_aws_topology(topology, output):
     for edge in topology["edges"]:
         if edge["source"] not in indexed or edge["target"] not in indexed:
             raise ValueError("토폴로지 간선의 서비스 ID를 찾지 못했습니다.")
-        # 영역(클러스터)은 Graphviz node가 아니므로 연결 지점을 해당 영역의 숨겨진 앵커로 생성합니다.
-        for ident in (edge["source"], edge["target"]):
-            item=indexed[ident]
-            if item["kind"] in BOUNDARY_KIN:
-                anchor = "anchor_" + names[ident]
-                lines.append(anchor +
-                             ' [label="",shape=point,style=invis,width=0.01,height=0.01];')
-                names[ident] = anchor
+        # 영역(클러스터)은 실제 서비스가 아니므로 내부 앵커에 연결합니다.
+        def endpoint(ident):
+            return ("anchor_" if indexed[ident]["kind"] in BOUNDARY_KIN else "") + names[ident]
         color, style, arrow = EDGE_STYLE.get(edge["kind"], ("#64748B","solid","normal"))
         note = edge["purpose"]
         if len(note) > 26:
             note = note[:23] + "..."
-        lines.append(names[edge["source"]] + " -> " + names[edge["target"]] +
+        lines.append(endpoint(edge["source"]) + " -> " + endpoint(edge["target"]) +
                      ' [color="' + color + '",style="' + style + '",arrowhead="' +
                      arrow + '",label=' + json.dumps(note, ensure_ascii=False) + "];")
     lines.append("}")
