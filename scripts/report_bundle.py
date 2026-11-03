@@ -319,7 +319,7 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
         cost_html="<tr><td colspan='4'>사용량·단가 입력이 없어 비용 미산정</td></tr>"
     css="""
 :root{font-family:system-ui,-apple-system,Segoe UI,Apple SD Gothic Neo,Noto Sans CJK KR,sans-serif;background:#f3f6fa;color:#193451}
-*{box-sizing:border-box}body{margin:0;line-height:1.6}a{color:#164f93}header{background:#112944;color:#fff;padding:32px max(22px,calc((100% - 1100px)/2))}
+*{box-sizing:border-box}body{margin:0;line-height:1.6;overflow-wrap:anywhere}a{color:#164f93}header{background:#112944;color:#fff;padding:32px max(22px,calc((100% - 1100px)/2))}
 header h1{margin:6px 0;font-size:clamp(24px,3vw,35px)}header p{color:#dbe8f6}main{max-width:1100px;margin:auto;padding:16px}
 nav{display:flex;flex-wrap:wrap;gap:9px;margin-top:17px}nav a{border:1px solid #7496b7;border-radius:23px;padding:6px 12px;color:white;text-decoration:none;font-size:13px}
 .panel,.card{background:#fff;border:1px solid #dce5ee;border-radius:12px;padding:20px;margin:14px 0}
