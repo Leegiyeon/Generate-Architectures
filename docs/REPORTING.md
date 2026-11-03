@@ -76,3 +76,27 @@ workflow_dispatch의 `golden_qa=true`는 실제 운영 저장소가 아닌 고�
 매 분석 실행 시 `report-qa.json` 생성 전 검증이 실패하면 결과 생성 자체를 오류로 처리합니다. 확인하는 항목은 오프라인 HTML 내부 앵커·파일 링크, 이미지 ALT/CSP/외부 스크립트 금지, AWS/As-Is SVG XML+viewBox, PNG 헤더·해상도, 토폴로지 노드/엣지 참조 일치, Artifact 해시, 신규/이전 모드별 미검증 메시지입니다.
 
 **중요:** `status=automated_structural_checks_passed`는 파일 구조 QA만 성공했다는 뜻이며 `browser_rendered=false`, `manual_visual_review_completed=false`, `real_repository_accuracy_audited=false`, `aws_account_checked=false`를 유지합니다. 실제 데스크톱/모바일 화면의 한글·폰트·아이콘·클리핑 수동 감사와 외부 실제 저장소 분석 정확도 검증은 #14/#16의 후속 작업입니다.
+
+## 실제 브라우저 회귀 검사
+
+CI는 고정 Playwright 버전과 Chromium으로 합성 보고서 13종을 렌더링합니다. 기존 골든 10종에 Inventory 없음, 8개 서버의 선언형 As-Is, 비용 입력 상세가 있는 이전 모드를 추가했습니다. 각 보고서를 1440px·390px·320px에서 상세 닫힘/펼침 두 상태로 검사합니다.
+
+- 실제 이미지 디코딩 및 표시 크기, 페이지 가로 넘침, 작은 안내 글자 대비 4.5:1 이상.
+- 키보드 Enter로 모든 summary 열기/닫기, Unicode 대체문자 및 브라우저 실행 오류.
+- 외부 HTTP(S) 요청 차단 및 요청 발생 시 실패. 분석 대상 프로젝트 자체는 실행하지 않습니다.
+- `report-browser-qa` CI Artifact에 전체 화면 PNG와 `browser-qa.json` 보관(7일). 실패한 재실행은 이전 성공 상태를 유지하지 않습니다.
+
+로컬 실행에는 기존 Python/Graphviz/Babel 분석 의존성과 아래의 선택적 브라우저 검증 도구가 필요합니다.
+
+```bash
+npm ci --prefix scripts/browser_qa --ignore-scripts --no-audit --no-fund
+scripts/browser_qa/node_modules/.bin/playwright install chromium
+python3 tests/generate_golden_artifacts.py --output browser-fixtures
+python3 tests/generate_browser_fixtures.py --output browser-fixtures
+node scripts/browser_qa/audit.cjs browser-fixtures browser-qa-output
+# 설치된 Chrome을 사용하려면 앞에 BROWSER_QA_CHANNEL=chrome 지정
+```
+
+추가 브라우저 검사의 `browser-qa.json`만 `browser_rendered=true`를 기록합니다. 개별 분석의 기존 `report-qa.json`은 **브라우저를 실행하지 않았으므로 변경하지 않습니다**. 자동 화면 검사는 한글 글꼴의 모든 글리프·도면 내부의 선/라벨 겹침·AWS 설계의 적합성을 판정하지 않습니다. `manual_visual_review_completed=false`와 `aws_account_checked=false`를 유지합니다. 복잡한 모바일 도면은 `SVG 확대`로 열어 확대해서 확인하세요.
+
+실제 공개 코드 샘플 1건의 수동 근거 대조 결과는 [REPORT_QA_AUDIT.md](REPORT_QA_AUDIT.md)를 참고하세요. 13개 합성 fixture의 통과율을 실제 저장소 검출 정확도로 해석하면 안 됩니다.
