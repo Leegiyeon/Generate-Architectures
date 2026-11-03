@@ -2,6 +2,16 @@
 
 > 아래는 구현 방향이며, **미완료 항목은 실제 제공 기능이 아닙니다.** SAA 자격 보유 전문가의 모든 판단을 자동 대체한다는 의미가 아닙니다.
 
+## 현재 제품 방향 — Architecture Designer 우선 (Issue #9)
+
+1. **핵심 Architecture Designer:** 사용자가 GitHub 저장소를 한 번 분석해 AWS 설계 초안, 선정 이유, 가정/위험, 다이어그램을 다운로드합니다. 재분석은 사용자가 선택합니다. push/PR은 자동 테스트만 수행합니다.
+2. **상세 설계 고도화:** [#10](https://github.com/Leegiyeon/Generate-Architectures/issues/10) 근거 계약 → [#11](https://github.com/Leegiyeon/Generate-Architectures/issues/11) 상세 AWS 토폴로지 → [#12](https://github.com/Leegiyeon/Generate-Architectures/issues/12) 선정 근거 → [#13](https://github.com/Leegiyeon/Generate-Architectures/issues/13) 보안·트래픽·운영 전략 → [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 사용자 보고서 통합.
+3. **비용·품질:** [#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) 후보별 비용/용량, [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) 프로젝트 사례 E2E 검증.
+4. **선택형 로컬 진단:** [#17](https://github.com/Leegiyeon/Generate-Architectures/issues/17) AWS CLI 읽기 전용 진단, [#18](https://github.com/Leegiyeon/Generate-Architectures/issues/18) Local UI. 사용자 계정 비밀키의 중앙 저장 없음.
+5. **사용성:** [#19](https://github.com/Leegiyeon/Generate-Architectures/issues/19) GitHub App 설치/재분석 사용성. 상시 모니터링/배포 자동화는 현재 제품 범위에서 제외.
+
+**아래 1~5차는 이전 기술 로드맵의 완료/미완료 상세 이력입니다.** 최신 우선순위는 위 Issues와 [제품 정의](PRODUCT.md)를 따르며, 예전 IaC 자동 생성 계획은 현 제품 범위에서 보류합니다.
+
 ## 1차 — 재현 가능한 근거 수집과 설계 초안 (이번 반영)
 
 - [x] 설정 파일·API 디렉터리·DB/인증/작업 큐 단서 수집
@@ -48,12 +58,12 @@
 
 **완료 기준:** 다양한 리전·사용량의 공식 요금 사례와 교차검증하며, 거짓 적합 판정이 나오지 않도록 테스트.
 
-## 5차 — 배포 준비 및 GitHub App 운영
+## 5차 — 과거 계획 / 보류: IaC 생성과 GitHub App 자동화
 
-1. 최소 변경의 Terraform/CDK 제안 PR (사용자 승인 필요)
-2. AWS 계정 읽기 전용 진단 모드 및 보안·감사 로깅
-3. GitHub App 설치·권한·웹훅 멱등성·재시도·오류 복구
-4. PR별 Architecture Review, 기준선 대비 영향 분석, 이력 관리
+1. [현재 범위 밖] Terraform/CDK 제안 PR 및 AWS 자동 배포 (사용자 필요시 별도 범위로 검토)
+2. [선택형 로컬 진단으로 이전] AWS CLI Profile 기반 읽기 전용 진단 및 보안·감사 로깅 (#17~#18)
+3. [후속] GitHub App 설치·권한·웹훅 멱등성·재시도·오류 복구 (#19)
+4. [선택형] 최초 1회 분석 및 사용자 요청에 의한 재분석 이력 관리
 
 **완료 기준:** 승인 전 자동 배포 없음, 최소 권한, 재시도해도 PR·댓글 중복 최소화, 테스트/감사 기록 제공.
 
