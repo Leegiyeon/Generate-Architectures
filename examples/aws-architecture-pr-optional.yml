@@ -1,0 +1,50 @@
+# 선택형: 중요 PR마다 AWS 참조 설계를 자동 생성하고 싶을 때만 설치합니다.
+# 기본 예시는 examples/aws-architecture.yml(수동 실행)입니다.
+# 이 파일을 대상 저장소 .github/workflows/aws-architecture-pr.yml로 복사하세요.
+name: AWS 아키텍처 PR 분석 (선택)
+on:
+  pull_request:
+    branches: [main]
+    # 구조적 변경에만 반응해 매번 전체 코드 분석이 반복되지 않도록 필터링합니다.
+    # API 및 DB 파일이 다른 위치에 있다면 팀 규칙에 맞게 paths를 수정하세요.
+    paths:
+      - 'package.json'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+      - 'Dockerfile*'
+      - 'docker-compose*.yml'
+      - 'docker-compose*.yaml'
+      - '.architecture/**'
+      - 'src/**'
+      - 'app/**'
+      - 'prisma/**'
+permissions:
+  contents: read
+
+jobs:
+  architecture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 대상 소스 체크아웃
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # PR은 사용자 동의 없는 외부 모델·AWS 호출을 허용하지 않습니다.
+      - name: 참조 설계 검토 (외부 API 비활성화)
+        uses: Leegiyeon/Generate-Architectures@main
+        with:
+          enable_ai: "false"
+          live_pricing: "false"
+
+      - name: 결과 Artifact 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-architecture-pr-review
+          path: architecture-output/
+          if-no-files-found: error
+          retention-days: 14
+
+# 운영 환경에서는 @main 대신 특정 검증된 커밋 SHA로 고정하세요.
+# 미신뢰 PR 코드는 분석하며, 인프라 인증정보를 이 job에 제공하지 마세요.
