@@ -1,5 +1,7 @@
 # 실행 산출물과 의존성 캐시
 architecture-output/
+browser-qa-output/
+browser-fixtures/
 node_modules/
 __pycache__/
 *.pyc
