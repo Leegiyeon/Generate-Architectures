@@ -14,6 +14,7 @@ if __package__:
     from .cost_estimator import read_cost_inputs, estimate_costs, markdown_cost
     from .iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from .architecture_validator import validate_architecture, markdown_validation, markdown_adr
+    from .evidence_contract import build_evidence_contract, markdown_evidence
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -24,6 +25,7 @@ else:
     from cost_estimator import read_cost_inputs, estimate_costs, markdown_cost
     from iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from architecture_validator import validate_architecture, markdown_validation, markdown_adr
+    from evidence_contract import build_evidence_contract, markdown_evidence
 
 
 def scan(root):
@@ -66,7 +68,9 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     root = Path(repo).resolve()
     if not root.is_dir():
         raise ValueError("분석 대상 저장소가 존재하지 않습니다.")
-    requirements = parse_requirements(requirements_file, root, budget, workload)
+    requirements, explicit_fields = parse_requirements(
+        requirements_file, root, budget, workload, return_provenance=True)
+
     profile = inspect_repository(root)
     # 실행 없이 구문만 파싱: 함수·API·모델의 근거 있는 구조 관계를 별도 그래프로 관리.
     graph = build_application_graph(root)
@@ -79,6 +83,20 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
             for n in actual_routes[:20]
         ]
     result = decide(profile, requirements)
+    # 사실 / 사용자 명시입력 / 시스템 기본값 / 가정 / 미확인을 분리합니다.
+    contract = build_evidence_contract(profile, graph, requirements, explicit_fields, result)
+    result["questions"] = list(contract["questions"])
+    if requirements.get("environment") == "production":
+        result["questions"].append(
+            "상용 운영 시 보안 검토·부하 테스트·장애 복구 훈련 책임자는 누구인가요?")
+    result["evidence_contract"] = {
+        "file": "evidence-contract.json",
+        "observations": len(contract["observations"]),
+        "inferences": len(contract["configuration_inferences"]),
+        "explicit_requirements": len(contract["user_requirements"]),
+        "questions": len(contract["questions"]),
+        "partial": contract["status"] == "partial",
+    }
     # 선택적 AI 검토는 기존 결정 규칙의 결과와 실제 AWS 다이어그램을 바꾸지 않습니다.
     ai_review = review_architecture(
         profile, graph, requirements, result,
@@ -128,6 +146,11 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     result["application_graph"]["diagram"] = diagram_info
     for name, value in (
         ("application-graph.json", graph),
+        ("evidence-contract.json", contract),
+        ("requirements-gaps.json", {
+            "schema_version": "1.0",
+            "questions": contract["unknowns"], "analysis_status": contract["status"],
+        }),
         ("ai-review.json", ai_review),
         ("cost-estimate.json", cost_report),
         ("iac-policy.json", iac_report),
@@ -139,6 +162,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         (out / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n",
                                 encoding="utf-8")
     (out / "ai-review.md").write_text(markdown_ai_review(ai_review), encoding="utf-8")
+    (out / "evidence-report.md").write_text(markdown_evidence(contract), encoding="utf-8")
     (out / "cost-estimate.md").write_text(markdown_cost(cost_report), encoding="utf-8")
     (out / "iac-policy.md").write_text(markdown_iac(iac_report), encoding="utf-8")
     (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
@@ -171,6 +195,14 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- Terraform 계획 검사: " + iac_report["status"] + " (iac-policy.json/md)\n"
     report += "- IaC 명시적 보안 위험: " + str(iac_report["counts"]["critical"]) + "건\n"
     report += "- 비용·보안 검사 미실행을 통과로 표시하지 않습니다.\n"
+    report += "\n## 13. 코드 관찰 사실과 추가 요구사항\n\n"
+    report += "- 정적 관찰 근거: " + str(len(contract["observations"])) + "건\n"
+    report += "- 설정 기반 추정 단서: " + str(len(contract["configuration_inferences"])) + "건\n"
+    report += "- 사용자가 명시한 요구사항: " + str(len(contract["user_requirements"])) + "건\n"
+    report += "- 확인 질문: " + str(len(contract["unknowns"])) + "건\n"
+    report += "- 상세: `evidence-contract.json`, `evidence-report.md`, `requirements-gaps.json`\n"
+    if contract["status"] == "partial":
+        report += "- **주의**: 일부 코드 분석 실패가 발생해 미관측 요소를 없는 것으로 단정할 수 없습니다.\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:
