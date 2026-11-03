@@ -54,6 +54,8 @@ async function inspectPage(page) {
           const canScroll = container.scrollLeft > 0;
           container.scrollLeft = previous;
           return {contained: true, width: table.getBoundingClientRect().width,
+            readableCells: [...table.querySelectorAll('td,th')]
+              .every(cell => cell.getBoundingClientRect().width >= 119),
             left: rect.left, right: rect.right, overflow, canScroll};
         }),
       replacementCharacters: document.body.textContent.includes('\ufffd'),
@@ -123,7 +125,8 @@ async function main() {
             assert(checks.documentWidth <= viewport.width + 1,
               `${relative}: page overflow at ${viewport.width}px (${state}): ` +
               JSON.stringify(checks.overflowElements));
-            assert(checks.tables.every(table => table.contained && table.width >= 639 &&
+            assert(checks.tables.every(table => table.contained && table.readableCells &&
+              table.width >= 639 &&
               table.left >= -1 && table.right <= viewport.width + 1 &&
               (!table.overflow || table.canScroll)),
               `${relative}: table must keep readable width inside a working scroll area ` +
