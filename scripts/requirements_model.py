@@ -10,6 +10,7 @@ FIELDS = {
     "operations_preference": {"minimize_maintenance", "balanced", "high_availability"},
     "rendering_mode": {"static_export", "ssr", "hybrid"},
     "document_database_strategy": {"keep_existing", "evaluate_migration"},
+    "data_access_pattern": {"undecided", "relational_transactions", "document_queries", "key_value"},
     "alb_scheme": {"internet_facing", "internal"},
     "egress_strategy": {"undecided", "nat_gateway", "vpc_endpoints_only", "nat_plus_endpoints"},
 }
@@ -28,7 +29,7 @@ OPTIONAL_NUMBERS = {
     "max_job_duration_seconds": (1, 604800),
 }
 OPTIONAL_BOOL = {"requires_authentication", "requires_relational_database", "requires_persistent_storage",
-                 "external_outbound_required", "requires_host_control"}
+                 "external_outbound_required", "requires_host_control", "database_migration_approved"}
 OPTIONAL_STRINGS = {"region"}
 KNOWN = set(FIELDS) | set(OPTIONAL_NUMBERS) | OPTIONAL_BOOL | OPTIONAL_STRINGS
 

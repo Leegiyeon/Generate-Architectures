@@ -57,3 +57,13 @@
 - **#12 고도화:** EC2/Fargate/Lambda 서비스별 최종 연결 토폴로지, 장기 실행·배치와 이벤트 처리 복합 패턴, 데이터 저장소 대안 및 실제 사용사례 교차검증.
 - **#13:** Well-Architected 관점의 보안·운영·오토스케일/용량·백업·복구 청사진.
 - **#15:** 서비스별 공식 AWS 단가 기반의 최소/기준/피크 시나리오 비용 비교.
+
+## 6. 데이터 접근·ADR·EC2 대안 (후속 개발)
+
+`data_access_pattern`을 `undecided`, `relational_transactions`, `document_queries`, `key_value`에서 선택할 수 있습니다. RDS/DynamoDB/기존 MongoDB 유지/Amazon DocumentDB를 **선정 확정이 아닌 검토 대안**으로 비교합니다. `database_migration_approved=true`를 입력해도 DB 자동 이전이나 서비스 확정은 발생하지 않습니다. MongoDB와 Amazon DocumentDB의 쿼리·버전·드라이버 호환성은 독립 검증이 필요합니다.
+
+`data-access-decision.json/md`는 데이터 액세스 특성과 전환 제약을, `decision-record.json/md`는 명시 입력/기본값·근거·검토 대안·차단 이유·승인 대기 상태를 기록합니다. 이전 `decision-record.md`가 모든 값(시스템 기본값 포함)을 사용자 입력으로 서술하던 문제를 수정했습니다.
+
+Fargate가 선택된 경우 `ec2-alternative/`에서 **ASG + Private Subnet EC2 + ALB, 선택적 RDS**의 별도 논리 토폴로지를 제안합니다. EC2는 실제 인스턴스 타입·이미지·장애 복구·NAT·Route Table을 확정하지 않습니다. 기존 Fargate용 ECR/VPC Endpoint 설정이 EC2와 동일하다고 가정하지 않습니다.
+
+> 상태: 모든 대안 **제안/미승인**. 실제 보안 점검이나 클라우드 배포 권한·승인은 별도로 관리해야 합니다.

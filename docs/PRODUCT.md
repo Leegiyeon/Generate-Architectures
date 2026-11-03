@@ -23,7 +23,7 @@
        → 추가 입력 후 수동 재분석 가능
   ③ Static / Serverless / Container / Mobile 참조 패턴 검토
        → EC2 추가 비교 후보, 선정/제외 근거는 architecture-decision-matrix.json/md
-       → 지금은 4종 후보 비교. 2~3개 세부 배포 대안 설계는 #11~#12
+       → 지금은 4종 후보 비교. 정적 서비스·Lambda·Fargate·EC2 대안 비교는 #12에서 지원. 실측 비교는 미완료
   ④ 규칙 기반 제약 검사 + (명시 동의 시) 보조 AI 검토
        → 실제 AWS 리소스·계정은 조회하지 않음
   ⑤ AWS 서비스 아이콘+VPC/상징 AZ/Subnet 통합 논리도 + 근거/대안/리스크 보고서 생성
@@ -93,3 +93,7 @@
 - [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14): 결과물 UX 통합
 
 최초 분석 후 보고서에서 **입력 → 출력 → 확인되지 않은 정보 → 다시 실행하는 방법**을 사용자가 설명할 수 있어야 합니다. 제품 기능의 미구현 사항은 완료로 표시하지 않습니다.
+
+## 선택형 데이터 접근 및 EC2 대안 설계
+
+프로젝트 DB 의존성 또는 `data_access_pattern` 사용자 요구가 있다면 기존 DB를 새 AWS DB로 강제 전환하지 않고 각 선택의 검증 조건을 출력합니다. `decision-record.json/md`에는 명시적 요구/기본값과 사용자 승인 대기를 구분합니다. Fargate 참조안이 선택되면 `ec2-alternative/`에 독립 EC2/ASG To-Be 논리도가 추가됩니다. 이는 실제 AWS 배포/검증을 수행하는 기능이 아닙니다.

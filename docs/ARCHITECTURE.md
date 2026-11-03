@@ -185,3 +185,11 @@ validation.json / validation.md / decision-record.md
 `scripts/architecture_decision_engine.py`는 현재의 참조 패턴 선택을 **유지한 채** Static/S3+CloudFront, Lambda+API Gateway, ECS Fargate+ALB, EC2+ALB 및 Mobile API를 비교합니다. `max_job_duration_seconds`, `requires_host_control`, DB 사용 단서, SSR 유무, 트래픽/운영 선호 등에서 **현재 템플릿에 해당하는 충돌**을 찾습니다. EC2는 현재 다이어그램에 없는 검토 후보이고, 비용/성능 측정 결과가 없어 정량 점수·자동 순위가 없습니다.
 
 출력 `architecture-decision-matrix.json/md`에는 후보별 `blockers`, `review_required`, `rationale`, `tradeoffs` 및 미검증 상태가 포함됩니다. 선택된 현재 참조 템플릿에 명시적인 블로커가 있으면 `validation.json`에도 `DEC-001`을 추가하고 자동 채택을 차단합니다. AI 보조 의견은 패턴 변경 권한이 없으며, 사람의 별도 ADR 승인이 필요합니다. 자세한 설명: [DECISIONS.md](DECISIONS.md).
+
+## 데이터 접근·미승인 결정 기록의 분리
+
+`scripts/data_access_decision.py`: SQL/문서/키 기반 접근 사용자의 명시적 선택과 정적 DB 패키지 신호를 구별해 RDS, DynamoDB, 문서형 기존 DB, DocumentDB의 **이전 위험·호환성 조건**을 제시합니다. 마이그레이션을 자동 승인하거나 운영 데이터를 전송하지 않습니다.
+
+`scripts/architecture_decision_engine.py`의 `build_decision_record`는 명시적인 입력과 시스템 기본값을 분리하고, 선택 패턴·제외 이유·ADR 승인 대기 상태를 JSON/Markdown으로 기록합니다. 저장소의 실제 성능·비용 및 AWS 운영 리소스를 검증하지 않았으므로 `approved=false`가 기본입니다.
+
+`scripts/ec2_alternative.py`: Fargate 네트워크 후보에서 VPC/AZ/ALB/DB 경계만 참고하여 EC2 ASG 기반 **독립 제안**을 만들고, 별도 아이콘 SVG/PNG 및 검토 보고서를 제공합니다. Fargate용 Private egress를 EC2에 그대로 적용하지 않습니다.

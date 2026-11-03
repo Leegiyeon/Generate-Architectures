@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import subprocess
 import diagrams
+from diagrams.aws.compute import EC2
 
 try:
     from .render_aws_icons import AWS_ICONS, CLIENT_ICONS, embed_icons
@@ -22,6 +23,7 @@ SERVICE_ICONS = {
     "cognito": AWS_ICONS["Amazon Cognito"],
     "alb": AWS_ICONS["Application Load Balancer"],
     "rds": AWS_ICONS["Amazon RDS"], "rds_standby": AWS_ICONS["Amazon RDS"],
+    "ec2_a": EC2, "ec2_b": EC2,
 }
 
 def _icon_for(identifier):

@@ -23,6 +23,7 @@ ALLOWED_REQUIREMENTS = (
     "peak_concurrent_connections", "latency_target_ms", "operations_preference",
     "rendering_mode", "document_database_strategy",
     "requires_host_control", "max_job_duration_seconds",
+    "data_access_pattern", "database_migration_approved",
 )
 MODEL_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{1,63}$")
 INSTRUCTIONS = (

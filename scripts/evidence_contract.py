@@ -33,6 +33,7 @@ INPUT_PROMPTS = (
     ("rpo_minutes", "목표 데이터 복구시점(RPO, 분)은 얼마인가요?"),
     ("monthly_budget_usd", "월간 인프라 예산 상한(USD)은 얼마인가요?"),
     ("operations_preference", "운영 우선순위는 최소 관리/균형/고가용성 중 무엇인가요?"),
+    ("data_access_pattern", "데이터 접근 유형(관계형 트랜잭션/문서 조회/키 기반 조회)은 무엇인가요?"),
 )
 
 
