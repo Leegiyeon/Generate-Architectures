@@ -44,6 +44,11 @@ async function inspectPage(page) {
       contrast,
       details: document.querySelectorAll('details').length,
       replacementCharacters: document.body.textContent.includes('\ufffd'),
+      overflowElements: [...document.querySelectorAll('body *')].filter(el => {
+        const rect = el.getBoundingClientRect();
+        return rect.width && rect.right > innerWidth + 1 && !el.closest('table');
+      }).slice(0, 10).map(el => ({tag: el.tagName,
+        text: el.textContent.slice(0, 100), right: el.getBoundingClientRect().right})),
     };
   });
 }
@@ -98,17 +103,18 @@ async function main() {
               nodes.forEach(node => { node.open = open; });
             }, state === 'open');
             const checks = await inspectPage(page);
+            const screenshot = path.join(folder, `${viewport.width}-${state}.png`);
+            await page.screenshot({path: screenshot, fullPage: true});
+            results.push({report: relative, viewport, state, checks,
+              screenshot: path.relative(destination, screenshot)});
             assert(checks.documentWidth <= viewport.width + 1,
-              `${relative}: page overflow at ${viewport.width}px (${state})`);
+              `${relative}: page overflow at ${viewport.width}px (${state}): ` +
+              JSON.stringify(checks.overflowElements));
             assert(checks.images.length && checks.images.every(img => img.loaded && img.alt),
               `${relative}: image failed to render`);
             assert(checks.contrast.every(item => item.ratio >= 4.5),
               `${relative}: small text contrast below 4.5:1`);
             assert(!checks.replacementCharacters, `${relative}: invalid Unicode`);
-            const screenshot = path.join(folder, `${viewport.width}-${state}.png`);
-            await page.screenshot({path: screenshot, fullPage: true});
-            results.push({report: relative, viewport, state, checks,
-              screenshot: path.relative(destination, screenshot)});
           }
           assert.deepEqual(networkRequests, [], 'Report attempted external HTTP requests');
           assert.deepEqual(errors, [], 'Browser JavaScript error');
