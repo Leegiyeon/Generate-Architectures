@@ -21,6 +21,7 @@ if __package__:
     from .architecture_decision_engine import (compare_architectures, markdown_decision_matrix,
                                                build_decision_record, markdown_decision_record)
     from .data_access_decision import assess_data_access, markdown_data_access
+    from .ec2_alternative import design_ec2_alternative, markdown_ec2_alternative
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -38,6 +39,7 @@ else:
     from architecture_decision_engine import (compare_architectures, markdown_decision_matrix,
                                               build_decision_record, markdown_decision_record)
     from data_access_decision import assess_data_access, markdown_data_access
+    from ec2_alternative import design_ec2_alternative, markdown_ec2_alternative
 
 
 def scan(root):
@@ -123,6 +125,15 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     data_review = assess_data_access(profile, requirements, contract)
     decision_matrix = compare_architectures(result, profile, requirements, contract, topology,
                                             data_review=data_review)
+    # EC2는 서비스 선택을 자동 전환하지 않고 독립 To-Be 대안으로만 생성합니다.
+    ec2_alternative = (design_ec2_alternative(topology, requirements)
+                       if result["option_id"] == "containers" else None)
+    result["ec2_alternative"] = {
+        "generated": ec2_alternative is not None,
+        "status": ec2_alternative["status"] if ec2_alternative else "not_applicable",
+        "directory": "ec2-alternative" if ec2_alternative else None,
+        "selected": False,
+    }
     result["data_access"] = {
         "file": "data-access-decision.json",
         "status": data_review["status"],
@@ -207,6 +218,14 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     out.mkdir(parents=True, exist_ok=True)
     diagram_info = render_application_diagram(graph, out)
     topology_diagram = render_aws_topology(topology, out)
+    if ec2_alternative is not None:
+        ec2_dir = out / "ec2-alternative"
+        render_aws_topology(ec2_alternative, ec2_dir)
+        (ec2_dir / "ec2-topology.json").write_text(
+            json.dumps(ec2_alternative, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8")
+        (ec2_dir / "ec2-alternative.md").write_text(
+            markdown_ec2_alternative(ec2_alternative), encoding="utf-8")
     result["aws_topology"]["embedded_icons"] = topology_diagram["embedded_icons"]
     result["application_graph"]["diagram"] = diagram_info
     for name, value in (
@@ -293,6 +312,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- DB 선택 상태: 미확정 / 자동 마이그레이션 없음\n"
     report += "- ADR 상태: " + adr["status"] + " (사람 승인 필요)\n"
     report += "- 파일: `data-access-decision.json/md`, `decision-record.json/md`\n"
+    report += "- EC2 대안: " + ("ec2-alternative/ (별도 미승인 To-Be)" if ec2_alternative else "현재 패턴에 비적용") + "\n"
     (out / "recommendation.md").write_text(report, encoding="utf-8")
 
     if __package__:
