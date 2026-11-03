@@ -121,7 +121,7 @@ def build_evidence_contract(profile, graph, requirements, explicit_fields=(), ar
     ):
         missing("database_requirement", "관계형/문서형 DB 또는 외부 SaaS 저장소가 필요한가요?",
                 "database_not_confirmed")
-    if signals.get("document_database") is True and "requires_relational_database" not in explicit:
+    if signals.get("document_database") is True and "document_database_strategy" not in explicit:
         missing("document_database_strategy",
                 "현재 문서형 DB를 유지하나요, AWS에서 다른 데이터 서비스를 검토하나요?",
                 "document_database_migration_not_decided")
