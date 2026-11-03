@@ -160,6 +160,11 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
     selected_title=selected["title"]
     candidates=[c for c in decision_matrix["candidates"]
                 if c["id"] in decision_matrix["alternative_candidates"]]
+    cost_status_label = {
+        "needs_input": "미산정 · 입력 필요",
+        "partial_unpriced": "부분 산정 · 누락 항목 존재",
+        "modeled_items_comparable_unverified": "입력 기반 비교 · 검증 전",
+    }.get(cost["status"], "검토 필요 · 상세 보고서 참조")
     cost_summary=("입력 항목 합계 "+str(cost["monthly_total_usd"])+" USD (전체 인프라 청구액 아님)"
                   if cost["complete"] else
                   "입력된 항목의 부분합 "+str(cost["priced_subtotal_usd"])+
@@ -474,7 +479,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "</b><br><small>사람 승인 전</small></div>"
         "<div class='card'><strong>검토 차단</strong><b>"+str(validation["counts"]["blocker"])+
         "건</b><br><small>추가 확인 질문 "+str(len(question_list))+"개</small></div>"
-        "<div class='card'><strong>월간 비용 상태</strong><b>"+safe(cost["status"])+
+        "<div class='card'><strong>월간 비용 상태</strong><b>"+safe(cost_status_label)+
         "</b><br><small>"+safe(cost_summary)+"</small></div></section>"
         + migration_notice + declared_as_is_html + migration_comparison_html +
         "<section class='panel' id='diagram'><h2>① AWS To-Be 설계도</h2>"
@@ -506,9 +511,11 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "<section class='panel' id='cost'><h2>④ 비용·용량</h2>"
         "<p class='caution'>"+safe(cost_summary)+
         "<br>입력 SKU만 계산하며 실제 AWS 총액, 할인/세금/데이터 전송, RPS 처리량을 보장하지 않습니다.</p>"
-        "<table><thead><tr><th>항목</th><th>사용량</th><th>가격 상태</th><th>금액 USD</th></tr>"
-        "</thead><tbody>"+cost_html+"</tbody></table>"
-        + scenario_html + comparison_html + capacity_html +
+        + ("<details><summary>입력 비용 항목·시나리오 자세히</summary><div class='table-scroll'>"
+           "<table><thead><tr><th>항목</th><th>사용량</th><th>가격 상태</th><th>금액 USD</th></tr>"
+           "</thead><tbody>"+cost_html+"</tbody></table></div>"
+           + scenario_html + comparison_html + capacity_html + "</details>"
+           if cost["lines"] or scenario_html or comparison_html or capacity_html else "") +
         "<p>입력 피크 RPS: <b>"+
         (safe(operations["scaling"]["demand"]["peak_rps"])
          if operations["scaling"]["demand"]["peak_rps"] is not None else "미입력")+
