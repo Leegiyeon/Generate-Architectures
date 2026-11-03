@@ -10,5 +10,10 @@
   "rto_minutes": 240,
   "rpo_minutes": 60,
   "requires_authentication": true,
-  "requires_relational_database": true
+  "requires_relational_database": true,
+  "average_rps": 15,
+  "peak_rps": 250,
+  "peak_concurrent_connections": 120,
+  "latency_target_ms": 500,
+  "operations_preference": "balanced"
 }
