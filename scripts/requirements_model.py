@@ -46,7 +46,7 @@ def parse_requirements(path, root, budget_override=None, workload_override="auto
     if set(values) - KNOWN:
         raise ValueError("지원하지 않는 요구사항 항목: " + ", ".join(sorted(set(values) - KNOWN)))
     for field, options in FIELDS.items():
-        if field in values and values[field] not in options:
+        if field in values and (not isinstance(values[field], str) or values[field] not in options):
             raise ValueError(field + "은 허용된 값이어야 합니다: " + ", ".join(sorted(options)))
     for field, (minimum, maximum) in OPTIONAL_NUMBERS.items():
         if field in values:
