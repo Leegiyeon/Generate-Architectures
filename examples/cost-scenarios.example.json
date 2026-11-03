@@ -1,0 +1,97 @@
+{
+  "schema_version": "2.0",
+  "region": "ap-northeast-2",
+  "items": [
+    {
+      "id": "alb_hours",
+      "service": "alb",
+      "unit": "Hrs",
+      "quantities": {
+        "minimum": 100,
+        "baseline": 500,
+        "peak": 730
+      },
+      "rate": {
+        "kind": "unknown"
+      }
+    },
+    {
+      "id": "ecs_cpu_hours",
+      "service": "ecs_fargate",
+      "unit": "vCPU-Hours",
+      "quantities": {
+        "minimum": 150,
+        "baseline": 600,
+        "peak": 1200
+      },
+      "rate": {
+        "kind": "unknown"
+      }
+    },
+    {
+      "id": "rds_hours",
+      "service": "rds",
+      "unit": "Hrs",
+      "quantities": {
+        "minimum": 100,
+        "baseline": 730,
+        "peak": 1460
+      },
+      "rate": {
+        "kind": "unknown"
+      }
+    },
+    {
+      "id": "nat_hours",
+      "service": "nat_gateway",
+      "unit": "Hrs",
+      "quantities": {
+        "minimum": 100,
+        "baseline": 500,
+        "peak": 730
+      },
+      "rate": {
+        "kind": "unknown"
+      }
+    },
+    {
+      "id": "transfer_gb",
+      "service": "data_transfer",
+      "unit": "GB",
+      "quantities": {
+        "minimum": 10,
+        "baseline": 100,
+        "peak": 900
+      },
+      "rate": {
+        "kind": "unknown"
+      }
+    },
+    {
+      "id": "logs_gb",
+      "service": "cloudwatch_logs",
+      "unit": "GB",
+      "quantities": {
+        "minimum": 1,
+        "baseline": 10,
+        "peak": 50
+      },
+      "rate": {
+        "kind": "unknown"
+      }
+    },
+    {
+      "id": "db_backup_gb_month",
+      "service": "backup_storage",
+      "unit": "GB-Mo",
+      "quantities": {
+        "minimum": 1,
+        "baseline": 10,
+        "peak": 50
+      },
+      "rate": {
+        "kind": "unknown"
+      }
+    }
+  ]
+}

@@ -31,6 +31,18 @@ def read_cost_inputs(root, path):
         doc = json.loads(target.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, ValueError) as exc:
         raise ValueError("비용 입력 JSON을 읽을 수 없습니다.") from exc
+    # 기존 단일 시나리오와 v2(최소/기준/피크) 입력 모두 안전하게 지원합니다.
+    if isinstance(doc, dict) and doc.get("schema_version") == "2.0":
+        try:
+            from .cost_scenarios import validate_scenario_config
+        except ImportError:
+            from cost_scenarios import validate_scenario_config
+        return validate_scenario_config(doc)
+    return validate_legacy_cost_doc(doc)
+
+
+def validate_legacy_cost_doc(doc):
+    """입력 파일과 시나리오 재사용에 공통으로 적용할 단가 출처·리전·수량 검증."""
     if not isinstance(doc, dict) or set(doc) != {"region", "items"} or not REGION.fullmatch(str(doc["region"])):
         raise ValueError("region 및 items만 포함하는 비용 JSON이 필요합니다.")
     if not isinstance(doc["items"], list) or len(doc["items"]) > 30:
@@ -128,6 +140,12 @@ def _live_price(rate, unit, region, client):
 
 def estimate_costs(config, *, live=False, client=None):
     """서비스별 추정 비용. 누락된 가격이 있으면 월간 총액은 null."""
+    if isinstance(config, dict) and config.get("schema_version") == "2.0":
+        try:
+            from .cost_scenarios import estimate_scenarios
+        except ImportError:
+            from cost_scenarios import estimate_scenarios
+        return estimate_scenarios(config, live=live, client=client)
     if config is None:
         return {"status": "needs_input", "complete": False, "currency": "USD",
                 "region": None, "monthly_total_usd": None, "priced_subtotal_usd": None,
@@ -202,4 +220,10 @@ def markdown_cost(report):
     rows += ["", report["note"], "",
              "추가 점검: 리전별 상품 단가, 서비스별 차원·계층 요금,"
              " 네트워크 전송, 로깅, 저장, 백업, NAT, 라이선스, 세금/할인.", ""]
+    if "scenarios" in report:
+        try:
+            from .cost_scenarios import scenario_markdown
+        except ImportError:
+            from cost_scenarios import scenario_markdown
+        rows += ["", scenario_markdown(report)]
     return "\n".join(rows)
