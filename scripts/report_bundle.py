@@ -82,7 +82,7 @@ def cost_capacity_markdown(cost, operations, topology):
 
 def generate_user_bundle(out, architecture, topology, graph, contract,
                          decision_matrix, adr, operations, cost, validation,
-                         alternative_comparison=None):
+                         alternative_comparison=None, capacity_evidence=None):
     """모든 기존 산출물이 생성된 후 실행하는 오프라인 읽기 전용 보고 단계."""
     out=Path(out)
     selected=next(c for c in decision_matrix["candidates"] if c["is_current_reference"])
@@ -122,8 +122,16 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
             from alternative_cost_comparison import markdown_comparison
         comparison_note = ("\n\n## AWS 실행 대안의 동일 업무량 비용·유지보수 비교\n\n" +
                            markdown_comparison(alternative_comparison))
+    capacity_note = ""
+    if capacity_evidence is not None:
+        try:
+            from .capacity_evidence import markdown_capacity
+        except ImportError:
+            from capacity_evidence import markdown_capacity
+        capacity_note = ("\n\n## 입력 부하 테스트 검토(증거 진위·쿼터 검증 전)\n\n" +
+                         markdown_capacity(capacity_evidence))
     (destination/"04-cost-capacity.md").write_text(
-        cost_capacity_markdown(cost,operations,topology) + comparison_note,
+        cost_capacity_markdown(cost,operations,topology) + comparison_note + capacity_note,
         encoding="utf-8")
     blocked=(validation["decision_gate"]=="blocked" or
              topology["status"]=="blocked_for_review" or
@@ -212,6 +220,12 @@ def generate_user_bundle(out, architecture, topology, graph, contract,
                    "- 운영 책임: 패치/IAM/오토스케일/모니터링 등 직접 검토해야 합니다.",
                    "- [대안 비용 비교 보고서](alternative-cost-comparison.md)",
                    ""])
+    if capacity_evidence is not None:
+        md.extend(["", "## 8. 사용자 제공 부하 테스트의 실측 수치 대조", "",
+                   "- 상태: " + markdown_value(capacity_evidence["status"]),
+                   "- 측정값의 진위·실환경 동일성·AWS 쿼터·Auto Scaling은 검증하지 않습니다.",
+                   "- [집계 부하 테스트 분석 보고서](capacity-evidence.md)",
+                   ""])
     (out/"START-HERE.md").write_text("\n".join(md),encoding="utf-8")
 
     def li(values, limit=7):
@@ -287,6 +301,22 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
             "</tbody></table><div class='links'><a href='alternative-cost-comparison.md'>"
             "대안 비용·유지보수 비교 자세히</a></div>"
         )
+    capacity_html = ""
+    if capacity_evidence is not None:
+        cap_rows = "".join(row(
+            x["candidate"], x["status"], x["observed"]["sustained_rps"],
+            x["observed"]["p95_latency_ms"], x["observed"]["error_rate_percent"],
+        ) for x in capacity_evidence["results"])
+        capacity_html = (
+            "<h3>제출된 부하 테스트의 집계 수치(운영 검증 전)</h3>"
+            "<p class='caution'>상태: " + safe(capacity_evidence["status"]) +
+            ". 집계 데이터의 진위·테스트 환경·오토스케일·쿼터는 검증하지 않았습니다.</p>"
+            "<table><thead><tr><th>후보</th><th>입력 목표와의 비교</th>"
+            "<th>관측 RPS</th><th>p95 ms</th><th>오류 %</th></tr></thead><tbody>" +
+            (cap_rows or "<tr><td colspan='5'>측정 데이터가 없습니다.</td></tr>") +
+            "</tbody></table><div class='links'><a href='capacity-evidence.md'>"
+            "부하 테스트 집계·용량 계획 검토</a></div>"
+        )
     html_doc=(
         "<!doctype html><html lang='ko'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -340,7 +370,7 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         "<br>입력 SKU만 계산하며 실제 AWS 총액, 할인/세금/데이터 전송, RPS 처리량을 보장하지 않습니다.</p>"
         "<table><thead><tr><th>항목</th><th>사용량</th><th>가격 상태</th><th>금액 USD</th></tr>"
         "</thead><tbody>"+cost_html+"</tbody></table>"
-        + scenario_html + comparison_html +
+        + scenario_html + comparison_html + capacity_html +
         "<p>입력 피크 RPS: <b>"+
         (safe(operations["scaling"]["demand"]["peak_rps"])
          if operations["scaling"]["demand"]["peak_rps"] is not None else "미입력")+
