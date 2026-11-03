@@ -373,7 +373,10 @@ li{margin:7px 0}.muted,small{color:#697d90}footer{text-align:center;padding:22px
         declared_servers = "".join(row(
             host["id"], host["role"], host["os"],
             str(host["cpu_cores"]) + " / " + str(host["memory_gb"]) + " GB",
-            host["db_engine"], host["access"], "사용자 입력(검증 전)",
+            {"postgresql": "PostgreSQL", "mysql": "MySQL", "mariadb": "MariaDB",
+             "mongodb": "MongoDB", "sqlserver": "SQL Server", "oracle": "Oracle DB"}.get(
+                host["db_engine"], host["db_engine"]),
+            host["access"], "사용자 입력(검증 전)",
         ) for host in onprem_as_is["servers"])
         declared_as_is_html = (
             "<section class='panel' id='onprem-as-is'>"
