@@ -205,3 +205,11 @@ scripts/operations_designer.py는 AWS To-Be 토폴로지의 실제 노드/간선
 - **결과:** security-operations.json/md에 제안된 통제, CloudWatch 알람 후보, 복구·운영 확인 질문과 6개 Well-Architected 검토 상태를 기록합니다.
 
 전체 세부 설명은 [OPERATIONS.md](OPERATIONS.md)를 참고하세요.
+
+## 사용자용 결과물 묶음 (Issue #14)
+
+scripts/report_bundle.py는 모든 JSON·Markdown·AWS SVG/PNG가 생성된 **이후에** 단일 오프라인 START-HERE.html과 START-HERE.md, deliverables/의 4개 범주 결과물, artifact-index.json(상대경로·SHA256)을 생성합니다. 기존 JSON, DOT, 코드 AST·IaC·AI 검토 산출물은 하위 호환을 위해 그대로 유지합니다. HTML에 원격 스크립트·이미지/CSS를 추가하지 않고 CSP 및 문자열 이스케이프로 브라우저 실행 위험을 제한합니다. SVG는 기존 AWS 아이콘 내장 파일을 data URI로 추가 내장하여 오프라인으로 확인할 수 있게 했습니다.
+
+원본 선택 패턴/ADR, 정적 Validator 게이트/토폴로지 상태/운영 CloudWatch 노드, 완전하지 않은 비용 모델의 월 총액 제시가 서로 모순되면 사용자 보고서 생성을 실패시킵니다. 보고서에서 실제 AWS 계정/보안/용량/복원 실증을 수행했다고 표시하지 않습니다. 비용의 완결성은 입력된 상품/사용량 범위로 한정됩니다.
+
+사용자 가이드: [REPORTING.md](REPORTING.md).

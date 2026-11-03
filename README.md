@@ -8,7 +8,7 @@ GitHub 저장소의 **확인 가능한 근거**와 **사용자가 직접 제공�
 
 **무엇을 입력하나요?** GitHub 저장소와 (선택) 서비스 요구사항 JSON을 입력합니다. 별도의 AWS 계정/자격증명은 필요하지 않습니다.
 
-**무엇을 받나요?** AWS 서비스 아이콘 **참조 설계도**(`architecture.svg/png`)와 선정 근거·대안·위험·미확인 조건을 담은 **한국어 보고서**(`recommendation.md`), ADR 초안 등을 받습니다. 기존 아이콘 다이어그램은 **서비스 참조 패턴**이며, 새 `aws-topology.svg/png`는 **VPC/Subnet/상징적 AZ 경계와 AWS 서비스 아이콘을 결합한 상세 논리 설계 제안**입니다. 둘 다 실제 계정 구성이나 구축 검증 결과는 아닙니다.
+**무엇을 받나요?** 오프라인 단일 보고서 **`START-HERE.html`**(요약·상세 설계·선정 이유·보안·비용)와 4개 핵심 결과물(`deliverables/`)입니다. 추가로 AWS 서비스 아이콘 **참조 설계도**(`architecture.svg/png`)와 선정 근거·대안·위험·미확인 조건을 담은 **한국어 보고서**(`recommendation.md`), ADR 초안 등을 받습니다. 기존 아이콘 다이어그램은 **서비스 참조 패턴**이며, 새 `aws-topology.svg/png`는 **VPC/Subnet/상징적 AZ 경계와 AWS 서비스 아이콘을 결합한 상세 논리 설계 제안**입니다. 둘 다 실제 계정 구성이나 구축 검증 결과는 아닙니다.
 
 **어떻게 실행하나요?** GitHub → **Actions → AWS 아키텍처 검토 자동화 → Run workflow** → 실행 완료 후 **Artifacts**에서 결과를 받습니다. **최초 1회 분석 및 필요시 수동 재분석**을 기본으로 합니다. 코드 변경 시의 push/PR 이벤트는 자동 테스트만 실행하고 아키텍처 분석은 반복하지 않습니다.
 
@@ -29,8 +29,8 @@ GitHub 저장소의 **확인 가능한 근거**와 **사용자가 직접 제공�
 | 요구사항 분석 | 워크로드, 배포 선호, 평균·피크 RPS, 운영 우선순위, 예산, 리전, 가용성, RTO/RPO, 데이터 분류 입력 검증 | 입력하지 않은 값은 추정하거나 확정하지 않음 |
 | 설계 비교 | Static / Serverless / Container / Mobile 참조 패턴 비교 | 실제 AWS 서비스 구성의 적합성 보장 불가 |
 | 안전한 판단 | Next.js SSR 미확인 시 정적 호스팅으로 단정하지 않음; 관계형 DB 요구와 패턴 충돌 시 경고 | 실제 실행·성능 테스트 없이 결론 확정 불가 |
-| Well-Architected 및 Validator | 6개 원칙의 **검증 전 체크리스트**, 참조 설계/요구사항 정적 충돌 검출 | 실제 AWS 자원·IAM·보안 정책·비용·성능 검증 미수행 |
-| 다이어그램 | Diagrams의 AWS 서비스 아이콘, PNG/SVG/DOT 생성 | VPC/Subnet/AZ는 실제 구성 근거가 없어 자동 생성하지 않음 |
+| Well-Architected 및 Validator | 6개 원칙의 보안·확장·운영 **설계 제안** 및 참조 설계/요구사항 정적 충돌 검출 | 실제 AWS 자원·IAM·보안 정책·비용·성능 검증 미수행 |
+| 다이어그램 | AWS 서비스 아이콘, 논리 VPC/Subnet/상징 AZ를 SVG/PNG/DOT로 표현 | 제안된 논리 토폴로지이며 AWS 계정/네트워크 실환경 배치 검증 아님 |
 | 자동화 | GitHub Actions, PR 링크, 재사용 Action, GitHub App 서버 코드 | GitHub App 등록/배포/설치 절차는 사용자 환경에서 별도 진행 |
 
 ## 2. 전체 실행 흐름
@@ -50,7 +50,7 @@ GitHub Actions 수동 실행 (push/PR 이벤트는 테스트만)
 
 1. GitHub의 **Actions → AWS 아키텍처 검토 자동화 → Run workflow**에서 분석이 필요할 때 직접 실행합니다. push/PR 이벤트는 테스트만 수행합니다.
 2. 완료된 실행의 **Artifacts → aws-architecture-recommendation**에서 결과 ZIP을 다운로드합니다.
-3. `recommendation.md`에서 근거·대안·위험·추가 질문을 확인하고 `architecture.svg` 또는 `architecture.png`를 엽니다.
+3. **`START-HERE.html`을 브라우저에서 먼저 열고**, 설계도·선정 이유·보안/운영·비용/용량을 한 페이지에서 검토합니다. Markdown만 필요하면 `START-HERE.md`를 열고, 원본 개발자용 자료는 `recommendation.md` 등에서 확인합니다.
 
 요구사항을 입력하고 싶다면 [`.architecture/requirements.example.json`](.architecture/requirements.example.json)을 복사해 **`.architecture/requirements.json`**을 만들고, 수동 실행의 `requirements_file`에 해당 경로를 입력합니다. 실제 키·암호·개인정보를 요구사항 파일에 저장하지 마세요.
 
@@ -110,7 +110,11 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output 
 
 | 파일 | 용도 |
 | --- | --- |
-| `recommendation.md` | 한글 설계 결정, 대안 비교, 확인 근거, 위험과 사용자 질문 |
+| **`START-HERE.html`** | **오프라인 한국어 아키텍처 통합 검토 화면(먼저 열기)** |
+| **`START-HERE.md`** | **같은 사용자 여정의 텍스트 요약 및 네 가지 결과물 링크** |
+| **`deliverables/`** | **01 AWS To-Be SVG/PNG, 02 서비스 선정·ADR, 03 보안·운영, 04 비용·용량** |
+| `artifact-index.json` | 주요 결과물 경로·해시·분석/승인/비용 상태 |
+| `recommendation.md` | 개발자용 한글 설계 결정, 대안 비교, 확인 근거, 위험과 사용자 질문 |
 | `repository-analysis.json` | 확인된 파일·기술·단서와 스캔 제한 |
 | `requirements-used.json` | 실제 설계 판단에 사용한 값(사용자 명시값 + 시스템 기본값) |
 | `evidence-contract.json` | AST/설정 관찰 근거, 사용자 명시값, 기본값, 미확인 조건의 출처 계약 |
@@ -286,3 +290,11 @@ AWS 서비스 결정 전에 **관계형 트랜잭션, 문서형 조회, 키 기�
 - **근거와 한계:** AWS Well-Architected 6개 원칙별 검토 상태를 제공하되, **모두 review_required**이고 보안·성능·가용성 인증을 수행하지 않습니다.
 
 [운영·보안·확장 설계 가이드](docs/OPERATIONS.md)에서 역할별 상세 기준을 확인할 수 있습니다.
+
+## 19. 사용자용 통합 결과물 (Issue #14)
+
+이제 수동 실행 Artifact에서 **START-HERE.html**을 열면, 기존에 나뉘어 있던 AWS To-Be 다이어그램, 서비스 선정·제외 이유/ADR, Security & Operations, Cost & Capacity를 **한 페이지에서** 검토할 수 있습니다. 로컬에서 HTML을 열면 외부 JavaScript·CSS·이미지 호출 없이 도식이 표시됩니다. **START-HERE.md**와 **deliverables/** 아래 4개 주요 출력도 함께 생성합니다.
+
+AWS As-Is(저장소 정적 코드 관찰)와 To-Be(AWS 논리 설계 후보), 시스템 기본값·사용자 명시 요구·미검증 항목, 실제 비용 부분합/미산정을 명확히 구분합니다. 검토를 마친 뒤 요구사항 JSON을 수정하고 GitHub Actions에서 재분석할 수 있습니다.
+
+자세한 사용 절차·보안·시각 QA의 한계는 [사용자 보고서 안내](docs/REPORTING.md)를 참고하세요. **이는 실제 계정의 운영 적합성/비용/보안이 검증된 결과가 아닙니다.**

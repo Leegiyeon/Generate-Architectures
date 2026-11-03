@@ -23,6 +23,7 @@ if __package__:
     from .data_access_decision import assess_data_access, markdown_data_access
     from .ec2_alternative import design_ec2_alternative, markdown_ec2_alternative
     from .operations_designer import design_operations, markdown_operations
+    from .report_bundle import generate_user_bundle
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -42,6 +43,7 @@ else:
     from data_access_decision import assess_data_access, markdown_data_access
     from ec2_alternative import design_ec2_alternative, markdown_ec2_alternative
     from operations_designer import design_operations, markdown_operations
+    from report_bundle import generate_user_bundle
 
 
 def scan(root):
@@ -342,6 +344,18 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     else:
         from render_aws_icons import render_icon_diagram
     render_icon_diagram(result, out)
+    # 사용자에게 여러 개발 파일 대신 오프라인 한 장 요약 + 4개 대표 결과물을 제공합니다.
+    # 원본 JSON과 중간 보고서는 이전 버전 호환을 위해 그대로 유지합니다.
+    bundle = generate_user_bundle(out, result, topology, graph, contract,
+                                  decision_matrix, adr, operations_plan,
+                                  cost_report, validation)
+    result["user_report"] = bundle
+    (out / "architecture.json").write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    report = ("[사용자용 보고서] START-HERE.html / START-HERE.md\n"
+              "[주요 결과물] deliverables/ (4개 영역)\n\n" + report)
+    (out / "recommendation.md").write_text(report, encoding="utf-8")
+    print("사용자용 결과물: " + str(out / "START-HERE.html"))
     print(report)
     return result
 
