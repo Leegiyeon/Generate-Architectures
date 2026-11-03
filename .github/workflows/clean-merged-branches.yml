@@ -1,0 +1,34 @@
+# main에 PR이 병합된 후, 해당 PR의 head SHA에서 변경되지 않은 브랜치만 정리합니다.
+# 삭제 전 보호 상태·열린 PR·변경된 head SHA를 확인합니다. main 및 미병합 작업은 보존합니다.
+name: Clean merged branches
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: cleanup-merged-branches
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: github.repository == 'Leegiyeon/Generate-Architectures' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout trusted main code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Delete only merged, unchanged, unprotected branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/branch_cleanup.py --apply
