@@ -223,7 +223,7 @@ Terraform 보안 검사는 `--terraform-plan .architecture/terraform-plan.json` 
 
 - 모든 직접 관찰에는 상대경로와 가능한 행 번호가 포함되지만 실제 운영 호출과 동일하다고 보증하지 않습니다.
 - `environment=dev` 등 입력하지 않은 기본값을 사용자의 결정이라고 표시하지 않습니다.
-- 평균·피크 RPS, 피크 동시 연결, 지연 목표 및 운영 우선순위는 요구사항 파일에서 입력할 수 있습니다. 피크 RPS는 평균 이상이어야 합니다.
+- 평균·피크 RPS, 피크 동시 연결, 지연 목표 및 운영 우선순위는 요구사항 파일에서 입력할 수 있습니다. Next.js 렌더링 모드(`rendering_mode`: static_export/ssr/hybrid)와 문서형 DB 유지 여부(`document_database_strategy`: keep_existing/evaluate_migration)도 명시하면 질문을 반복하지 않습니다. 피크 RPS는 평균 이상이어야 합니다.
 - DB/인증 코드 단서가 발견되거나 사용자가 해당 조건을 명시했다면 같은 질문을 반복하지 않습니다.
 - 파서 오류가 있으면 `partial` 상태를 표시하고 미탐지를 기능 부재로 판단하지 않습니다.
 - 외부 AI에는 소스코드·파일경로·함수명을 보내지 않으며, 기본값을 사용자 입력인 것처럼 전송하지 않습니다.
