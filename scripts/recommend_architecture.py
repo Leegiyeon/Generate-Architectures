@@ -12,6 +12,7 @@ if __package__:
     from .render_application_graph import render_application_diagram
     from .ai_architecture_agent import review_architecture, markdown_ai_review
     from .cost_estimator import read_cost_inputs, estimate_costs, markdown_cost
+    from .cost_scenarios import correlate_topology_costs
     from .iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from .architecture_validator import validate_architecture, markdown_validation, markdown_adr
     from .evidence_contract import build_evidence_contract, markdown_evidence
@@ -32,6 +33,7 @@ else:
     from render_application_graph import render_application_diagram
     from ai_architecture_agent import review_architecture, markdown_ai_review
     from cost_estimator import read_cost_inputs, estimate_costs, markdown_cost
+    from cost_scenarios import correlate_topology_costs
     from iac_policy_validator import read_terraform_plan, inspect_terraform_plan, markdown_iac
     from architecture_validator import validate_architecture, markdown_validation, markdown_adr
     from evidence_contract import build_evidence_contract, markdown_evidence
@@ -208,7 +210,10 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         "production_ready": False,
     }
     # 비용은 요금 출처와 사용량이 명시된 경우만 계산하며, 누락 단가는 0으로 처리하지 않음.
-    cost_report = estimate_costs(read_cost_inputs(root, cost_input), live=live_pricing)
+    cost_report = correlate_topology_costs(
+        estimate_costs(read_cost_inputs(root, cost_input), live=live_pricing),
+        topology, requirements,
+    )
     # Terraform plan 파일은 민감 원문을 포함할 수 있어 결과에는 익명화된 위험만 기록.
     iac_report = inspect_terraform_plan(read_terraform_plan(root, terraform_plan))
     result["cost_estimate"] = {
