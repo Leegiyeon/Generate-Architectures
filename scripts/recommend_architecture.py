@@ -123,6 +123,11 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     }
     # 모델의 의견을 자동 적용하지 않고 규칙 기반 참조안과 사용자 요구를 독립적으로 검사.
     validation = validate_architecture(result, profile, requirements, graph, ai_review)
+    if validation["decision_gate"] == "blocked" or any(
+        x["id"] == "NET-SSR-CONFLICT" for x in topology["review_required"]
+    ):
+        topology["status"] = "blocked_for_review"
+        result["aws_topology"]["status"] = "blocked_for_review"
     result["validation"] = {
         "file": "validation.json",
         "decision_gate": validation["decision_gate"],
