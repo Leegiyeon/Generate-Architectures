@@ -29,6 +29,7 @@ if __package__:
     from .ec2_alternative import design_ec2_alternative, markdown_ec2_alternative
     from .operations_designer import design_operations, markdown_operations
     from .report_bundle import generate_user_bundle
+    from .analysis_goal import build_analysis_goal
 else:
     from repository_analyzer import inspect_repository
     from requirements_model import parse_requirements
@@ -54,6 +55,7 @@ else:
     from ec2_alternative import design_ec2_alternative, markdown_ec2_alternative
     from operations_designer import design_operations, markdown_operations
     from report_bundle import generate_user_bundle
+    from analysis_goal import build_analysis_goal
 
 
 def scan(root):
@@ -92,8 +94,9 @@ def design(found, kind, budget):
 def run(repo, output, workload="auto", budget=None, requirements_file=None,
         ai_enabled=False, ai_model="gpt-6-luna", cost_input=None,
         live_pricing=False, terraform_plan=None, alternative_cost_input=None,
-        capacity_evidence=None):
+        capacity_evidence=None, analysis_goal="new_aws"):
     """구현 범위: 읽기 전용 정적 분석 및 검토용 AWS 참조 설계 생성."""
+    goal_report = build_analysis_goal(analysis_goal)
     root = Path(repo).resolve()
     if not root.is_dir():
         raise ValueError("분석 대상 저장소가 존재하지 않습니다.")
@@ -112,6 +115,12 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
             for n in actual_routes[:20]
         ]
     result = decide(profile, requirements)
+    result["analysis_goal"] = {
+        "file": "analysis-goal.json", "goal": goal_report["goal"],
+        "status": goal_report["status"],
+        "migration_assessment_performed": False,
+        "onprem_inventory_analyzed": False,
+    }
     # 사실 / 사용자 명시입력 / 시스템 기본값 / 가정 / 미확인을 분리합니다.
     contract = build_evidence_contract(profile, graph, requirements, explicit_fields, result)
     result["questions"] = list(contract["questions"])
@@ -289,6 +298,7 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     result["aws_topology"]["embedded_icons"] = topology_diagram["embedded_icons"]
     result["application_graph"]["diagram"] = diagram_info
     for name, value in (
+        ("analysis-goal.json", goal_report),
         ("application-graph.json", graph),
         ("aws-topology.json", topology),
         ("architecture-decision-matrix.json", decision_matrix),
@@ -328,6 +338,10 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     (out / "validation.md").write_text(markdown_validation(validation), encoding="utf-8")
     (out / "decision-record.md").write_text(markdown_decision_record(adr), encoding="utf-8")
     report = markdown_report(result)
+    report = ("# 분석 목적: " + goal_report["label"] + "\n\n" +
+              "> " + goal_report["scope"] + "\n\n" +
+              ("**주의: 온프레미스 인프라/마이그레이션 적합성 미검증.**\n\n"
+               if goal_report["goal"] == "migrate_onprem" else "") + report)
     report += "\n## 9. 코드 기반 애플리케이션 그래프 (추가 산출물)\n\n"
     report += "- 분석 파일 수: " + str(graph["scanned_source_files"]) + "\n"
     report += "- API: " + str(graph["counts"]["nodes"].get("route", 0))
@@ -408,7 +422,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
                                   decision_matrix, adr, operations_plan,
                                   cost_report, validation,
                                   alternative_comparison=alternative_cost,
-                                  capacity_evidence=capacity_report)
+                                  capacity_evidence=capacity_report,
+                                  analysis_goal=goal_report)
     result["user_report"] = bundle
     (out / "architecture.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -423,6 +438,9 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
 def main():
     parser = argparse.ArgumentParser(description="AWS 아키텍처 분석 및 제안 (배포 없음)")
     parser.add_argument("--repo", default=".", help="분석할 GitHub 저장소 경로")
+    parser.add_argument("--analysis-goal", choices=["new_aws", "migrate_onprem"],
+                        default="new_aws",
+                        help="신규 AWS 구성(new_aws) 또는 온프레미스 AWS 이전(migrate_onprem)")
     parser.add_argument("--output", default="architecture-output", help="결과물 출력 디렉터리")
     parser.add_argument("--workload", choices=["auto", "web", "backend", "mobile"], default="auto")
     parser.add_argument("--budget", type=float, default=None, help="사용자 입력 월 예산(USD): 비용 추정치 아님")
@@ -442,7 +460,7 @@ def main():
         run(args.repo, args.output, args.workload, args.budget, args.requirements,
             args.enable_ai, args.ai_model, args.cost_input,
             args.live_pricing, args.terraform_plan, args.alternative_cost_input,
-            args.capacity_evidence)
+            args.capacity_evidence, args.analysis_goal)
     except (ValueError, OSError) as exc:
         parser.error(str(exc))
 
