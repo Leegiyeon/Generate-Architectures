@@ -3,6 +3,9 @@ import json
 import os
 from pathlib import Path
 import re
+import tomllib
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.utils import canonicalize_name
 
 EXCLUDED = frozenset({".git", ".github", "node_modules", ".next", "dist", "build",
                       ".venv", "venv", "__pycache__", "coverage", "vendor",
@@ -15,6 +18,8 @@ MANIFESTS = {
     "pyproject.toml": ("Python", "backend"), "go.mod": ("Go", "backend"),
     "pom.xml": ("Java", "backend"), "Dockerfile": ("Docker", "containers"),
     "docker-compose.yml": ("Docker Compose", "containers"),
+    "docker-compose.yaml": ("Docker Compose", "containers"),
+    "compose.yml": ("Docker Compose", "containers"),
     "compose.yaml": ("Docker Compose", "containers"),
     "serverless.yml": ("Serverless", "serverless"),
     "app.json": ("Expo", "mobile"), "pubspec.yaml": ("Flutter", "mobile"),
@@ -25,6 +30,10 @@ MAX_BYTES = 65536
 MAX_EVIDENCE = 100
 TEST_DIRECTORIES = frozenset({"test", "tests", "__tests__", "__mocks__",
                               "fixtures", "__fixtures__"})
+PYTHON_DATABASE_DEPS = frozenset({"sqlmodel", "sqlalchemy", "psycopg", "psycopg2",
+    "psycopg2-binary", "asyncpg", "pymysql", "mysqlclient", "mysql-connector-python", "aiosqlite"})
+PYTHON_DOCUMENT_DEPS = frozenset({"pymongo", "motor"})
+PYTHON_AUTH_DEPS = frozenset({"pyjwt", "python-jose", "authlib", "django-allauth"})
 
 
 def is_test_source(relative):
@@ -52,6 +61,34 @@ def safe_text(path):
     if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_BYTES:
         return ""
     return path.read_text(encoding="utf-8", errors="replace")
+
+
+def _python_requirement_name(value):
+    """이름 있는 선언만 추출. marker/URL을 평가하거나 외부 파일을 따라가지 않습니다."""
+    if not isinstance(value, str):
+        return None
+    declaration = value.split(" #", 1)[0].strip()
+    if not declaration or declaration.startswith(("#", "-")):
+        return None
+    try:
+        return canonicalize_name(Requirement(declaration).name)
+    except InvalidRequirement:
+        return None
+
+
+def _python_dependency_names(path):
+    text = safe_text(path)
+    if path.name == "pyproject.toml":
+        try:
+            project = tomllib.loads(text).get("project", {})
+            values = project.get("dependencies", []) if isinstance(project, dict) else []
+        except (ValueError, TypeError):
+            return set()
+        if not isinstance(values, list) or not all(isinstance(value, str) for value in values):
+            return set()
+    else:
+        values = text.replace("\\\n", "").splitlines()
+    return {name for value in values if (name := _python_requirement_name(value))}
 
 
 def inspect_repository(root):
@@ -87,9 +124,17 @@ def inspect_repository(root):
     next_export = any(re.search(r"\boutput\s*:\s*['\"]export['\"]", safe_text(p))
                       for p in next_configs)
     next_present = bool(next_configs)
-    dependency_names = set()
+    dependency_names, python_names, dependency_sources = set(), set(), []
     for m in manifests:
         p = root / m["path"]
+        if p.name in ("requirements.txt", "pyproject.toml"):
+            names = _python_dependency_names(p)
+            python_names.update(names)
+            dependency_sources.extend({"name": name, "path": m["path"], "ecosystem": "python",
+                                       "section": ("project.dependencies" if p.name == "pyproject.toml"
+                                                   else "requirements")}
+                                      for name in sorted(names))
+            continue
         if p.name != "package.json":
             continue
         try:
@@ -99,14 +144,21 @@ def inspect_repository(root):
             for field in ("dependencies", "devDependencies"):
                 if isinstance(package.get(field), dict):
                     dependency_names.update(package[field])
+                    dependency_sources.extend({"name": name, "path": m["path"],
+                                               "ecosystem": "npm", "section": field}
+                                              for name in sorted(package[field]))
         except (ValueError, TypeError):
             pass
     if "next" in dependency_names:
         next_present = True
-    if "vite" in dependency_names and not any(m["technology"] == "Vite" for m in manifests):
-        manifests.append({"path": "package.json", "technology": "Vite", "category": "web"})
-    if next_present and not any(m["technology"] == "Next.js" for m in manifests):
-        manifests.append({"path": "package.json", "technology": "Next.js", "category": "web"})
+    for name, technology, ecosystem, category in (
+            ("vite", "Vite", "npm", "web"), ("next", "Next.js", "npm", "web"),
+            ("@nestjs/core", "NestJS", "npm", "backend"),
+            ("fastapi", "FastAPI", "python", "backend")):
+        sources = [source for source in dependency_sources
+                   if source["name"] == name and source["ecosystem"] == ecosystem]
+        if sources and not any(m["technology"] == technology for m in manifests):
+            manifests.append({"path": sources[0]["path"], "technology": technology, "category": category})
 
     api_files = [p for p in filenames if not is_test_source(p) and (
         ("/api/" in "/" + p and p.endswith((".ts", ".tsx", ".js", ".py", ".go"))) or
@@ -114,13 +166,27 @@ def inspect_repository(root):
         ("/app/" in "/" + p or p.startswith("app/")))]
     db_files = [p for p in filenames if p.endswith(("prisma/schema.prisma", "schema.prisma")) or
                 "/migrations/" in "/" + p or p.startswith("migrations/")]
-    infra_files = [p for p in filenames if p.endswith(".tf") or p in
-                   ("Dockerfile", "docker-compose.yml", "compose.yaml", "serverless.yml")]
+    infra_names = {"Dockerfile", "docker-compose.yml", "docker-compose.yaml",
+                   "compose.yml", "compose.yaml", "serverless.yml"}
+    infra_files = [p for p in filenames if p.endswith(".tf") or Path(p).name in infra_names]
     auth_deps = {"next-auth", "@auth/core", "@clerk/nextjs", "passport",
                  "aws-amplify", "amazon-cognito-identity-js"}
     database_deps = {"pg", "mysql2", "sequelize", "typeorm", "drizzle-orm", "better-sqlite3"}
     document_deps = {"mongoose", "mongodb"}
     queue_deps = {"bullmq", "bull", "amqplib", "ioredis"}
+    relational = database_deps & dependency_names | PYTHON_DATABASE_DEPS & python_names
+    document = document_deps & dependency_names | PYTHON_DOCUMENT_DEPS & python_names
+    authentication = auth_deps & dependency_names | PYTHON_AUTH_DEPS & python_names
+    jobs = queue_deps & dependency_names
+
+    def dependency_paths(npm, python=()):
+        return evidence({source["path"] for source in dependency_sources
+                         if source["name"] in (npm if source["ecosystem"] == "npm" else python)})
+
+    relational_paths = dependency_paths(database_deps, PYTHON_DATABASE_DEPS)
+    document_paths = dependency_paths(document_deps, PYTHON_DOCUMENT_DEPS)
+    relevant_npm = database_deps | document_deps | auth_deps | queue_deps | {"prisma", "@prisma/client", "next", "vite", "@nestjs/core"}
+    relevant_python = PYTHON_DATABASE_DEPS | PYTHON_DOCUMENT_DEPS | PYTHON_AUTH_DEPS | {"fastapi"}
     # Prisma 스키마는 DB 엔진이 PostgreSQL/MySQL인지 MongoDB인지 구분해 확인합니다.
     prisma_files = [root / p for p in db_files if p.endswith("schema.prisma")]
     prisma_text = "\n".join(safe_text(p) for p in prisma_files[:5])
@@ -132,10 +198,10 @@ def inspect_repository(root):
         "api_routes": bool(api_files),
         "nextjs": next_present,
         "next_static_export": bool(next_export),
-        "relational_database": bool(prisma_relational or database_deps.intersection(dependency_names)),
-        "document_database": bool(prisma_document or document_deps.intersection(dependency_names)),
-        "authentication_library": bool(auth_deps.intersection(dependency_names)),
-        "background_job_library": bool(queue_deps.intersection(dependency_names)),
+        "relational_database": bool(prisma_relational or relational),
+        "document_database": bool(prisma_document or document),
+        "authentication_library": bool(authentication),
+        "background_job_library": bool(jobs),
         "docker": "containers" in categories,
         "serverless_config": "serverless" in categories,
         "mobile": "mobile" in categories,
@@ -144,11 +210,19 @@ def inspect_repository(root):
         "api_routes": evidence(api_files),
         "database_paths": evidence(db_files),
         "infrastructure_paths": evidence(infra_files),
-        "auth_dependencies": sorted(auth_deps & dependency_names),
-        "db_dependencies": sorted((database_deps | document_deps | {"prisma", "@prisma/client"}) & dependency_names),
+        "auth_dependencies": sorted(authentication),
+        "db_dependencies": sorted(relational | document |
+                                  {"prisma", "@prisma/client"} & dependency_names),
         "database_engine_evidence": ([p.relative_to(root).as_posix() for p in prisma_files] if
                                      prisma_relational or prisma_document else []),
-        "job_dependencies": sorted(queue_deps & dependency_names),
+        "relational_dependency_paths": relational_paths,
+        "document_dependency_paths": document_paths,
+        "auth_dependency_paths": dependency_paths(auth_deps, PYTHON_AUTH_DEPS),
+        "job_dependency_paths": dependency_paths(queue_deps),
+        "dependency_sources": [source for source in dependency_sources
+                               if source["name"] in (relevant_npm if source["ecosystem"] == "npm"
+                                                     else relevant_python)][:MAX_EVIDENCE],
+        "job_dependencies": sorted(jobs),
         "next_configs": [p.relative_to(root).as_posix() for p in next_configs],
     }
     explicit_static = (
@@ -186,5 +260,6 @@ def inspect_repository(root):
             "Next.js의 SSR·서버 액션 부재는 자동으로 증명할 수 없습니다.",
             "인증 라이브러리 미탐지는 인증 부재를 뜻하지 않습니다. 자체 구현·외부 인증과 실제 인가 정책은 별도 확인이 필요합니다.",
             "코드 내부의 실제 DB 연결 및 인프라 배포 상태는 별도 검증이 필요합니다.",
+            "Python 의존성은 requirements.txt의 이름 있는 선언과 pyproject.toml의 project.dependencies만 확인합니다. optional/dependency-groups/Poetry·동적 의존성, 포함 파일(-r/-c), 환경 marker 평가와 URL 조회는 지원하지 않습니다.",
         ],
     }

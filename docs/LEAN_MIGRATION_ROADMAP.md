@@ -39,11 +39,11 @@
 
 | 순서 | 우선순위 | GitHub Issue | 작업과 MVP 완료 조건 | 상태 |
 | --- | --- | --- | --- | --- |
-| 1 | P0 | [#33](https://github.com/Leegiyeon/Generate-Architectures/issues/33) | **간편 시작/2모드**: 대상 저장소 Workflow 1개 + 1회 실행 + 1개 결과 HTML. 무계정/무시크릿; 기존 Action 하위 호환 | 외부 저장소 3경로 Actions·Artifact·브라우저 검증 통과, 이용 환경 확대 필요 |
+| 1 | P0 | [#33](https://github.com/Leegiyeon/Generate-Architectures/issues/33) | **간편 시작/2모드**: 대상 저장소 Workflow 1개 + 1회 실행 + 1개 결과 HTML. 무계정/무시크릿; 기존 Action 하위 호환 | 완료: 별도 공개 저장소 3경로 검증 후 #33 종료 |
 | 2 | P0 | [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34) | **온프레미스 Inventory/As-Is**: 직접 입력한 현재 인프라 + 실제 코드 단서를 구분. 정보 부족 시 연결·호스트·DB를 지어내지 않음 | 선언형 As-Is·브라우저 회귀 구현, 도면 수동 승인 필요 |
 | 3 | P0 | [#35](https://github.com/Leegiyeon/Generate-Architectures/issues/35) | **Migration Assessment**: Rehost와 Replatform, 유지/변경/이전·보안/데이터 전환 위험 및 승인 전 단계별 Runbook 후보 | 서버·선언 연결별 변경표 구현, 실제 연결·이전 적합성 미검증 |
 | 4 | P0 | [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) | **사용자 보고서 단순화·시각 QA**: 모드별 ①~④ 보고서, 근거/가정 구분, 한글/아이콘/그래프 잘림 실제 확인 | 합성 78화면·외부 18화면 자동 검사 통과, 모바일 표·도면 라벨 수정·자동 회귀 통과, 수동 승인 필요 |
-| 5 | P1 | [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) | **정확성 게이트**: 신규/온프레미스 가상 시나리오+실제 공개 저장소 샘플로 누락/오탐·허위 확정 방지 | 테스트 API 오탐 수정·공개 저장소 3개 감사; Python DB·NestJS API 미탐 및 필수 CI 강제 미해결 |
+| 5 | P1 | [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) | **정확성 게이트**: 신규/온프레미스 가상 시나리오+실제 공개 저장소 샘플로 누락/오탐·허위 확정 방지 | 공개 3개 감사·Python DB/Compose·NestJS 정적 API 미탐 수정; 부분 분석·필수 CI 정책 미해결 |
 | 6 | P1 | [#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) | **비용·성능 근거 검증**: 실제 SKU/단위/리전·부하와 서비스별 입력 가격/용량 비교 교차검증 | 공식 예시 3건 산술 회귀 추가, SKU·전체 비용·실환경 검증 미완료 |
 | 7 | P1(선택) | [#36](https://github.com/Leegiyeon/Generate-Architectures/issues/36) | **온프레미스 로컬 수집기**: 사용자 기기에서 읽기 전용 요약 후 미리보기/비식별화; 자동 전송·상주 설치 없음 | 미구현 |
 | 8 | P2(선택) | [#17](https://github.com/Leegiyeon/Generate-Architectures/issues/17) | 이미 AWS를 쓰는 사용자를 위한 **로컬 AWS 읽기 전용 진단** | 미구현 |
@@ -51,7 +51,7 @@
 
 2026-11-03의 [외부 실행 검증](EXTERNAL_E2E.md)은 결틈 저장소의 [성공한 Actions 실행](https://github.com/Leegiyeon/oneul-ui-gyeol/actions/runs/41630070177)과 다운로드한 보고서 3개·18개 브라우저 상태에 한정합니다. Inventory는 가상 서버 2개로 만든 시험 입력이며 실제 서버 관찰이 아닙니다. [실제 공개 저장소 감사](REAL_REPOSITORY_AUDIT.md)에서 확인한 미탐과 [공식 비용 산술 검증](OFFICIAL_COST_VALIDATION.md)의 남은 범위를 다음 구현의 근거로 사용합니다.
 
-다음 우선순위는 모바일 표·도면 라벨 검토와 수동 시각 승인, Python DB/NestJS API 등 정확도 공백, 필수 CI 정책입니다. `main`의 `protected=false`, rulesets 빈 배열을 확인했으며 **CI 실행은 존재하지만 병합 차단으로 강제되지 않습니다**. 사람의 도면 승인이나 AWS 검증을 자동 검사 성공으로 대신하지 않습니다.
+다음 우선순위는 모바일 표·도면 라벨 검토와 수동 시각 승인, 남은 부분 분석·동적 경로의 정확도 공백, 필수 CI 정책입니다. `main`의 `protected=false`, rulesets 빈 배열을 확인했으며 **CI 실행은 존재하지만 병합 차단으로 강제되지 않습니다**. 사람의 도면 승인이나 AWS 검증을 자동 검사 성공으로 대신하지 않습니다.
 
 ## MVP 출시 검수 기준
 

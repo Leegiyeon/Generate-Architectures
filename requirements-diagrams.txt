@@ -1,1 +1,2 @@
 diagrams==0.25.1
+packaging==26.3
