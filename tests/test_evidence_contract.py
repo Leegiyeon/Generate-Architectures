@@ -34,6 +34,39 @@ def contract_for(root, path=None):
 
 
 class EvidenceContractTests(unittest.TestCase):
+    def test_dependency_and_ast_indicators_link_actual_source_files(self):
+        profile = {
+            "signals": {"relational_database": True, "authentication_library": True,
+                        "api_routes": True},
+            "evidence": {
+                "auth_dependencies": ["pyjwt"],
+                "auth_dependency_paths": ["backend/pyproject.toml"],
+                "relational_dependency_paths": ["backend/pyproject.toml"],
+                "dependency_sources": [{"name": "pyjwt", "path": "backend/pyproject.toml",
+                                        "ecosystem": "python", "section": "project.dependencies"}],
+                "ast_api_routes": [{"path": "src/app.controller.ts", "line": 5,
+                                    "route": "GET /health"}],
+            },
+        }
+        contract = build_evidence_contract(profile, {}, {})
+        indicators = {x["signal"]: x for x in contract["configuration_inferences"]}
+        self.assertEqual(indicators["authentication_library"]["source_paths"],
+                         ["backend/pyproject.toml"])
+        self.assertEqual(indicators["relational_database"]["source_paths"],
+                         ["backend/pyproject.toml"])
+        self.assertEqual(indicators["api_routes"]["source_paths"], ["src/app.controller.ts"])
+        dependency = next(x for x in contract["observations"] if x["category"] == "dependency")
+        self.assertEqual(dependency["value"], "pyjwt")
+        self.assertEqual(dependency["source"]["path"], "backend/pyproject.toml")
+        self.assertFalse(dependency["runtime_verified"])
+
+    def test_unresolved_static_routes_make_evidence_partial(self):
+        graph = {"unresolved_routes": [{"path": "src/controller.ts", "line": 5,
+                                        "reason": "dynamic_controller_path"}]}
+        contract = build_evidence_contract({}, graph, {})
+        self.assertEqual(contract["status"], "partial")
+        self.assertEqual(contract["coverage"]["unresolved_routes"], 1)
+
     def test_explicit_inputs_not_confused_with_defaults(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = repo_with(tmp, {

@@ -21,11 +21,13 @@
 ### 실제 파일을 읽는 방식
 
 - 디렉터리·파일 이름 최대 5,000개를 탐색하며 `.git`, 의존성/빌드 폴더 및 심볼릭 링크는 제외합니다.
-- `package.json`의 의존성 이름을 확인합니다. `next.config.*` 중 크기가 제한된 파일에서 명시적 `output: 'export'` 여부를 확인합니다.
+- `package.json`의 의존성 이름과 Python `requirements.txt`의 이름 있는 선언, `pyproject.toml`의 `[project].dependencies`를 정적으로 확인합니다. Python 파서는 표준 `tomllib`을 사용하므로 Python 3.11 이상이 필요합니다. 의존성의 원본 파일 경로를 보존하며 선언을 실행하거나 URL·포함 파일을 조회하지 않습니다. `next.config.*` 중 크기가 제한된 파일에서 명시적 `output: 'export'` 여부를 확인합니다.
 - API 경로 단서와 AST 분석은 같은 경계 규칙으로 `*.test.*`, `*.spec.*`, Python의 `test_*`/`*_test`, Go의 `*_test` 및 표준 테스트·fixture 디렉터리를 제외합니다. `api/test.ts`처럼 실제 API 이름인 `test`는 유지하며, 파일 경로 단서는 운영 라우트 존재를 증명하지 않습니다.
 - `.env` 등 비밀 설정 파일의 내용은 읽지 않습니다. 모든 분석은 GitHub Runner 내부에서 실행하고 외부 LLM으로 소스 내용을 보내지 않습니다.
 - 발견되지 않았다는 것은 해당 기능이 **없다는 증거가 아닙니다**. 특히 API 서버, SSR, DB·인증·운영설정은 수동 확인이 필요합니다.
 - 인증은 알려진 의존성 이름만 확인하므로 자체 구현이나 외부 인증을 놓칠 수 있습니다. `authentication_library=false`는 인증 부재가 아니라 미확인 상태이며 실제 인증·인가 방식은 추가 질문으로 확인합니다.
+- Python의 FastAPI·SQLModel/SQLAlchemy·DB 드라이버·PyJWT 등 알려진 선언을 탐지하지만, ORM/드라이버 선언만으로 실제 DB 엔진·위치나 인증 사용 여부를 확정하지 않습니다. optional/dependency-groups/Poetry·동적 의존성, `-r/-c` 포함 파일과 환경 marker 평가는 지원하지 않습니다. 중첩 Dockerfile과 Compose의 `.yml`/`.yaml` 경로를 인프라 단서로 기록하며 파일 이름이 배포 실행을 증명하지 않습니다.
+- 의존성 선언 문법은 [PyPA packaging의 Requirement 파서](https://packaging.pypa.io/en/stable/requirements.html)로 검사합니다. 잘못된 URL 참조·extras·환경 marker가 DB/인증 단서를 만드는 오탐을 막기 위해 `packaging`을 고정 의존성으로 추가했습니다. 문법 검사와 이름 추출만 수행하며 marker 평가·URL 유효성/접속 검증은 하지 않습니다.
 
 ## 설계 대안 결정 기준
 
@@ -66,6 +68,8 @@
 `application-graph.json`을 원본 데이터로 사용하고 `render_application_graph.py`가 별도 SVG/PNG/DOT을 만듭니다. 기존 AWS 참조 설계(`architecture.json` 및 서비스 아이콘 그림)는 **제안**이고, 이 애플리케이션 그래프는 **정적 분석 근거**입니다.
 
 일부 파일을 분석하지 못하면 `errors`에 이유를 기록하고, 소스 파일과 결과 노드/간선의 최대 수를 제한합니다. JS/TS의 동적 import, 런타임 DI, path alias, 복잡한 ORM 관계, Go·Java 함수 호출 추적은 아직 지원하지 않습니다. AST에서 찾은 API가 실제 운영 라우팅/인가 정책을 증명하는 것은 아닙니다.
+
+NestJS는 `@nestjs/common`에서 import한 `Controller`와 `Get/Post/Put/Patch/Delete/Options/Head`의 별칭·무인자·정적 문자열 경로를 지원합니다. controller prefix와 handler 경로를 결합하고 실제 메서드에 `handles` 연결을 만듭니다. 동적·배열·옵션 경로와 모호한 핸들러는 임의 해석하지 않고 `unresolved_routes`의 파일/행·고정 이유로 남깁니다. 이 경우 근거 계약은 `partial`입니다. 전역 prefix·버전·모듈 등록·상속·DI·실제 운영 노출은 검증하지 않습니다. [NestJS 공식 라우팅 설명](https://docs.nestjs.com/controllers)을 기준으로 지원 범위를 제한합니다.
 
 개선된 파이프라인: 저장소 메타데이터 수집 → **코드 AST 분석** → 검증된 API 단서를 설계 판단에 반영 → 한국어 설계 검토 → AWS 후보 다이어그램 + 별도의 실제 코드 구조 다이어그램 → Artifact.
 

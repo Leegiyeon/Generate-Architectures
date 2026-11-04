@@ -5,6 +5,8 @@ const path = require("node:path");
 const parser = require("@babel/parser");
 const HTTP = new Set(["get","post","put","patch","delete","options","head"]);
 const NEXT = new Set(["GET","POST","PUT","PATCH","DELETE","OPTIONS","HEAD"]);
+const NEST_HTTP = new Map(["Get", "Post", "Put", "Patch", "Delete", "Options", "Head"]
+  .map(name => [name, name.toUpperCase()]));
 const SOURCE_EXT = /\.(js|jsx|ts|tsx|mjs|cjs|mts|cts)$/i;
 const SKIP_KEYS = new Set(["loc", "start", "end", "extra", "comments", "tokens", "leadingComments", "trailingComments", "innerComments"]);
 
@@ -42,10 +44,74 @@ function parseOne(root, relative) {
   const jsx = /\.(tsx|jsx)$/i.test(relative);
   const tree = parser.parse(source, {sourceType:"unambiguous", errorRecovery:false,
     plugins:[...(ts ? ["typescript"] : []), ...(jsx ? ["jsx"] : []), "decorators-legacy"]});
-  const functions=[], imports=[], calls=[], routes=[];
+  const functions=[], imports=[], calls=[], routes=[], unresolved_routes=[];
   const seen = new Set();
   let visited=0;
   const routePath = nextRoutePath(relative);
+  // Import-backed, top-level controllers only. Never evaluate decorators or DI.
+  const nestBindings = new Map();
+  const nestRoutes = new WeakMap();
+  for (const statement of tree.program.body) {
+    if (statement.type !== "ImportDeclaration" || statement.source.value !== "@nestjs/common" ||
+        statement.importKind === "type" || statement.importKind === "typeof") continue;
+    for (const binding of statement.specifiers) {
+      if (binding.type !== "ImportSpecifier" || binding.importKind === "type" ||
+          binding.importKind === "typeof") continue;
+      const imported = nameOf(binding.imported);
+      if (imported === "Controller" || NEST_HTTP.has(imported))
+        nestBindings.set(binding.local.name, imported);
+    }
+  }
+  function nestDecorator(decorator) {
+    const expression = decorator.expression;
+    if (expression.type !== "CallExpression" || expression.callee.type !== "Identifier") return null;
+    const imported = nestBindings.get(expression.callee.name);
+    return imported ? {name: imported, call: expression, line: loc(decorator)} : null;
+  }
+  function literalDecoratorPath(call) {
+    if (!call.arguments.length) return "";
+    const argument = call.arguments[0];
+    return call.arguments.length === 1 && argument.type === "StringLiteral" &&
+      argument.value.length <= 160 ? argument.value : null;
+  }
+  function unresolved(line, reason) {
+    unresolved_routes.push({path: relative, line, reason});
+  }
+  for (const statement of tree.program.body) {
+    const cls = ["ExportNamedDeclaration", "ExportDefaultDeclaration"].includes(statement.type)
+      ? statement.declaration : statement;
+    if (!cls || cls.type !== "ClassDeclaration") continue;
+    const controllers = (cls.decorators || []).map(nestDecorator)
+      .filter(decorator => decorator && decorator.name === "Controller");
+    if (!controllers.length) continue;
+    const prefix = controllers.length === 1 ? literalDecoratorPath(controllers[0].call) : null;
+    if (prefix === null || !cls.id) {
+      unresolved(loc(cls), "nestjs_controller_path_or_declaration_not_resolved");
+      continue;
+    }
+    for (const member of cls.body.body) {
+      const decorators = (member.decorators || []).map(nestDecorator)
+        .filter(decorator => decorator && NEST_HTTP.has(decorator.name));
+      if (!decorators.length) continue;
+      const decorator = decorators[0];
+      const suffix = decorators.length === 1 ? literalDecoratorPath(decorator.call) : null;
+      const key = nameOf(member.key);
+      if (suffix === null || member.type !== "ClassMethod" || member.static ||
+          member.kind !== "method" || !member.body || !key ||
+          (member.computed && member.key.type !== "StringLiteral")) {
+        unresolved(decorator.line, "nestjs_handler_path_or_method_not_resolved");
+        continue;
+      }
+      const route = "/" + [prefix, suffix].map(part => part.replace(/^\/+|\/+$/g, ""))
+        .filter(Boolean).join("/");
+      if (route.length > 160) {
+        unresolved(decorator.line, "nestjs_combined_path_exceeds_limit");
+        continue;
+      }
+      nestRoutes.set(member, {method: NEST_HTTP.get(decorator.name), path: route,
+        line: decorator.line, handler: cls.id.name + "." + key});
+    }
+  }
   function recordFunction(name, node, kind) {
     if (!name || seen.has(name + ":" + loc(node))) return;
     seen.add(name + ":" + loc(node));
@@ -84,6 +150,7 @@ function parseOne(root, relative) {
       const key=nameOf(n.key);
       const f=cls && key ? cls+"."+key : key;
       if(f) recordFunction(f,n,"method");
+      if(nestRoutes.has(n)) routes.push(nestRoutes.get(n));
       walk(n.body,f||current,cls);return;
     }
     if (n.type === "VariableDeclarator" && n.id && n.id.type === "Identifier" && isFunction(n.init)) {
@@ -113,7 +180,7 @@ function parseOne(root, relative) {
     }
   }
   walk(tree.program,null,null);
-  return {path:relative,language:ts?"typescript":"javascript",functions,imports,calls,routes};
+  return {path:relative,language:ts?"typescript":"javascript",functions,imports,calls,routes,unresolved_routes};
 }
 async function main() {
   let input="";

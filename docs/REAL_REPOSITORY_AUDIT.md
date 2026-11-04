@@ -2,6 +2,23 @@
 
 2026-11-03에 공식 공개 샘플 두 개를 추가로 대조했습니다. 앞선 결틈 저장소 감사는 [REPORT_QA_AUDIT.md](REPORT_QA_AUDIT.md)에 있습니다. 아래 결과는 표본별 관찰이며 정확도·성공률 또는 운영 적합성 점수가 아닙니다.
 
+## 2026-11-04 수정 후 동일 소스 재검사
+
+아래 최초 감사와 같은 고정 커밋을 전체 정적 보고서 파이프라인으로 다시 분석했습니다. 앱·컨테이너·DB를 실행하거나 외부 AI/AWS API를 호출하지 않았습니다.
+
+| 대상 | 수정 후 확인 결과 | 남은 한계 |
+| --- | --- | --- |
+| NestJS starter | `NestJS` 기술명, AST `GET /`와 `AppController.getHello`의 `handles` 연결. 파이프라인 `api_routes=true`, 근거 `src/app.controller.ts`. 스캔/파싱 6/6, 오류 0 | DI 호출·전역 prefix·모듈 등록·실제 운영 노출 미검증 |
+| FastAPI template | `FastAPI`, `Docker Compose` 표시. DB `psycopg`·`sqlmodel`, 인증 `pyjwt`의 선언 경로 `backend/pyproject.toml`. 인프라 근거 `backend/Dockerfile`·`compose.yml`. 관계형 DB 단서가 RDS 참조 후보에 반영됨 | 라이브러리 선언은 실제 DB 엔진/위치·접속·인증 실행의 증명이 아님. SQLModel 모델 노드·FastAPI prefix 합성/조건부 등록은 여전히 미지원 |
+
+FastAPI 직접 AST 라우트 23개와 Python 3.12에서 읽지 못한 3.14 구문 오류 한 개는 그대로입니다. 해당 보고서의 근거 계약은 `partial`로 남습니다. NestJS의 동적·배열·옵션 경로는 평가하지 않고 `unresolved_routes`에 파일/행과 고정 이유를 기록하며, 이런 미해결 경로가 있으면 근거 계약도 `partial`입니다.
+
+의존성 관찰과 DB/인증/잡 신호의 `source_paths`에는 패키지명 대신 실제 선언 파일 경로를 연결했습니다. API 단서에도 AST 근거 파일 경로를 연결합니다. 원본 의존성 URL·환경 marker를 실행/조회하거나 보고서로 복사하지 않습니다. Python 지원 형식과 NestJS 한계는 [ARCHITECTURE.md](ARCHITECTURE.md)에 명시합니다.
+
+두 실제 샘플에서 생성한 보고서는 Chrome 1440/390/320px × 상세 닫힘/펼침의 12개 화면 상태를 통과했습니다. 자동 렌더링 검사이며 사람의 시각 승인이나 실제 서비스 검증은 아닙니다.
+
+이하 수치와 미탐 표는 **2026-11-03의 수정 전 감사**로 보존합니다.
+
 ## 범위와 재현 조건
 
 - 공개 저장소를 별도 폴더에 얕게 복제하고 고정 커밋의 설정·소스 파일을 직접 읽었습니다.

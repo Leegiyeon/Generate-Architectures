@@ -14,8 +14,8 @@ SIGNAL_EVIDENCE = {
     "next_static_export": "next_configs",
     "relational_database": "database_engine_evidence",
     "document_database": "database_engine_evidence",
-    "authentication_library": "auth_dependencies",
-    "background_job_library": "job_dependencies",
+    "authentication_library": "auth_dependency_paths",
+    "background_job_library": "job_dependency_paths",
     "docker": "infrastructure_paths",
     "serverless_config": "infrastructure_paths",
     "mobile": None,
@@ -59,6 +59,11 @@ def build_evidence_contract(profile, graph, requirements, explicit_fields=(), ar
         add_observation("configuration", manifest["technology"],
                         path=manifest["path"], certainty="configuration_observed")
 
+    evidence = profile.get("evidence", {})
+    for dependency in evidence.get("dependency_sources", []):
+        add_observation("dependency", dependency["name"], path=dependency["path"],
+                        certainty="configuration_observed")
+
     # AST에서 직접 파싱한 라우트/모델/호출만 코드 사실로 노출합니다.
     # 임의 파일명 기반 경로 유추는 같은 확실성을 부여하지 않습니다.
     for node in sorted(graph.get("nodes", []), key=lambda n: n.get("id", "")):
@@ -77,13 +82,19 @@ def build_evidence_contract(profile, graph, requirements, explicit_fields=(), ar
         if profile.get("signals", {}).get(name) is not True:
             continue
         source_key = SIGNAL_EVIDENCE[name]
-        links = profile.get("evidence", {}).get(source_key, []) if source_key else []
+        links = list(evidence.get(source_key, [])) if source_key else []
+        if name in ("relational_database", "document_database"):
+            dependency_key = ("relational_dependency_paths" if name == "relational_database"
+                              else "document_dependency_paths")
+            links.extend(evidence.get(dependency_key, []))
+        if name == "api_routes":
+            links.extend(route["path"] for route in evidence.get("ast_api_routes", []))
         inferences.append({
             "id": "I" + str(len(inferences) + 1).zfill(4),
             "signal": name,
             "value": True,
             "certainty": "configuration_indicator",
-            "source_paths": [x for x in links if isinstance(x, str)][:10],
+            "source_paths": sorted({x for x in links if isinstance(x, str)})[:10],
             "runtime_verified": False,
             "note": "설정/파일 경로 탐지 단서이며 실제 기능 구현 또는 운영 사용 여부는 미확인",
         })
@@ -129,7 +140,8 @@ def build_evidence_contract(profile, graph, requirements, explicit_fields=(), ar
     if signals.get("nextjs") and not signals.get("next_static_export") and "rendering_mode" not in explicit:
         missing("rendering_mode", "Next.js에서 SSR·서버 액션·정적 export 중 무엇을 사용하나요?",
                 "runtime_rendering_not_confirmed")
-    if graph.get("errors") or graph.get("scan_truncated") or profile.get("scan_truncated"):
+    if (graph.get("errors") or graph.get("scan_truncated") or
+            graph.get("unresolved_routes") or profile.get("scan_truncated")):
         # 부분 파싱 실패는 사용자 질문으로 숨기지 않고 분석 범위 메타데이터에 명시합니다.
         parse_incomplete = True
     else:
@@ -165,6 +177,7 @@ def build_evidence_contract(profile, graph, requirements, explicit_fields=(), ar
             "source_files_scanned": graph.get("scanned_source_files", 0),
             "source_files_parsed": graph.get("parsed_source_files", 0),
             "graph_parser_errors": len(graph.get("errors", [])),
+            "unresolved_routes": len(graph.get("unresolved_routes", [])),
             "graph_scan_truncated": bool(graph.get("scan_truncated", False)),
             "manifest_scan_truncated": bool(profile.get("scan_truncated", False)),
             "observations_truncated": len(observations) >= MAX_OBSERVATIONS,
