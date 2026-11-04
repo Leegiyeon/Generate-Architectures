@@ -44,7 +44,7 @@
 
 처음에는 파일 없이 실행할 수 있습니다. 더 구체적인 설계를 원하면 [예제 요구사항 JSON](.architecture/requirements.example.json)을 참고해 대상 저장소에 `.architecture/requirements.json`을 만든 후 예제 Workflow의 `requirements_file` 주석을 해제합니다. 자격증명·개인정보·실제 서버 IP를 GitHub 저장소에 올리지 마세요.
 
-로컬 실행(선택)은 다음과 같습니다. Graphviz와 Python 의존성을 설치해야 합니다.
+로컬 실행(선택)은 다음과 같습니다. Python 3.11 이상, Graphviz와 Python 의존성을 설치해야 합니다.
 
 ```bash
 python3 -m pip install -r requirements-diagrams.txt

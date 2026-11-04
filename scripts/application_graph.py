@@ -274,11 +274,14 @@ def build_application_graph(repo):
             if symbol:
                 dst=symbols.get((target,symbol))
                 if dst: edge(caller,dst,"calls",p,item["line"])
-        for route in info["routes"]:
+        for route_index, route in enumerate(info["routes"]):
             method=route["method"]
             url=route["path"]
             line=route["line"]
             rid="route:"+p+":"+str(line)+":"+method
+            # 여러 데코레이터 핸들러가 한 소스 행에 있을 수 있습니다.
+            if rid in nodes:
+                rid += ":" + str(route_index)
             node(rid,"route",method+" "+url,p,line,info["language"])
             edge("file:"+p,rid,"defines",p,line)
             handler=symbols.get((p,route.get("handler") or ""))
@@ -295,11 +298,14 @@ def build_application_graph(repo):
         "counts":{"nodes":dict(sorted(Counter(n["type"] for n in nodes.values()).items())),
                   "edges":dict(sorted(Counter(e["type"] for e in edges.values()).items()))},
         "errors":errors[:50],
+        "unresolved_routes":[route for info in parsed
+                             for route in info.get("unresolved_routes", [])][:50],
         "limitations":[
             "정적 AST에서 직접 확인되는 파일/함수/API/모델과 명시적 호출만 연결합니다.",
             "의존성 주입, 동적 import, 인터페이스 구현, 런타임 DI, 외부 API/DB 실제 접근은 아직 분석하지 않습니다.",
             "Python 외부 모듈, JS/TS tsconfig alias, 동적 경로, 복잡한 메서드 체인은 호출 대상으로 확정하지 않습니다.",
             "모델 정의 발견이 운영 DB 구성이나 실제 데이터베이스 호출을 증명하지 않습니다.",
+            "NestJS는 @nestjs/common named import 기반 최상위 Controller와 7종 HTTP 데코레이터의 문자열 경로만 결합합니다. 동적/배열/옵션 경로, 전역 prefix·버전·모듈 등록·상속·DI와 실제 노출은 미검증입니다.",
         ],
     }
     return results
