@@ -4,6 +4,7 @@ import html
 from pathlib import Path
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 from scripts.architecture_advisor import decide
 from scripts.aws_topology import design_aws_topology, markdown_topology
@@ -128,6 +129,18 @@ class AWSTopologyTests(unittest.TestCase):
                 self.assertIn("cluster",dot)
                 self.assertIn("VPC",svg)
                 self.assertIn("AZ-A", html.unescape(svg))
+                ns = {"svg": "http://www.w3.org/2000/svg"}
+                client = next(group for group in ET.fromstring(svg).findall(".//svg:g", ns)
+                              if group.findtext("svg:title", namespaces=ns) == "node_0")
+                icon = client.find("svg:image", ns)
+                label = client.find("svg:text", ns)
+                self.assertIsNotNone(icon)
+                self.assertIsNotNone(label)
+                self.assertIn("사용자", label.text)
+                # 라벨의 baseline이 아이콘 아래에 충분히 떨어져 있어야 합니다.
+                self.assertGreater(float(label.attrib["y"]),
+                                   float(icon.attrib["y"]) +
+                                   float(icon.attrib["height"].removesuffix("px")) + 10)
         finally:tmp.cleanup()
 
     def test_integration_retains_both_original_and_detailed_architecture_diagrams(self):

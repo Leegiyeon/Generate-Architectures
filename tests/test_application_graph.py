@@ -62,6 +62,28 @@ class ApplicationGraphTests(unittest.TestCase):
             self.assertIn("GET /ping",types)
             self.assertIn("Person",types)
 
+    def test_test_handlers_do_not_become_ast_routes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            python_handler = 'from fastapi import FastAPI\napp = FastAPI()\n@app.get("/test-only")\ndef handler(): return {}\n'
+            root = self.repo(tmp, {
+                "src/api/test_users.py": python_handler,
+                "src/api/users_test.py": python_handler,
+                "src/api/__fixtures__/users.py": python_handler,
+                "src/app/api/users/route.test.ts": 'export function GET() { return {}; }\n',
+                "src/app/api/users/route.spec.ts": 'export function POST() { return {}; }\n',
+                "src/api/test.py": 'from fastapi import FastAPI\napp = FastAPI()\n@app.get("/runtime")\ndef runtime(): return {}\n',
+                "src/app/api/users/route.ts": 'export function GET() { return {}; }\n',
+                "src/app/api/test/route.ts": 'export function GET() { return {}; }\n',
+                "src/app/api/__tests__/route.ts": 'export function GET() { return {}; }\n',
+            })
+            graph = build_application_graph(root)
+            self.assertFalse(graph["errors"], graph["errors"])
+            module_paths = {node["path"] for node in graph["nodes"] if node["type"] == "module"}
+            self.assertEqual(module_paths, {"src/api/test.py", "src/app/api/users/route.ts",
+                                            "src/app/api/test/route.ts"})
+            route_paths = {node["path"] for node in graph["nodes"] if node["type"] == "route"}
+            self.assertEqual(route_paths, module_paths)
+
     def test_no_invented_calls_and_no_secret_disclosure(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=self.repo(tmp,{

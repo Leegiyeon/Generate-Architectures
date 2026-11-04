@@ -30,13 +30,15 @@
 
 **보고서 자동 품질 검사:** 실행마다 `report-qa.json`을 생성하고 HTML 내부 링크, SVG/PNG 구조, 참조 연결, 파일 해시를 확인합니다. 이 검사는 **실제 브라우저에서의 글꼴·겹침·클리핑을 확인한 것은 아닙니다**.
 
+별도 CI는 Chromium에서 합성 보고서 13개·78개 화면 상태를 검사합니다. 외부 저장소에서도 신규·이전 입력 없음·가상 Inventory 입력의 3경로 Actions와 다운로드 보고서 3개·18개 화면 상태를 확인했습니다. 도면 전체 수동 승인과 실제 서버·AWS 환경 검증은 남아 있습니다. [검증 범위와 실행 근거](docs/EXTERNAL_E2E.md)를 참고하세요.
+
 ### 온프레미스 이전 모드를 선택했다면
 
 기존 서버의 구성을 직접 입력할 수 있습니다. [최소 Inventory 예시](examples/onprem-inventory.example.json)를 대상 저장소의 `.architecture/onprem-inventory.json`에 복사·수정하고 `migrate_onprem`으로 실행하면 **별도 As-Is 구성도(SVG)와 현재 구성 표**를 생성합니다. 모르는 값은 `unknown`으로 남기세요. [입력 방법과 개인정보 주의사항](docs/ONPREM_INVENTORY.md)을 참고하세요.
 
 **Inventory는 검증되지 않은 사용자 선언**입니다. 실제 서버에 접속하지 않으며, DB 위치·네트워크·성능을 코드만으로 확인하지 않습니다. Rehost/Replatform 비교는 *검토 초안*이고 실제 이전 적합성은 미검증입니다.
 
-`migrate_onprem`은 이전 **목적**을 기록하고, 사용자 입력 Inventory가 있다면 **선언형 As-Is 도면**도 보여줍니다. **Rehost/Replatform의 변경사항·위험·수동 전환 체크리스트를 제공하지만 최적 전략, 이전 가능성 및 실제 데이터 이전/다운타임은 검증하지 않습니다.** 입력 Inventory 및 As-Is 기능은 [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34)에서 구현했습니다. [#35 Migration Assessment](https://github.com/Leegiyeon/Generate-Architectures/issues/35)에서 사용자 선언 기반 AWS 이전 후보 비교 초안을 생성합니다. 실제 AWS 이전은 자동으로 진행하지 않습니다.
+`migrate_onprem`은 이전 **목적**을 기록하고, 사용자 입력 Inventory가 있다면 **선언형 As-Is 도면**도 보여줍니다. **Rehost/Replatform의 서버·선언 연결별 변경사항, 위험, 수동 전환 체크리스트를 제공하지만 최적 전략, 실제 연결 가능성 및 데이터 이전/다운타임은 검증하지 않습니다.** 입력 Inventory 및 As-Is 기능은 [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34)에서 구현했습니다. [#35 Migration Assessment](https://github.com/Leegiyeon/Generate-Architectures/issues/35)에서 사용자 선언 기반 AWS 이전 후보 비교 초안을 생성합니다. 실제 AWS 이전은 자동으로 진행하지 않습니다.
 
 ## 필요할 때만 요구사항 보완
 
@@ -66,7 +68,10 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output 
 | [AWS 이전 방식·위험 비교](docs/MIGRATION_ASSESSMENT.md) | Rehost / Replatform 변경사항과 검증 전제 |
 | [간편 제품 로드맵](docs/LEAN_MIGRATION_ROADMAP.md) | 다음 개발 우선순위 |
 | [사용자 보고서](docs/REPORTING.md) | HTML/산출물 확인법 |
+| [외부 저장소 실행 검증](docs/EXTERNAL_E2E.md) | 3경로 Actions·Artifact·브라우저 검증과 남은 범위 |
+| [실제 공개 저장소 감사](docs/REAL_REPOSITORY_AUDIT.md) | 프레임워크·API·DB·인증 탐지의 확인된 한계 |
 | [요구사항·비용 입력](docs/COST_SCENARIOS.md) | 고급 요금 시나리오 |
+| [공식 비용 계산 예시 검증](docs/OFFICIAL_COST_VALIDATION.md) | 공식 예시 3건의 산술 회귀, SKU·실제 견적 검증과의 차이 |
 | [부하 테스트 입력](docs/CAPACITY_EVIDENCE.md) | 입력된 성능 집계값 검토 |
 | [AWS 서비스 대안 비용](docs/ALTERNATIVE_COST_COMPARISON.md) | ECS/EC2/Lambda 입력 비용·운영 비교 |
 | [개발자 기술 구성](docs/ARCHITECTURE.md) | 코드 파서·보안 경계·아키텍처 구성 |

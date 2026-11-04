@@ -326,11 +326,11 @@ nav{display:flex;flex-wrap:wrap;gap:9px;margin-top:17px}nav a{border:1px solid #
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.card{margin:0}.card strong{display:block;font-size:13px;color:#2d587c}.card b{font-size:18px}
 h2{font-size:21px;color:#163e64;margin-top:0}h3{font-size:16px}.pill{display:inline-block;border-radius:16px;background:#d8e9fe;color:#144575;padding:3px 10px}
 .caution{padding:12px;border-left:4px solid #d19c2d;background:#fff6e1;border-radius:5px}
-.diagram{display:block;width:100%;height:auto;object-fit:contain}.table-scroll{max-width:100%;overflow-x:auto}details{margin:12px 0;border:1px solid #dce5ee;border-radius:8px;padding:9px 12px}details summary{cursor:pointer;font-weight:600;color:#194973}details[open] summary{margin-bottom:12px}
+.diagram{display:block;width:100%;height:auto;object-fit:contain}.table-scroll{width:100%;max-width:100%;min-width:0;overflow-x:auto}.table-scroll table{min-width:640px;overflow-wrap:normal}details{margin:12px 0;border:1px solid #dce5ee;border-radius:8px;padding:9px 12px}details summary{cursor:pointer;font-weight:600;color:#194973}details[open] summary{margin-bottom:12px}
 .links{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.links a{background:#e9f2fc;padding:7px 12px;border-radius:7px}
-table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:10px;border-bottom:1px solid #e0e7ef;vertical-align:top}th{background:#edf3f8}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;min-width:120px;padding:10px;border-bottom:1px solid #e0e7ef;vertical-align:top}th{background:#edf3f8}
 li{margin:7px 0}.muted,small{color:#52677c}header .muted,header small{color:#dbe8f6}footer{text-align:center;padding:22px;color:#54708e}
-@media(max-width:720px){.grid{grid-template-columns:1fr}.panel{padding:14px}header{padding:22px 15px}table{display:block;overflow-x:auto}}
+@media(max-width:720px){.grid{grid-template-columns:1fr}.panel{padding:14px}header{padding:22px 15px}}
 """
     image=base64.b64encode((out/"aws-topology.svg").read_bytes()).decode("ascii")
     if not image:
@@ -350,9 +350,9 @@ li{margin:7px 0}.muted,small{color:#52677c}header .muted,header small{color:#dbe
         coverage = cost.get("topology_coverage", {})
         scenario_html = (
             "<h3>사용자 입력 최소·기준·피크 시나리오</h3>"
-            "<table><thead><tr><th>시나리오</th><th>부분합 USD</th><th>입력 항목 합계 USD</th>"
+            "<div class='table-scroll'><table><thead><tr><th>시나리오</th><th>부분합 USD</th><th>입력 항목 합계 USD</th>"
             "<th>미산정 항목</th></tr></thead><tbody>" +
-            "".join(comparison) + "</tbody></table>"
+            "".join(comparison) + "</tbody></table></div>"
             "<p class='caution'>To-Be 비용 분류 누락: " +
             safe(", ".join(coverage.get("missing_categories", [])) or
                  "분류상 없음 (SKU·사용량 검증 전)") +
@@ -370,10 +370,10 @@ li{margin:7px 0}.muted,small{color:#52677c}header .muted,header small{color:#dbe
             "<h3>ECS/EC2/Lambda 동일 업무량 비용·운영 책임 (입력 조건 한정)</h3>"
             "<p class='caution'>상태: " + safe(summary["status"]) +
             ". 가격/용량/성능 검증 없이 AWS 최저가를 자동 추천하지 않습니다.</p>"
-            "<table><thead><tr><th>실행 패턴</th><th>검토 상태</th><th>기준 월 입력 항목 합계 USD</th>"
+            "<div class='table-scroll'><table><thead><tr><th>실행 패턴</th><th>검토 상태</th><th>기준 월 입력 항목 합계 USD</th>"
             "<th>미입력 서비스 분류</th></tr></thead><tbody>" +
             (brief or "<tr><td colspan='4'>대안 비교 입력 없음</td></tr>") +
-            "</tbody></table><div class='links'><a href='alternative-cost-comparison.md'>"
+            "</tbody></table></div><div class='links'><a href='alternative-cost-comparison.md'>"
             "대안 비용·유지보수 비교 자세히</a></div>"
         )
     capacity_html = ""
@@ -386,10 +386,10 @@ li{margin:7px 0}.muted,small{color:#52677c}header .muted,header small{color:#dbe
             "<h3>제출된 부하 테스트의 집계 수치(운영 검증 전)</h3>"
             "<p class='caution'>상태: " + safe(capacity_evidence["status"]) +
             ". 집계 데이터의 진위·테스트 환경·오토스케일·쿼터는 검증하지 않았습니다.</p>"
-            "<table><thead><tr><th>후보</th><th>입력 목표와의 비교</th>"
+            "<div class='table-scroll'><table><thead><tr><th>후보</th><th>입력 목표와의 비교</th>"
             "<th>관측 RPS</th><th>p95 ms</th><th>오류 %</th></tr></thead><tbody>" +
             (cap_rows or "<tr><td colspan='5'>측정 데이터가 없습니다.</td></tr>") +
-            "</tbody></table><div class='links'><a href='capacity-evidence.md'>"
+            "</tbody></table></div><div class='links'><a href='capacity-evidence.md'>"
             "부하 테스트 집계·용량 계획 검토</a></div>"
         )
     declared_as_is_html = ""
@@ -410,9 +410,9 @@ li{margin:7px 0}.muted,small{color:#52677c}header .muted,header small{color:#dbe
             "서로 별도 출처이며 AWS To-Be 제안과도 다릅니다.</p>"
             "<img class='diagram' alt='사용자 선언 온프레미스 As-Is 구성도' "
             "src='data:image/svg+xml;base64," + svg_data + "'>"
-            "<table><thead><tr><th>서버 별칭</th><th>역할</th><th>OS</th>"
+            "<div class='table-scroll'><table><thead><tr><th>서버 별칭</th><th>역할</th><th>OS</th>"
             "<th>CPU / RAM</th><th>DB</th><th>접근</th><th>출처</th>"
-            "</tr></thead><tbody>" + declared_servers + "</tbody></table>"
+            "</tr></thead><tbody>" + declared_servers + "</tbody></table></div>"
             "<p>서버 간 연결: 사용자가 명시한 " + str(len(onprem_as_is["connections"])) +
             "건만 표시합니다. 미입력은 연결이 없다는 증거가 아닙니다.</p>"
             "<p>코드 관측 단서 " + str(len(onprem_as_is["code_observations"])) +
@@ -429,11 +429,27 @@ li{margin:7px 0}.muted,small{color:#52677c}header .muted,header small{color:#dbe
                 x["server_id"], x["component"], x["decision"],
                 x["to_be_candidate"], x["reason"],
             ) for x in option["changes"][:10])
+            connection_rows = "".join(row(
+                x["from"] + " → " + x["to"], x["purpose"],
+                {"retain": "논리 관계 유지 검토", "modify": "접속 경로 변경 검토",
+                 "unknown": "추가 확인 필요"}[x["decision"]],
+                " / ".join(c["to_be_candidate"] for c in x["from_candidates"]) + " → " +
+                " / ".join(c["to_be_candidate"] for c in x["to_candidates"]),
+                x["reason"], ", ".join(e["ref"] for e in x["evidence"]),
+            ) for x in option.get("connection_changes", []))
+            connection_table = (
+                "<h3>선언된 연결의 변경 검토</h3>"
+                "<p>사용자가 입력한 논리 관계만 비교합니다. 실제 연결·보안 정책은 미검증입니다.</p>"
+                + ("<div class='table-scroll'><table><thead><tr><th>현재 연결</th><th>목적</th>"
+                   "<th>검토 변경</th><th>출발 → 도착 후보</th><th>확인할 사항</th><th>출처</th>"
+                   "</tr></thead><tbody>" + connection_rows + "</tbody></table></div>"
+                   if connection_rows else "<p>연결 선언 없음 — 실제 의존관계를 확인해주세요.</p>")
+            )
             option_parts.append(
                 "<details><summary>" + safe(option["title"]) + " · 변경사항 자세히</summary>"
                 "<div class='table-scroll'><table><thead><tr><th>현재 서버</th><th>구성</th><th>검토 변경</th>"
                 "<th>AWS 후보</th><th>선택 근거/검증 전제</th></tr></thead><tbody>" +
-                changes + "</tbody></table></div></details>"
+                changes + "</tbody></table></div>" + connection_table + "</details>"
             )
         risk_html = li(
             [x["title"] + " — " + x["question"]
@@ -525,13 +541,13 @@ li{margin:7px 0}.muted,small{color:#52677c}header .muted,header small{color:#dbe
         "<div class='links'><a href='deliverables/04-cost-capacity.md'>"
         "비용·용량 상세</a></div></section>"
         "<section class='panel' id='evidence'><h2>As-Is 사실 / To-Be 가정 / 미검증 항목</h2>"
-        "<table><thead><tr><th>구분</th><th>내용</th></tr></thead><tbody>"+
+        "<div class='table-scroll'><table><thead><tr><th>구분</th><th>내용</th></tr></thead><tbody>"+
         row("정적 코드 관찰", str(len(contract["observations"]))+"개, 실제 실행 확인 아님")+
         row("설정/의존성 단서",str(len(contract["configuration_inferences"]))+"개, 기능·런타임 추정")+
         row("사용자 명시 조건",str(len(contract["user_requirements"]))+"개, 기본값은 사용자 승인 아님")+
         row("AWS To-Be",topology["status"]+", AWS 계정에서 실측하지 않은 제안")+
         row("검증 미실행","실제 IAM·SG·성능·복구·인프라 비용·AWS 배포")+
-        "</tbody></table><div class='links'>"
+        "</tbody></table></div><div class='links'>"
         "<a href='application-graph.svg'>As-Is 코드 구조</a>"
         "<a href='evidence-report.md'>근거·미확인 조건</a>"
         "<a href='validation.md'>정적 제약 보고서</a>"

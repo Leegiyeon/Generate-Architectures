@@ -23,6 +23,28 @@ MANIFESTS = {
 MAX_FILES = 5000
 MAX_BYTES = 65536
 MAX_EVIDENCE = 100
+TEST_DIRECTORIES = frozenset({"test", "tests", "__tests__", "__mocks__",
+                              "fixtures", "__fixtures__"})
+
+
+def is_test_source(relative):
+    """표준 테스트 경로만 제외하며 test.ts 같은 실제 API 이름은 보존합니다."""
+    path = Path(relative)
+    stem = path.stem.lower()
+    directories = [part.lower() for part in path.parts[:-1]]
+    # Next.js app 경로의 test/tests/fixtures는 실제 URL 세그먼트일 수 있습니다.
+    # 앱 바깥 테스트 루트와 명시적인 __tests__/__fixtures__는 계속 제외합니다.
+    if path.name.lower() in ("route.ts", "route.js") and "app" in directories:
+        app_index = directories.index("app")
+        test_directory = (any(part in TEST_DIRECTORIES for part in directories[:app_index]) or
+                          any(part.startswith("__") and part in TEST_DIRECTORIES
+                              for part in directories[app_index + 1:]))
+    else:
+        test_directory = any(part in TEST_DIRECTORIES for part in directories)
+    return (test_directory or
+            bool(re.search(r"\.(?:test|spec)$", stem)) or
+            path.suffix.lower() == ".py" and (stem.startswith("test_") or stem.endswith("_test")) or
+            path.suffix.lower() == ".go" and stem.endswith("_test"))
 
 
 def safe_text(path):
@@ -86,7 +108,7 @@ def inspect_repository(root):
     if next_present and not any(m["technology"] == "Next.js" for m in manifests):
         manifests.append({"path": "package.json", "technology": "Next.js", "category": "web"})
 
-    api_files = [p for p in filenames if (
+    api_files = [p for p in filenames if not is_test_source(p) and (
         ("/api/" in "/" + p and p.endswith((".ts", ".tsx", ".js", ".py", ".go"))) or
         (p.endswith("/route.ts") or p.endswith("/route.js")) and
         ("/app/" in "/" + p or p.startswith("app/")))]
@@ -145,7 +167,7 @@ def inspect_repository(root):
     if signals["document_database"]:
         questions.append("MongoDB 계열 DB를 계속 사용할 예정인가요? 호환 AWS 관리형 서비스 검토가 필요한가요?")
     if not signals["authentication_library"]:
-        questions.append("사용자 인증·인가가 필요한가요? 기존 인증 제공자가 있나요?")
+        questions.append("알려진 인증 라이브러리는 확인되지 않았습니다. 자체 구현 또는 외부 인증·인가가 있나요? 필요한 인증 방식을 확인해주세요.")
     if inspected >= MAX_FILES:
         questions.append("파일 탐색 상한(5,000개)에 도달했습니다. 분석 제외 영역이 없는지 확인해주세요.")
 
@@ -162,6 +184,7 @@ def inspect_repository(root):
         "limitations": [
             "설정 파일 일부와 파일 경로만 분석하며 전체 함수 호출 및 실제 데이터 흐름은 추론하지 않습니다.",
             "Next.js의 SSR·서버 액션 부재는 자동으로 증명할 수 없습니다.",
+            "인증 라이브러리 미탐지는 인증 부재를 뜻하지 않습니다. 자체 구현·외부 인증과 실제 인가 정책은 별도 확인이 필요합니다.",
             "코드 내부의 실제 DB 연결 및 인프라 배포 상태는 별도 검증이 필요합니다.",
         ],
     }
