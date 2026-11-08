@@ -48,7 +48,7 @@ def render_application_diagram(graph, output):
             displayed=n["name"]
             if len(displayed)>68:
                 displayed=displayed[:65]+"..."
-            title=displayed+"\\n"+n["path"]+":"+str(n["line"])
+            title=displayed+"\n"+n["path"]+":"+str(n["line"])
             raw.append(ids[n["id"]]+" [label="+json.dumps(title,ensure_ascii=False)+
                        ',shape='+shape+',fillcolor="'+fill+'",color="'+border+'"];')
         raw.append("}")

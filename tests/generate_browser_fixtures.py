@@ -18,10 +18,12 @@ def main():
     output = Path(parser.parse_args().output).resolve()
     inventory = {
         "schema_version": "1.0",
-        "servers": [{"id": "application-server-" + str(i), "role": "mixed",
-                     "os": "linux", "db_engine": "postgresql", "access": "internal"}
+        "servers": [{"id": "w" * 23 + str(i), "role": "unknown",
+                     "os": "unknown", "db_engine": "unknown", "access": "unknown",
+                     "cpu_cores": 1024, "memory_gb": 1048576,
+                     "storage_gb": 1073741824}
                     for i in range(8)],
-        "connections": [{"from": "application-server-0", "to": "application-server-1",
+        "connections": [{"from": "w" * 23 + "0", "to": "w" * 23 + "1",
                          "purpose": "database"}],
     }
     for name, declared, cost in (("11-migration-no-inventory", False, False),

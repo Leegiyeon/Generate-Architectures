@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from xml.etree import ElementTree
 
 from scripts.application_graph import build_application_graph
 from scripts.render_application_graph import render_application_diagram
@@ -10,6 +11,20 @@ from scripts.recommend_architecture import run
 
 
 class ApplicationGraphTests(unittest.TestCase):
+    def test_rendered_node_name_and_source_are_on_separate_lines(self):
+        graph = {"nodes": [{"id": "function:fetch_user", "type": "function",
+                             "name": "fetch_user", "path": "app/service.py", "line": 7}],
+                 "edges": []}
+        with tempfile.TemporaryDirectory() as tmp:
+            render_application_diagram(graph, tmp)
+            root = ElementTree.parse(Path(tmp) / "application-graph.svg").getroot()
+            ns = {"svg": "http://www.w3.org/2000/svg"}
+            node = next(group for group in root.findall(".//svg:g", ns)
+                        if group.attrib.get("class") == "node")
+            labels = node.findall("svg:text", ns)
+            self.assertEqual([label.text for label in labels], ["fetch_user", "app/service.py:7"])
+            self.assertGreater(float(labels[1].attrib["y"]), float(labels[0].attrib["y"]))
+
     @staticmethod
     def repo(root, files):
         root=Path(root)

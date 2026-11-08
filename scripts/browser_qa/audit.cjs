@@ -36,12 +36,48 @@ async function inspectPage(page) {
       return {text: el.textContent, ratio: (Math.max(foreground, back) + 0.05) /
         (Math.min(foreground, back) + 0.05)};
     });
+    const svgLayouts = [];
+    for (const image of document.querySelectorAll('img.diagram')) {
+      if (!image.src.startsWith('data:image/svg+xml;base64,')) continue;
+      const bytes = Uint8Array.from(atob(image.src.split(',')[1]), char => char.charCodeAt(0));
+      const parsed = new DOMParser().parseFromString(new TextDecoder().decode(bytes), 'image/svg+xml');
+      const svg = document.importNode(parsed.documentElement, true);
+      // Measure native SVG text metrics in the report's browser/font environment.
+      // visibility:hidden keeps geometry available without changing the report screenshot.
+      svg.style.cssText = 'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none';
+      document.body.append(svg);
+      try {
+        await document.fonts.ready;
+        const gaps = [...svg.querySelectorAll('g.node')].flatMap(node => {
+          const icon = node.querySelector('image');
+          const labels = [...node.querySelectorAll('text')];
+          if (!icon || !labels.length) return [];
+          const bounds = icon.getBBox();
+          return labels.map(label => label.getBBox().y - (bounds.y + bounds.height));
+        });
+        const textOutsidePanels = [...svg.querySelectorAll('g.server-card,g.declared-connections')]
+          .flatMap(panel => {
+            const bounds = panel.querySelector('rect').getBBox();
+            return [...panel.querySelectorAll('text')].filter(label => {
+              const box = label.getBBox();
+              return box.x < bounds.x - 1 || box.y < bounds.y - 1 ||
+                box.x + box.width > bounds.x + bounds.width + 1 ||
+                box.y + box.height > bounds.y + bounds.height + 1;
+            }).map(label => label.textContent);
+          });
+        svgLayouts.push({alt: image.alt, iconLabelCount: gaps.length,
+          minimumIconLabelGap: gaps.length ? Math.min(...gaps) : null, textOutsidePanels});
+      } finally {
+        svg.remove();
+      }
+    }
     return {
       viewport: innerWidth,
       documentWidth: document.documentElement.scrollWidth,
       images: [...document.images].map(img => ({alt: img.alt, loaded: img.complete &&
         img.naturalWidth > 0 && img.clientWidth > 0 && img.clientHeight > 0})),
       contrast,
+      svgLayouts,
       details: document.querySelectorAll('details').length,
       tables: [...document.querySelectorAll('table')]
         .filter(table => table.getBoundingClientRect().width > 0).map(table => {
@@ -133,6 +169,13 @@ async function main() {
               `at ${viewport.width}px (${state}): ` + JSON.stringify(checks.tables));
             assert(checks.images.length && checks.images.every(img => img.loaded && img.alt),
               `${relative}: image failed to render`);
+            assert(checks.svgLayouts.some(svg => svg.alt.startsWith('AWS To-Be') &&
+              svg.iconLabelCount > 0), `${relative}: AWS icon label geometry was not checked`);
+            assert(checks.svgLayouts.every(svg =>
+              (svg.minimumIconLabelGap === null || svg.minimumIconLabelGap >= 2) &&
+              svg.textOutsidePanels.length === 0),
+              `${relative}: SVG labels overlap icons or overflow panels: ` +
+              JSON.stringify(checks.svgLayouts));
             assert(checks.contrast.every(item => item.ratio >= 4.5),
               `${relative}: small text contrast below 4.5:1`);
             assert(!checks.replacementCharacters, `${relative}: invalid Unicode`);
