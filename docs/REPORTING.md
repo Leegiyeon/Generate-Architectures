@@ -85,6 +85,7 @@ workflow_dispatch의 `golden_qa=true`는 실제 운영 저장소가 아닌 고�
 CI는 고정 Playwright 버전과 Chromium으로 합성 보고서 13종을 렌더링합니다. 기존 골든 10종에 Inventory 없음, 8개 서버의 선언형 As-Is, 비용 입력 상세가 있는 이전 모드를 추가했습니다. 각 보고서를 1440px·390px·320px에서 상세 닫힘/펼침 두 상태로 검사합니다.
 
 - 실제 이미지 디코딩 및 표시 크기, 페이지 가로 넘침, 작은 안내 글자 대비 4.5:1 이상.
+- 내장 SVG의 서비스 이름과 아이콘 간격 2 SVG 좌표 단위 이상, As-Is 서버 카드·연결 영역 안의 실제 텍스트 경계. 최대 24자 서버 별칭과 상한 용량을 포함한 이전 fixture로 검사.
 - 키보드 Enter로 모든 summary 열기/닫기, Unicode 대체문자 및 브라우저 실행 오류.
 - 외부 HTTP(S) 요청 차단 및 요청 발생 시 실패. 분석 대상 프로젝트 자체는 실행하지 않습니다.
 - `report-browser-qa` CI Artifact에 전체 화면 PNG와 `browser-qa.json` 보관(7일). 실패한 재실행은 이전 성공 상태를 유지하지 않습니다.
@@ -100,6 +101,8 @@ node scripts/browser_qa/audit.cjs browser-fixtures browser-qa-output
 # 설치된 Chrome을 사용하려면 앞에 BROWSER_QA_CHANNEL=chrome 지정
 ```
 
-추가 브라우저 검사의 `browser-qa.json`만 `browser_rendered=true`를 기록합니다. 개별 분석의 기존 `report-qa.json`은 **브라우저를 실행하지 않았으므로 변경하지 않습니다**. 자동 화면 검사는 한글 글꼴의 모든 글리프·도면 내부의 선/라벨 겹침·AWS 설계의 적합성을 판정하지 않습니다. `manual_visual_review_completed=false`와 `aws_account_checked=false`를 유지합니다. 복잡한 모바일 도면은 `SVG 확대`로 열어 확대해서 확인하세요.
+추가 브라우저 검사의 `browser-qa.json`만 `browser_rendered=true`를 기록합니다. 개별 분석의 기존 `report-qa.json`은 **브라우저를 실행하지 않았으므로 변경하지 않습니다**. SVG의 아이콘/이름 간격과 카드 경계 검사는 지원하지만 한글 글꼴의 모든 글리프·간선/라벨 교차·AWS 설계의 적합성은 판정하지 않습니다. `manual_visual_review_completed=false`와 `aws_account_checked=false`를 유지합니다. 복잡한 모바일 도면은 `SVG 확대`로 열어 확대해서 확인하세요.
+
+2026-11-08: 상세 AWS 도면은 모든 서비스 아이콘과 이름을 별도 행으로 렌더링합니다. 이전 `image`/`labelloc=b` 조합에서 생긴 겹침을 제거했고, 애플리케이션 도면의 이름/소스 위치도 실제 두 줄로 표시합니다. 온프레미스 카드는 별칭·역할·용량 필드마다 공간을 확보해 긴 입력을 줄이거나 생략하지 않습니다. 아이콘 행은 [Graphviz HTML 레이블](https://graphviz.org/doc/info/shapes.html#html)의 표/이미지 배치를 사용하며 번들 PNG는 기존 방식으로 SVG에 내장합니다.
 
 결틈 코드 샘플의 근거 대조는 [REPORT_QA_AUDIT.md](REPORT_QA_AUDIT.md), NestJS·FastAPI 공식 샘플의 추가 감사는 [REAL_REPOSITORY_AUDIT.md](REAL_REPOSITORY_AUDIT.md)에 기록합니다. 모바일 표·도면 라벨 보완 결과와 사람이 판단하는 도면 가독성은 계속 검토합니다. 13개 합성 fixture의 통과율을 실제 저장소 검출 정확도로 해석하면 안 됩니다.

@@ -101,19 +101,14 @@ def render_aws_topology(topology, output):
         if len(short) > 62:
             short = short[:59] + "..."
         icon = _icon_for(item["id"])
-        if icon and item["id"] == "client":
-            # 별도 행으로 라벨을 배치해 사용자 아이콘의 하단 선과 겹치지 않게 합니다.
+        if icon:
+            # 고정 크기 아이콘과 라벨에 각각 행을 예약합니다. image + labelloc=b는
+            # 라벨 공간을 확보하지 않아 서비스명이 아이콘 하단에 겹칩니다.
             lines.append(names[item["id"]] + ' [shape=plain,style="",label=<'
                          '<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4">'
                          '<TR><TD WIDTH="112" HEIGHT="112" FIXEDSIZE="TRUE">'
                          '<IMG SRC="' + html.escape(str(icon), quote=True) + '" SCALE="TRUE"/>'
                          '</TD></TR><TR><TD>' + html.escape(short) + '</TD></TR></TABLE>>];')
-        elif icon:
-            # Graphviz image에는 설치된 Diagrams 번들 PNG만 제공.
-            # SVG 반환 전에 로컬 PNG 참조를 Base64로 치환해 단독 열람 가능하게 합니다.
-            lines.append(names[item["id"]] + " [label=" + json.dumps(short, ensure_ascii=False) +
-                         ",shape=none,labelloc=b,imagescale=true,width=1.9,height=1.55,image=" +
-                         json.dumps(str(icon), ensure_ascii=False) + "];")
         else:
             lines.append(names[item["id"]] + " [label=" + json.dumps(short, ensure_ascii=False) +
                          ',shape=box,fillcolor="' + fill + '",color="' + border + '"];')

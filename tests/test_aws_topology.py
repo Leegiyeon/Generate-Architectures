@@ -12,7 +12,7 @@ from scripts.evidence_contract import build_evidence_contract
 from scripts.repository_analyzer import inspect_repository
 from scripts.requirements_model import parse_requirements
 from scripts.recommend_architecture import run
-from scripts.render_aws_topology import render_aws_topology
+from scripts.render_aws_topology import SERVICE_ICONS, render_aws_topology
 
 
 def case(files, supplied=None):
@@ -158,6 +158,29 @@ class AWSTopologyTests(unittest.TestCase):
             doc=json.loads((output/"aws-topology.json").read_text(encoding="utf-8"))
             self.assertEqual(doc["pattern"],"containers")
             self.assertIn("NET-PRIVATE-EGRESS",{x["id"] for x in doc["review_required"]})
+
+    def test_every_service_label_is_below_its_icon(self):
+        identifiers = [*SERVICE_ICONS, "task_a", "task_b"]
+        topology = {"nodes": [{"id": ident, "kind": "compute", "parent": None,
+                               "name": f'{ident} <후보> & "확인 필요"'}
+                              for ident in identifiers], "edges": []}
+        with tempfile.TemporaryDirectory() as out:
+            paths = render_aws_topology(topology, out)
+            root = ET.parse(paths["svg"]).getroot()
+            ns = {"svg": "http://www.w3.org/2000/svg"}
+            groups = [group for group in root.findall(".//svg:g", ns)
+                      if group.attrib.get("class") == "node"]
+            self.assertEqual(len(groups), len(identifiers))
+            for group, ident in zip(groups, identifiers):
+                with self.subTest(service=ident):
+                    icon = group.find("svg:image", ns)
+                    label = group.find("svg:text", ns)
+                    self.assertIsNotNone(icon)
+                    self.assertIsNotNone(label)
+                    self.assertEqual(label.text, f'{ident} <후보> & "확인 필요"')
+                    bottom = float(icon.attrib["y"]) + float(icon.attrib["height"].removesuffix("px"))
+                    self.assertGreater(float(label.attrib["y"]) - float(label.attrib["font-size"]),
+                                       bottom + 2)
 
 
 if __name__=="__main__":

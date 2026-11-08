@@ -8,7 +8,7 @@ from pathlib import Path
 
 LABELS = {
     "application": "앱/API", "database": "DB 서버", "proxy": "프록시",
-    "storage": "스토리지", "mixed": "복합 서버", "unknown": "역할 미확인",
+    "storage": "스토리지", "mixed": "복합 서버", "unknown": "미확인",
     "linux": "Linux", "windows": "Windows", "postgresql": "PostgreSQL",
     "mysql": "MySQL", "mariadb": "MariaDB", "sqlserver": "SQL Server",
     "oracle": "Oracle DB", "mongodb": "MongoDB", "other": "기타",
@@ -26,9 +26,11 @@ def render_as_is_svg(report, output):
     target.parent.mkdir(parents=True, exist_ok=True)
     count = len(report["servers"])
     rows = max(1, (count + 1) // 2)
-    table_top = 120 + rows * 178
+    # 각 선언 필드를 나눠 최대 길이 별칭·소수 용량도 카드 안에 보존합니다.
+    card_height = 212
+    row_height = card_height + 24
+    table_top = 120 + rows * row_height
     height = table_top + 110 + len(report["connections"]) * 28
-    width = 940
     blocks = [
         "<svg xmlns='http://www.w3.org/2000/svg' width='940' height='" + str(height) +
         "' viewBox='0 0 940 " + str(height) + "' role='img' aria-label='온프레미스 사용자 선언 As-Is 구성도'>",
@@ -44,25 +46,31 @@ def render_as_is_svg(report, output):
         ]
     for i, server in enumerate(report["servers"]):
         col, row = i % 2, i // 2
-        x, y = 32 + col * 448, 92 + row * 178
+        x, y = 32 + col * 448, 92 + row * row_height
         role = LABELS.get(server["role"], server["role"])
-        db = LABELS.get(server["db_engine"],server["db_engine"])
+        db = LABELS.get(server["db_engine"], server["db_engine"])
         os_name = LABELS.get(server["os"], server["os"])
         access = LABELS.get(server["access"], server["access"])
         lines = [
-            ("별칭: " + server["id"] + "   [" + role + "]", 25, "17", "#163c63"),
-            ("OS: " + os_name + "   CPU: " + str(server["cpu_cores"]) +
-             "   RAM: " + str(server["memory_gb"]) + " GB", 62, "14", "#38516b"),
-            ("스토리지: " + str(server["storage_gb"]) + " GB   DB: " + db, 87, "14", "#38516b"),
-            ("접근: " + access + " / 사용자 선언(검증 전)", 112, "13", "#8b5a17"),
+            ("별칭: " + server["id"], 25, "17", "#163c63"),
+            ("역할: " + role + " / OS: " + os_name, 54, "14", "#38516b"),
+            ("CPU: " + str(server["cpu_cores"]), 81, "14", "#38516b"),
+            ("RAM: " + str(server["memory_gb"]) + " GB", 108, "14", "#38516b"),
+            ("스토리지: " + str(server["storage_gb"]) + " GB", 135, "14", "#38516b"),
+            ("DB: " + db, 162, "14", "#38516b"),
+            ("접근: " + access + " / 사용자 선언(검증 전)", 189, "13", "#8b5a17"),
         ]
+        blocks.append("<g class='server-card'>")
         blocks.append("<rect x='" + str(x) + "' y='" + str(y) +
-                      "' width='428' height='146' rx='12' fill='#fff' stroke='#a9c1d8'/>")
+                      "' width='428' height='" + str(card_height) +
+                      "' rx='12' fill='#fff' stroke='#a9c1d8'/>")
         for line, dy, size, color in lines:
             blocks.append("<text x='" + str(x + 18) + "' y='" + str(y + dy) +
                           "' font-size='" + size + "' font-family='sans-serif' fill='" + color +
                           "'>" + _text(line) + "</text>")
+        blocks.append("</g>")
     blocks += [
+        "<g class='declared-connections'>",
         "<rect x='32' y='" + str(table_top) +
         "' width='876' height='" + str(height - table_top - 20) +
         "' rx='12' fill='#eef3f8'/>",
@@ -78,7 +86,7 @@ def render_as_is_svg(report, output):
     else:
         blocks.append("<text x='56' y='" + str(table_top + 62) +
                       "' font-size='14' font-family='sans-serif' fill='#8b5a17'>연결 미입력 · 연결이 없다는 의미가 아닙니다.</text>")
-    blocks.append("</svg>")
+    blocks.extend(["</g>", "</svg>"])
     target.write_text("\n".join(blocks) + "\n", encoding="utf-8")
     return {"file": target.name, "status": "user_declared_unverified",
             "nodes": count, "declared_edges": len(report["connections"]),
