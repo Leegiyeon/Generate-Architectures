@@ -61,13 +61,15 @@
 
 ## P0 애플리케이션 AST 그래프 (구현)
 
-`application_graph.py`는 Python 소스를 표준 라이브러리 `ast`로 분석하고, `scripts/js_analyzer/analyze.cjs`는 Babel의 TypeScript/JavaScript AST를 사용합니다. Babel은 **파싱만 하며** 대상 저장소 코드를 실행하지 않습니다.
+`application_graph.py`는 Python 소스를 표준 라이브러리 `ast`로 분석하고, `scripts/js_analyzer/analyze.cjs`는 Babel의 TypeScript/JavaScript AST를 사용합니다. 분석기는 **파싱만 하며** 대상 저장소 코드를 실행하지 않습니다. Python AST의 지원 문법은 분석에 사용하는 Python에 따라 달라집니다. 저장소 CI와 예제 Workflow는 Python 3.14를 사용하여 [괄호 없는 다중 예외 구문](https://peps.python.org/pep-0758/)을 포함한 3.14 소스를 읽습니다.
 
 기본 노드: `module`, `function`, `route`, `model`. 연결: `defines`(정의), `imports`(로컬 참조), `handles`(라우트 핸들러), `calls`(정적 심볼로 확인한 직접 호출). 모든 노드와 간선은 근거 경로 및 행 번호를 가지며, 식별자는 파일 상대 경로를 포함해 중복을 방지합니다.
 
 `application-graph.json`을 원본 데이터로 사용하고 `render_application_graph.py`가 별도 SVG/PNG/DOT을 만듭니다. 기존 AWS 참조 설계(`architecture.json` 및 서비스 아이콘 그림)는 **제안**이고, 이 애플리케이션 그래프는 **정적 분석 근거**입니다.
 
 일부 파일을 분석하지 못하면 `errors`에 이유를 기록하고, 소스 파일과 결과 노드/간선의 최대 수를 제한합니다. JS/TS의 동적 import, 런타임 DI, path alias, 복잡한 ORM 관계, Go·Java 함수 호출 추적은 아직 지원하지 않습니다. AST에서 찾은 API가 실제 운영 라우팅/인가 정책을 증명하는 것은 아닙니다.
+
+FastAPI는 `fastapi`에서 직접 가져와 모듈 최상위에서 만든 `FastAPI`/`APIRouter` 객체의 7종 HTTP 데코레이터를 확인합니다. 문자열 `APIRouter(prefix=...)`와 데코레이터의 문자열 경로를 결합하며, `route_scope`로 앱 내부(`app_local`)와 라우터 내부(`router_local`)를 구분합니다. `prefix_source`는 결합에 사용한 비어 있지 않은 접두어의 선언 위치입니다. 확인된 수신 객체의 최상위 `include_router` 및 모듈 제어 흐름 내 등록, 동적 경로·접두어 등은 `unresolved_routes`에 기록합니다. 다른 파일이나 함수에서 이뤄지는 등록, `mount`, 웹소켓, 실제 노출 URL은 확인 범위 밖입니다. [FastAPI 공식 라우터 문서](https://fastapi.tiangolo.com/tutorial/bigger-applications/)의 선언과 등록을 구분합니다.
 
 NestJS는 `@nestjs/common`에서 import한 `Controller`와 `Get/Post/Put/Patch/Delete/Options/Head`의 별칭·무인자·정적 문자열 경로를 지원합니다. controller prefix와 handler 경로를 결합하고 실제 메서드에 `handles` 연결을 만듭니다. 동적·배열·옵션 경로와 모호한 핸들러는 임의 해석하지 않고 `unresolved_routes`의 파일/행·고정 이유로 남깁니다. 이 경우 근거 계약은 `partial`입니다. 전역 prefix·버전·모듈 등록·상속·DI·실제 운영 노출은 검증하지 않습니다. [NestJS 공식 라우팅 설명](https://docs.nestjs.com/controllers)을 기준으로 지원 범위를 제한합니다.
 
