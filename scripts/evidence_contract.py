@@ -68,7 +68,7 @@ def build_evidence_contract(profile, graph, requirements, explicit_fields=(), ar
     # 임의 파일명 기반 경로 유추는 같은 확실성을 부여하지 않습니다.
     for node in sorted(graph.get("nodes", []), key=lambda n: n.get("id", "")):
         if node.get("type") in ("route", "model"):
-            details = {key: node[key] for key in ("route_scope", "prefix_source") if key in node}
+            details = {key: node[key] for key in ("route_scope", "prefix_source", "model_kind") if key in node}
             add_observation("ast_" + node["type"], node["name"],
                             path=node["path"], line=node["line"], **details)
     for edge in sorted(graph.get("edges", []), key=lambda e: (
@@ -213,6 +213,8 @@ def markdown_evidence(contract):
         line = ":" + str(item["source"]["line"]) if item["source"]["line"] else ""
         scope = {"router_local": " [라우터 내부 경로 · 앱 등록 경로 미확인]",
                  "app_local": " [앱 내부 경로]"}.get(item.get("route_scope"), "")
+        if item.get("model_kind") == "sqlmodel_table":
+            scope = " [SQLModel 테이블 선언]"
         out.append("- " + item["id"] + " [" + item["certainty"] + "] " +
                    str(item["value"]).replace("\n", " ") + scope + " (" + path + line + ")")
     if not contract["observations"]:

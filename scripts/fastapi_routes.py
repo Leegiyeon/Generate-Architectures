@@ -1,47 +1,15 @@
 """Collect FastAPI decorator paths in their declaring app or router scope."""
 import ast
-from collections import Counter
+
+try:
+    from .python_module_scope import FUNCTIONS, may_be_shadowed, position
+except ImportError:
+    from python_module_scope import FUNCTIONS, may_be_shadowed, position
 
 
 HTTP = {"get", "post", "put", "patch", "delete", "options", "head"}
 CONSTRUCTORS = {"FastAPI": "app_local", "APIRouter": "router_local"}
-FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
 MAX_ROUTE_PATH = 160
-
-
-def _module_nodes(tree):
-    """Include module control flow without walking into other binding scopes."""
-    pending = list(reversed(tree.body))
-    while pending:
-        node = pending.pop()
-        yield node
-        if isinstance(node, ast.comprehension):
-            # The iteration target is local; a walrus in the expressions can bind outside.
-            pending.extend(reversed([node.iter, *node.ifs]))
-        elif not isinstance(node, (*FUNCTIONS, ast.ClassDef, ast.Lambda)):
-            pending.extend(reversed(list(ast.iter_child_nodes(node))))
-
-
-def _bindings(nodes):
-    names = Counter()
-    for node in nodes:
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            names.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
-        elif isinstance(node, (*FUNCTIONS, ast.ClassDef, ast.ExceptHandler,
-                               ast.MatchAs, ast.MatchStar)) and node.name:
-            names[node.name] += 1
-        elif isinstance(node, ast.MatchMapping) and node.rest:
-            names[node.rest] += 1
-        elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
-            names[node.id] += 1
-        elif (isinstance(node, ast.Attribute) and isinstance(node.ctx, (ast.Store, ast.Del))
-              and isinstance(node.value, ast.Name)):
-            names[node.value.id] += 1
-    return names
-
-
-def _position(node):
-    return node.lineno, node.col_offset
 
 
 def _literal(call, keyword, *, positional=False, default=None):
@@ -67,15 +35,9 @@ def _prefix(call):
     return value if value == "" or (value and value.startswith("/") and not value.endswith("/")) else None
 
 
-def collect_fastapi_routes(tree, path):
-    module_nodes = list(_module_nodes(tree))
-    bindings = _bindings(module_nodes)
+def collect_fastapi_routes(tree, path, scope):
+    module_nodes, bindings, star_imports = scope
     imports, receivers = {}, {}
-    star_imports = [_position(node) for node in module_nodes
-                    if isinstance(node, ast.ImportFrom) and node.names[0].name == "*"]
-
-    def may_be_shadowed(start, end):
-        return any(_position(start) < position < _position(end) for position in star_imports)
 
     # In module order: use only unique, already declared import/assignment bindings.
     for node in tree.body:
@@ -106,7 +68,7 @@ def collect_fastapi_routes(tree, path):
                 constructor = func.attr if module == "fastapi" else None
             else:
                 continue
-            if may_be_shadowed(imported_at, node):
+            if may_be_shadowed(star_imports, imported_at, node):
                 continue
             if constructor in CONSTRUCTORS:
                 scope = CONSTRUCTORS[constructor]
@@ -117,8 +79,8 @@ def collect_fastapi_routes(tree, path):
             return None
         base = call.func.value
         item = receivers.get(base.id) if isinstance(base, ast.Name) else None
-        return item if (item and _position(item[2]) < _position(call)
-                        and not may_be_shadowed(item[2], call)) else None
+        return item if (item and position(item[2]) < position(call)
+                        and not may_be_shadowed(star_imports, item[2], call)) else None
 
     routes, unresolved = [], []
     top_level = set(tree.body)
