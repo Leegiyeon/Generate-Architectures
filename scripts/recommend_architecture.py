@@ -121,7 +121,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         profile["signals"]["api_routes"] = True
         profile["static_candidate"] = False
         profile["evidence"]["ast_api_routes"] = [
-            {"path": n["path"], "line": n["line"], "route": n["name"]}
+            {"path": n["path"], "line": n["line"], "route": n["name"],
+             **{key: n[key] for key in ("route_scope", "prefix_source") if key in n}}
             for n in actual_routes[:20]
         ]
     inventory_data = (read_inventory(root, onprem_inventory)
@@ -329,7 +330,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
         "nodes": graph["counts"]["nodes"],
         "edges": graph["counts"]["edges"],
         "parser_errors": len(graph["errors"]),
-        "incomplete": graph["scan_truncated"] or bool(graph["errors"]),
+        "unresolved_routes": len(graph["unresolved_routes"]),
+        "incomplete": graph["scan_truncated"] or bool(graph["errors"] or graph["unresolved_routes"]),
     }
     out = Path(output).resolve()
     if out == root or out == root.parent:
@@ -418,6 +420,8 @@ def run(repo, output, workload="auto", budget=None, requirements_file=None,
     report += "- 산출물: `application-graph.json`, `application-graph.svg`, `application-graph.png`, `application-graph.dot`\n"
     if graph["errors"]:
         report += "- **일부 소스 미분석**: " + str(len(graph["errors"])) + "건. JSON의 errors 필드를 확인해주세요.\n"
+    if graph["unresolved_routes"]:
+        report += "- **미확인 라우팅 단서**: " + str(len(graph["unresolved_routes"])) + "건 기록. JSON의 unresolved_routes 필드를 확인해주세요.\n"
     if diagram_info["visualization_truncated"]:
         report += "- **그림 크기 제한**: 일부 관계는 그림에서 생략되었습니다. 전체 근거는 JSON을 확인하세요.\n"
     report += "\n> 이 그림은 코드 구문에서 확인된 의존 관계이며 운영 환경의 실제 네트워크 흐름을 증명하지 않습니다.\n"

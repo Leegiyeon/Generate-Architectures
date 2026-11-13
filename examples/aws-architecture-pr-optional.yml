@@ -31,6 +31,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
       # PR은 사용자 동의 없는 외부 모델·AWS 호출을 허용하지 않습니다.
       - name: 참조 설계 검토 (외부 API 비활성화)
         uses: Leegiyeon/Generate-Architectures@main

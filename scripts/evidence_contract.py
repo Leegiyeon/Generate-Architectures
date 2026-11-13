@@ -43,7 +43,7 @@ def build_evidence_contract(profile, graph, requirements, explicit_fields=(), ar
     inferences = []
     unknowns = []
 
-    def add_observation(category, value, path=None, line=None, certainty="static_observed"):
+    def add_observation(category, value, path=None, line=None, certainty="static_observed", **details):
         if len(observations) >= MAX_OBSERVATIONS:
             return
         observations.append({
@@ -52,7 +52,7 @@ def build_evidence_contract(profile, graph, requirements, explicit_fields=(), ar
             "certainty": certainty,
             "source": {"path": path, "line": line, "method": (
                 "ast" if certainty == "static_observed" else "configuration")},
-            "runtime_verified": False,
+            "runtime_verified": False, **details,
         })
 
     for manifest in sorted(profile.get("manifests", []), key=lambda v: (v["path"], v["technology"])):
@@ -68,8 +68,9 @@ def build_evidence_contract(profile, graph, requirements, explicit_fields=(), ar
     # 임의 파일명 기반 경로 유추는 같은 확실성을 부여하지 않습니다.
     for node in sorted(graph.get("nodes", []), key=lambda n: n.get("id", "")):
         if node.get("type") in ("route", "model"):
+            details = {key: node[key] for key in ("route_scope", "prefix_source") if key in node}
             add_observation("ast_" + node["type"], node["name"],
-                            path=node["path"], line=node["line"])
+                            path=node["path"], line=node["line"], **details)
     for edge in sorted(graph.get("edges", []), key=lambda e: (
         e.get("type", ""), e.get("source", ""), e.get("target", ""),
     )):
@@ -202,6 +203,7 @@ def markdown_evidence(contract):
         "", "- 분석 시각(UTC): " + contract["analyzed_at_utc"],
         "- 분석 상태: " + contract["status"],
         "- 확인된 정적 근거: " + str(len(contract["observations"])) + "개",
+        "- 정적으로 해석하지 못한 라우팅 단서: " + str(contract["coverage"]["unresolved_routes"]) + "개",
         "- 설정 기반 탐지 단서: " + str(len(contract["configuration_inferences"])) + "개",
         "- 명시적 사용자 요구사항: " + str(len(contract["user_requirements"])) + "개", "",
         "## 1. 코드/설정에서 확인된 근거", "",
@@ -209,8 +211,10 @@ def markdown_evidence(contract):
     for item in contract["observations"][:70]:
         path = item["source"]["path"] or "(경로 없음)"
         line = ":" + str(item["source"]["line"]) if item["source"]["line"] else ""
+        scope = {"router_local": " [라우터 내부 경로 · 앱 등록 경로 미확인]",
+                 "app_local": " [앱 내부 경로]"}.get(item.get("route_scope"), "")
         out.append("- " + item["id"] + " [" + item["certainty"] + "] " +
-                   str(item["value"]).replace("\n", " ") + " (" + path + line + ")")
+                   str(item["value"]).replace("\n", " ") + scope + " (" + path + line + ")")
     if not contract["observations"]:
         out.append("- 정적 분석으로 확인된 근거가 없습니다.")
     out += ["", "## 2. 기술 단서 (런타임 동작 여부 미확인)", ""]
@@ -232,8 +236,8 @@ def markdown_evidence(contract):
         out.append("- " + item["id"] + " / " + item["key"] + ": " + item["question"])
     if not contract["unknowns"]:
         out.append("- 현 단계에서 정의한 필수 추가 질문이 없습니다. 실환경 검증은 별도입니다.")
-    if contract["coverage"]["graph_parser_errors"] or contract["coverage"]["graph_scan_truncated"]:
-        out += ["", "**주의:** 분석하지 못한 코드 경로가 있으므로 미관찰 항목을 부재로 단정할 수 없습니다."]
+    if contract["status"] == "partial":
+        out += ["", "**주의:** 일부 코드나 라우팅을 확인하지 못했습니다. 미관찰 항목을 부재로 단정할 수 없습니다."]
     out += ["", "## 6. 한계", ""]
     out.extend("- " + x for x in contract["limitations"])
     return "\n".join(out) + "\n"

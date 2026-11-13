@@ -11,8 +11,10 @@ import subprocess
 from collections import Counter
 
 try:
+    from .fastapi_routes import collect_fastapi_routes
     from .repository_analyzer import EXCLUDED, is_test_source
 except ImportError:
+    from fastapi_routes import collect_fastapi_routes
     from repository_analyzer import EXCLUDED, is_test_source
 
 SUPPORTED = {".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts"}
@@ -21,7 +23,6 @@ MAX_SOURCE_FILES = 300
 MAX_SOURCE_BYTES = 65536
 MAX_NODES = 2000
 MAX_EDGES = 4000
-HTTP = {"get", "post", "put", "patch", "delete", "options", "head"}
 
 
 def _files(root):
@@ -55,14 +56,11 @@ def _attr(expr):
     return None
 
 
-def _str(expr):
-    return expr.value if isinstance(expr, ast.Constant) and isinstance(expr.value, str) else None
-
-
 def _parse_python(root, p):
     source = (root / p).read_text(encoding="utf-8", errors="replace")
     tree = ast.parse(source, filename=p)
-    imported, declarations, calls, routes, models = [], [], [], [], []
+    imported, declarations, calls, models = [], [], [], []
+    routes, unresolved_routes = collect_fastapi_routes(tree, p)
     for node in tree.body:
         if isinstance(node, ast.Import):
             for name in node.names:
@@ -78,16 +76,6 @@ def _parse_python(root, p):
     def function(node, qualifier=""):
         name = qualifier + node.name
         declarations.append({"name": name, "kind": "method" if qualifier else "function", "line": node.lineno})
-        for decorator in node.decorator_list:
-            if not isinstance(decorator, ast.Call):
-                continue
-            dotted = _attr(decorator.func)
-            parts = dotted.split(".") if dotted else []
-            if len(parts) == 2 and parts[1].lower() in HTTP and parts[0] in ("app", "router", "api"):
-                url = _str(decorator.args[0]) if decorator.args else None
-                if url and len(url) <= 160:
-                    routes.append({"method": parts[1].upper(), "path": url, "line": decorator.lineno,
-                                   "handler": name})
         # 호출 이름만 확인합니다. 동적 호출·리플렉션·의존성 주입은 해석하지 않습니다.
         for child in ast.walk(node):
             if isinstance(child, ast.Call):
@@ -106,7 +94,8 @@ def _parse_python(root, p):
                 if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     function(child, qualifier=node.name + ".")
     return {"path": p, "language": "python", "functions": declarations,
-            "imports": imported, "calls": calls, "routes": routes, "models": models}
+            "imports": imported, "calls": calls, "routes": routes, "models": models,
+            "unresolved_routes": unresolved_routes}
 
 
 def _prisma_models(root):
@@ -195,11 +184,11 @@ def build_application_graph(repo):
 
     nodes={}
     edges={}
-    def node(identifier,kind,label,path,line,language=""):
+    def node(identifier,kind,label,path,line,language="",**details):
         if len(nodes)>=MAX_NODES or identifier in nodes: return
         nodes[identifier]={"id":identifier,"type":kind,"name":label,"path":path,
                            "line":int(line),"language":language,
-                           "evidence":{"path":path,"line":int(line),"origin":"ast"}}
+                           "evidence":{"path":path,"line":int(line),"origin":"ast"}, **details}
     def edge(src,dst,kind,path,line):
         if len(edges)>=MAX_EDGES or src not in nodes or dst not in nodes: return
         key=(src,dst,kind,path,int(line))
@@ -282,7 +271,8 @@ def build_application_graph(repo):
             # 여러 데코레이터 핸들러가 한 소스 행에 있을 수 있습니다.
             if rid in nodes:
                 rid += ":" + str(route_index)
-            node(rid,"route",method+" "+url,p,line,info["language"])
+            details = {key: route[key] for key in ("route_scope", "prefix_source") if key in route}
+            node(rid,"route",method+" "+url,p,line,info["language"],**details)
             edge("file:"+p,rid,"defines",p,line)
             handler=symbols.get((p,route.get("handler") or ""))
             if handler: edge(rid,handler,"handles",p,line)
@@ -305,6 +295,7 @@ def build_application_graph(repo):
             "의존성 주입, 동적 import, 인터페이스 구현, 런타임 DI, 외부 API/DB 실제 접근은 아직 분석하지 않습니다.",
             "Python 외부 모듈, JS/TS tsconfig alias, 동적 경로, 복잡한 메서드 체인은 호출 대상으로 확정하지 않습니다.",
             "모델 정의 발견이 운영 DB 구성이나 실제 데이터베이스 호출을 증명하지 않습니다.",
+            "FastAPI는 직접 import한 FastAPI/APIRouter의 7종 HTTP 데코레이터에서 선언 범위의 문자열 경로를 확인합니다. include_router, 동적·조건부 등록 및 실제 노출은 미검증입니다.",
             "NestJS는 @nestjs/common named import 기반 최상위 Controller와 7종 HTTP 데코레이터의 문자열 경로만 결합합니다. 동적/배열/옵션 경로, 전역 prefix·버전·모듈 등록·상속·DI와 실제 노출은 미검증입니다.",
         ],
     }

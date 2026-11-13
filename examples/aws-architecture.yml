@@ -26,6 +26,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
       # 실제 운영 적용 전에는 @main 대신 검증된 커밋 SHA/릴리스 태그로 고정하세요.
       - uses: Leegiyeon/Generate-Architectures@main
         with:

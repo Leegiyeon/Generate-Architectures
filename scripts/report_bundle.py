@@ -552,7 +552,7 @@ li{margin:7px 0}.muted,small{color:#52677c}header .muted,header small{color:#dbe
         "<a href='evidence-report.md'>근거·미확인 조건</a>"
         "<a href='validation.md'>정적 제약 보고서</a>"
         "<a href='aws-topology.json'>AWS 노드/연결 근거 JSON</a></div>"+
-        ("<p class='caution'>코드 파싱 일부 실패: 미관측을 부재로 해석할 수 없습니다.</p>"
+        ("<p class='caution'>일부 코드나 라우팅을 확인하지 못했습니다. 미관측을 부재로 해석할 수 없습니다.</p>"
          if contract["status"]=="partial" else "")+"</section>"
         "<section class='panel' id='next'><h2>우선 확인 사항 및 재분석</h2>"
         "<h3>우선 확인할 질문 최대 5개</h3><ul>"+li(visible_questions,5)+"</ul>"

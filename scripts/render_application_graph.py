@@ -8,7 +8,7 @@ import subprocess
 from collections import defaultdict
 
 GROUPS = (
-    ("route", "API / Endpoint", "#E3F2FD", "#2563EB", "oval"),
+    ("route", "API / 코드 선언 경로", "#E3F2FD", "#2563EB", "oval"),
     ("function", "함수 / 서비스", "#E8F5E9", "#2E7D32", "box"),
     ("model", "데이터 모델 정의", "#FFF3E0", "#EF6C00", "cylinder"),
     ("module", "모듈 / 파일", "#F4F4F5", "#6B7280", "folder"),
@@ -48,6 +48,8 @@ def render_application_diagram(graph, output):
             displayed=n["name"]
             if len(displayed)>68:
                 displayed=displayed[:65]+"..."
+            if n.get("route_scope") == "router_local":
+                displayed += "\n(라우터 내부 · 앱 등록 경로 미확인)"
             title=displayed+"\n"+n["path"]+":"+str(n["line"])
             raw.append(ids[n["id"]]+" [label="+json.dumps(title,ensure_ascii=False)+
                        ',shape='+shape+',fillcolor="'+fill+'",color="'+border+'"];')

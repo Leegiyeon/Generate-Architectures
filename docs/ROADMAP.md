@@ -9,7 +9,7 @@
 | 2 | P0 | [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34) 최소 On-Prem Inventory + As-Is | 선언형 As-Is와 실제 브라우저 회귀 구현; 도면 전체 수동 승인·실제 서버 진단 미완료 |
 | 3 | P0 | [#35](https://github.com/Leegiyeon/Generate-Architectures/issues/35) Migration Assessment·변경사항/위험 | Rehost·Replatform 서버·선언 연결별 변경표 구현; 실제 연결/이전 적합성 미검증 |
 | 4 | P0 | [#14](https://github.com/Leegiyeon/Generate-Architectures/issues/14) 단일 사용자 보고서·시각적 QA | 합성 보고서 13개·78화면 자동 검사와 외부 보고서 3개·18화면 통과; 모바일 표·도면 라벨 수정·자동 회귀 통과, 수동 시각 승인 필요 |
-| 5 | P1 | [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) 실제 사례 오탐·미탐/시각 QA | 공개 저장소 3개 감사·Python DB/Compose 근거·NestJS 정적 API 미탐 수정; 부분 파싱/동적 경로·필수 CI 정책 미해결 |
+| 5 | P1 | [#16](https://github.com/Leegiyeon/Generate-Architectures/issues/16) 실제 사례 오탐·미탐/시각 QA | 공개 저장소 3개 감사, DB/Compose·NestJS·FastAPI 근거 보강; 런타임 등록·필수 CI 정책 미검증 |
 | 6 | P1 | [#15](https://github.com/Leegiyeon/Generate-Architectures/issues/15) 비용·용량·공식 SKU 검증 | 공식 예시 3건 산술 회귀 추가; 실제 SKU·전체 비용·부하/용량 실측 검증 미완료 |
 | 7 | 선택 | [#36](https://github.com/Leegiyeon/Generate-Architectures/issues/36) 로컬 온프레미스 최소 진단 | 미구현 |
 | 8 | 후속 | [#17](https://github.com/Leegiyeon/Generate-Architectures/issues/17) 로컬 AWS 읽기 전용 진단 | 미구현 |
@@ -22,7 +22,9 @@
 
 2026-11-08: 모든 AWS 서비스 아이콘의 라벨 행을 분리하고, 온프레미스 최대 길이 별칭·용량 카드와 애플리케이션 도면 줄바꿈을 보완했습니다. SVG 실제 글자 경계 회귀를 포함한 합성 13종·78화면 및 실제 NestJS/FastAPI 2종·12화면 검사를 통과했습니다. 사람의 전체 도면 승인은 계속 필요합니다.
 
-다음 순서는 **수동 시각 검토 → 남은 부분 분석·동적 경로의 검증 확대 → 필수 CI 검사 정책 적용 → 실제 SKU/용량 검증 확대**입니다. 회귀 테스트가 실행되는 것과 병합 전에 강제되는 것은 다릅니다. 현재 `main`은 `protected=false`, rulesets는 빈 배열이므로 required CI 차단 정책은 적용되지 않았습니다. 적용할 최소 검사명과 관리자 확인 절차는 [CI_GATES.md](CI_GATES.md)에 정리했습니다.
+2026-11-13: Python 3.14에서 FastAPI 고정 샘플 파일 125개 모두 파싱에 성공했습니다. 라우터 내부 경로 23개와 미확인 등록 단서 6건을 분리했습니다. [공개 샘플 감사](REAL_REPOSITORY_AUDIT.md)에 재검사 결과를 남겼습니다.
+
+다음 순서는 **수동 시각 검토 → 정적으로 확인할 수 있는 등록·모델 근거 확대 → 필수 CI 검사 정책 적용 → 실제 SKU/용량 검증 확대**입니다. 회귀 테스트가 실행되는 것과 병합 전에 강제되는 것은 다릅니다. 현재 `main`은 `protected=false`, rulesets는 빈 배열이므로 required CI 차단 정책은 적용되지 않았습니다. 적용할 최소 검사명과 관리자 확인 절차는 [CI_GATES.md](CI_GATES.md)에 정리했습니다.
 
 ## MVP 완료 조건
 
