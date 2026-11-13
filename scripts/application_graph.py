@@ -12,10 +12,14 @@ from collections import Counter
 
 try:
     from .fastapi_routes import collect_fastapi_routes
+    from .python_module_scope import module_scope
     from .repository_analyzer import EXCLUDED, is_test_source
+    from .sqlmodel_models import collect_sqlmodel_classes
 except ImportError:
     from fastapi_routes import collect_fastapi_routes
+    from python_module_scope import module_scope
     from repository_analyzer import EXCLUDED, is_test_source
+    from sqlmodel_models import collect_sqlmodel_classes
 
 SUPPORTED = {".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts"}
 PYTHON = {".py"}
@@ -60,7 +64,9 @@ def _parse_python(root, p):
     source = (root / p).read_text(encoding="utf-8", errors="replace")
     tree = ast.parse(source, filename=p)
     imported, declarations, calls, models = [], [], [], []
-    routes, unresolved_routes = collect_fastapi_routes(tree, p)
+    scope = module_scope(tree)
+    routes, unresolved_routes = collect_fastapi_routes(tree, p, scope)
+    sqlmodel_classes = collect_sqlmodel_classes(tree, scope)
     for node in tree.body:
         if isinstance(node, ast.Import):
             for name in node.names:
@@ -88,7 +94,9 @@ def _parse_python(root, p):
             function(node)
         elif isinstance(node, ast.ClassDef):
             bases = {_attr(b) for b in node.bases}
-            if bases & {"Base", "models.Model", "Model", "db.Model"}:
+            if sqlmodel_classes.get(node):
+                models.append({"name": node.name, "line": node.lineno, "model_kind": "sqlmodel_table"})
+            elif node not in sqlmodel_classes and bases & {"Base", "models.Model", "Model", "db.Model"}:
                 models.append({"name": node.name, "line": node.lineno})
             for child in node.body:
                 if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -208,7 +216,8 @@ def build_application_graph(repo):
             edge(file_id,fid,"defines",p,f["line"])
         for m in info.get("models",[]):
             mid="model:"+p+":"+m["name"]
-            node(mid,"model",m["name"],p,m["line"],info["language"])
+            details = {"model_kind": m["model_kind"]} if "model_kind" in m else {}
+            node(mid,"model",m["name"],p,m["line"],info["language"],**details)
             edge(file_id,mid,"defines",p,m["line"])
     for m in _prisma_models(root):
         p=m["path"]
@@ -295,6 +304,7 @@ def build_application_graph(repo):
             "의존성 주입, 동적 import, 인터페이스 구현, 런타임 DI, 외부 API/DB 실제 접근은 아직 분석하지 않습니다.",
             "Python 외부 모듈, JS/TS tsconfig alias, 동적 경로, 복잡한 메서드 체인은 호출 대상으로 확정하지 않습니다.",
             "모델 정의 발견이 운영 DB 구성이나 실제 데이터베이스 호출을 증명하지 않습니다.",
+            "SQLModel은 직접 import 또는 같은 파일의 기반 클래스를 통해 확인한 명시적 table=True 선언을 기록합니다. 실제 스키마와 관계는 미검증입니다.",
             "FastAPI는 직접 import한 FastAPI/APIRouter의 7종 HTTP 데코레이터에서 선언 범위의 문자열 경로를 확인합니다. include_router, 동적·조건부 등록 및 실제 노출은 미검증입니다.",
             "NestJS는 @nestjs/common named import 기반 최상위 Controller와 7종 HTTP 데코레이터의 문자열 경로만 결합합니다. 동적/배열/옵션 경로, 전역 prefix·버전·모듈 등록·상속·DI와 실제 노출은 미검증입니다.",
         ],

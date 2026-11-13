@@ -2,6 +2,12 @@
 
 2026-11-03에 공식 공개 샘플 두 개를 추가로 대조했습니다. 앞선 결틈 저장소 감사는 [REPORT_QA_AUDIT.md](REPORT_QA_AUDIT.md)에 있습니다. 아래 결과는 표본별 관찰이며 정확도·성공률 또는 운영 적합성 점수가 아닙니다.
 
+## SQLModel 테이블 선언 재검사
+
+같은 FastAPI 커밋에서 `User`와 `Item`의 `table=True` 선언 두 건을 확인했습니다. 두 클래스는 각각 같은 파일의 `UserBase`와 `ItemBase`를 통해 SQLModel을 상속합니다. 그래프와 근거 보고서가 두 선언을 소스 위치와 함께 표시합니다. 생성·응답 모델은 테이블 목록에서 제외됩니다. 필드와 관계, 실제 DB 스키마 및 배포 상태는 확인 범위 밖입니다. [User 선언](https://github.com/fastapi/full-stack-fastapi-template/blob/9c81b46ff7e250fffdbfa1b258746c849f9bcbb4/backend/app/models.py#L51) · [Item 선언](https://github.com/fastapi/full-stack-fastapi-template/blob/9c81b46ff7e250fffdbfa1b258746c849f9bcbb4/backend/app/models.py#L87)
+
+같은 실행에서 FastAPI 125/125개 파일과 라우터 내부 경로 23개, NestJS 6/6개 파일과 `GET /`를 확인했습니다.
+
 ## 2026-11-13 FastAPI 경로와 Python 파서 재검사
 
 아래 고정 커밋 두 개를 Python 3.14.10으로 다시 분석했습니다. FastAPI는 125개 파일 전부를 파싱했고 오류가 1개에서 0개로 줄었습니다. 이전에 빠졌던 인증 의존성 등 함수 3개가 추가되어 총 352개가 되었습니다. NestJS는 이전과 같은 6/6개 파일 및 `GET /` 한 개를 확인했습니다.

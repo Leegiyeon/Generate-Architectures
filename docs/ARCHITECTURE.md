@@ -73,6 +73,8 @@ FastAPI는 `fastapi`에서 직접 가져와 모듈 최상위에서 만든 `FastA
 
 NestJS는 `@nestjs/common`에서 import한 `Controller`와 `Get/Post/Put/Patch/Delete/Options/Head`의 별칭·무인자·정적 문자열 경로를 지원합니다. controller prefix와 handler 경로를 결합하고 실제 메서드에 `handles` 연결을 만듭니다. 동적·배열·옵션 경로와 모호한 핸들러는 임의 해석하지 않고 `unresolved_routes`의 파일/행·고정 이유로 남깁니다. 이 경우 근거 계약은 `partial`입니다. 전역 prefix·버전·모듈 등록·상속·DI·실제 운영 노출은 검증하지 않습니다. [NestJS 공식 라우팅 설명](https://docs.nestjs.com/controllers)을 기준으로 지원 범위를 제한합니다.
 
+SQLModel은 직접 import한 `SQLModel` 또는 같은 파일에서 확인한 기반 클래스 하나를 상속하는 최상위 `table=True` 선언을 모델 노드로 기록합니다. 그래프와 근거 JSON의 `model_kind`는 `sqlmodel_table`이며 근거 위치는 클래스 선언을 가리킵니다. 필드, 관계, 실제 테이블과 DB 연결은 검증 범위 밖입니다. [SQLModel 공식 상속 예제](https://sqlmodel.tiangolo.com/tutorial/fastapi/multiple-models/#the-hero-table-model)
+
 개선된 파이프라인: 저장소 메타데이터 수집 → **코드 AST 분석** → 검증된 API 단서를 설계 판단에 반영 → 한국어 설계 검토 → AWS 후보 다이어그램 + 별도의 실제 코드 구조 다이어그램 → Artifact.
 
 ## AI 설계 검토 Agent — 선택적 판단 분기

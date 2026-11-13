@@ -50,6 +50,8 @@ def render_application_diagram(graph, output):
                 displayed=displayed[:65]+"..."
             if n.get("route_scope") == "router_local":
                 displayed += "\n(라우터 내부 · 앱 등록 경로 미확인)"
+            elif n.get("model_kind") == "sqlmodel_table":
+                displayed += "\n(SQLModel 테이블 선언)"
             title=displayed+"\n"+n["path"]+":"+str(n["line"])
             raw.append(ids[n["id"]]+" [label="+json.dumps(title,ensure_ascii=False)+
                        ',shape='+shape+',fillcolor="'+fill+'",color="'+border+'"];')
