@@ -24,20 +24,20 @@
 
 이전 Sites 사이트는 버전 4로 유지합니다. 쓰기 자격 증명 발급의 `404 NOT_FOUND`를 복구하지 못해, 사용자 승인 후 GitHub Pages로 전환했습니다. 신규 기능은 위 체험 주소에서 바로 쓸 수 있으며 Sites 복구는 선행 조건이 아닙니다. 중복 Sites 사이트나 새 자격 증명을 만들지 않았습니다.
 
-동일 기능의 로컬 실행본은 `architecture-output/fastapi-pr-review-local.zip`으로 준비했습니다. ZIP 전체를 압축 해제하고 `fastapi-pr-review` 폴더에서 `python3 start.py`를 실행합니다(Windows는 `py -3 start.py`). Python 3.10 이상과 GitHub 접속이 필요합니다. 분석 런타임을 포함하며 OpenAI API 키는 사용하지 않습니다. `PR 변경 분석`에서 예제·본인의 공개 PR을 확인하거나, `저장소 현재 구조`에서 `저장소 예제로 시작` 또는 `구조 비교 예제`를 선택합니다. 본인의 공개 저장소 URL·40자리 커밋 SHA·Python 소스 루트로 바꾸고 파일·사용 목적을 선택해 검토 계획과 근거가 있는 구조 개선 후보를 확인할 수 있습니다. 후보에는 현재·가정 도표, 적용 전제·순서·검증·단점과 SVG·텍스트 출력이 있습니다. 웹 배포와 별도로 기기 안에서 실행하는 패키지입니다.
+동일 기능의 로컬 실행본은 `architecture-output/fastapi-pr-review-local.zip`으로 준비했습니다. ZIP 전체를 압축 해제하고 `fastapi-pr-review` 폴더에서 `python3 start.py`를 실행합니다(Windows는 `py -3 start.py`). Python 3.10 이상과 GitHub 접속이 필요합니다. 분석 런타임을 포함하며 OpenAI API 키는 사용하지 않습니다. `PR 변경 분석`에서 예제·본인의 공개 PR을 확인하거나, `저장소 현재 구조`에서 `저장소 예제로 시작` 또는 `구조 비교 예제`를 선택합니다. 본인의 공개 저장소 URL·Python 소스 루트로 바꾸고(커밋 SHA는 선택), 파일·사용 목적을 선택해 검토 계획과 근거가 있는 구조 개선 후보를 확인할 수 있습니다. 후보에는 현재·가정 도표, 적용 전제·순서·검증·단점과 SVG·텍스트 출력이 있습니다. 웹 배포와 별도로 기기 안에서 실행하는 패키지입니다.
 
 - 재생성: `python3 scripts/build_pr_preview.py --output architecture-output/pr-preview --archive architecture-output/fastapi-pr-review-local.zip`.
-- ZIP 30개 파일, 압축 크기 6,412,091바이트(약 6.4 MB). 별도 임시 폴더에 풀어 다른 작업 경로에서 실행하고, 웹 자산 27개의 HTTP 200·원본 일치·JS/WASM MIME과 런타임 6개 파일의 SHA-256을 확인했습니다. 서버의 127.0.0.1 연결·빈 포트 선택·정상 종료, 잘못된 포트 거부, 실행 폴더의 README 비노출과 빌드 폴더의 무관한 파일 제외도 확인했습니다.
-- 검증 기록: `architecture-output/local-package-smoke.json`. ZIP SHA-256은 `475105a2f86098c4f7efefed7990d1007c3ade398144cb1c705b7933747672f6`입니다. macOS Finder 더블 클릭 및 Windows 실행은 별도로 확인하지 않았습니다. 새 기능 화면은 아래 구조 비교·목적별 계획·저장소 모드 검증 기록을 참고합니다.
+- 최신 ZIP은 31개 파일·웹 자산 28개·6,413,825바이트입니다. 이번 UX 개선 소스와 압축 해제본의 바이트 일치를 확인했습니다. 이전 30파일 패키지에서는 다른 작업 경로의 실행·HTTP 200·JS/WASM MIME·런타임 SHA-256·127.0.0.1 연결·정상 종료·잘못된 포트 거부·README 비노출을 확인했습니다. 런처와 런타임은 이번에 변경하지 않았습니다.
+- 최신 패키지 일치 기록: `architecture-output/ux-package-check.json`, 이전 실행 기록: `architecture-output/local-package-smoke.json`. ZIP SHA-256은 `b848eebd4e8a3d69059f5e76001ffe2590d416db0ae79c5795a54707baab4432`입니다. macOS Finder 더블 클릭 및 Windows 실행은 별도로 확인하지 않았습니다. 새 기능 화면은 아래 구조 비교·목적별 계획·저장소 모드 검증 기록을 참고합니다.
 
 ### 마무리 상태
 
 PR 기능·저장소 모드·목적별 검토 계획·조건부 구조 비교를 공개 배포하고 실제 주소에서 검증했습니다. 로컬 실행 ZIP도 유지합니다. 아래 패키징 기록과 과거 배포 차단 기록은 검증 범위의 이력이며, 현재 공개 배포 상태는 다음 항목을 따릅니다. 외부 사용자 성과는 미검증입니다.
 
-- 직접 실행할 압축 해제본: `architecture-output/local-preview/fastapi-pr-review/START.command`. macOS에서는 이 파일을 열거나, 같은 폴더에서 `python3 start.py`를 실행합니다. 기존 파일이 이전 패키지와 일치하는지 확인한 뒤 갱신했고, 최종 ZIP 30개 파일과 압축 해제본의 일치를 확인했습니다.
+- 직접 실행할 압축 해제본: `architecture-output/local-preview/fastapi-pr-review/START.command`. macOS에서는 이 파일을 열거나, 같은 폴더에서 `python3 start.py`를 실행합니다. 기존 파일이 이전 패키지와 일치하는지 확인한 뒤 갱신했고, 최신 ZIP 31개 파일과 압축 해제본의 일치를 확인했습니다.
 - 기본 `python3`를 사용하는 `START.command`를 다른 작업 폴더에서 실행해 새 구조도 자산 제공·실행 권한·정상 종료를 확인했습니다. 검사 중 브라우저 자동 열기를 억제했으므로 Finder 더블 클릭 자체와 Windows 실행은 검증하지 않았습니다. 기록은 `architecture-output/local-launcher-smoke.json`입니다.
 - 최종 패키징 검토에서 발견한 입력 파일 덮어쓰기 위험을 수정했습니다. 웹 출력 폴더 안의 ZIP 경로·잘못된 확장자·원본 소스 충돌을 거부하고, 임시 ZIP 작성 후 교체해 실패 시 이전 ZIP을 보존합니다. 관련 회귀 검사 4개 통과 및 수정 후 재검토에서 추가 중요한 문제 없음.
-- 최신 ZIP의 웹 자산 27개·런타임 무결성 6개·HTTP MIME·정상 종료를 재검증했습니다. 검사용 서버는 모두 종료했습니다.
+- 최초 배포 시점 ZIP의 웹 자산 27개·런타임 무결성 6개·HTTP MIME·정상 종료를 재검증했습니다. 당시 검사용 서버는 모두 종료했습니다. 최신 UX 패키지 검증 범위는 위 기록을 따릅니다.
 
 ### GitHub Pages 공개 배포 검증 — 2026-11-24
 
@@ -152,7 +152,7 @@ PR 기능·저장소 모드·목적별 검토 계획·조건부 구조 비교를
 - [API 테스트 — 사용자 삭제 핸들러](https://leegiyeon.github.io/Generate-Architectures/#pr=https%3A%2F%2Fgithub.com%2Ffastapi-users%2Ffastapi-users%2Fpull%2F1258&focus=api&path=fastapi_users%2Frouter%2Fusers.py): ‘변경 확인’을 누르면 `DELETE /{id}`의 핸들러 변경과 `request: Request` 추가를 확인할 수 있습니다.
 - [DB 테스트 — created_at 필드와 마이그레이션](https://leegiyeon.github.io/Generate-Architectures/#pr=https%3A%2F%2Fgithub.com%2Ffastapi%2Ffull-stack-fastapi-template%2Fpull%2F2144&focus=db&path=backend%2Fapp): 테이블 필드 2개와 컬럼 추가 선언 2개를 확인할 수 있습니다.
 
-결과 아래 ‘분석 설정 링크 복사’로 자신의 공개 PR과 선택 범위도 전달할 수 있습니다. 링크에는 PR·관점·경로·클래스 설정이 포함됩니다. 분석 결과나 커밋은 고정하지 않으며, 받은 사람이 실행하는 시점의 PR을 조회합니다. 링크를 열기만 하면 GitHub 소스를 조회하지 않습니다.
+결과 상단 ‘분석 설정 링크 복사’로 자신의 공개 PR과 선택 범위도 전달할 수 있습니다. 링크에는 PR·관점·경로·클래스 설정이 포함됩니다. 분석 결과나 커밋은 고정하지 않으며, 받은 사람이 실행하는 시점의 PR을 조회합니다. 링크를 열기만 하면 GitHub 소스를 조회하지 않습니다.
 
 ## 진행 상태
 

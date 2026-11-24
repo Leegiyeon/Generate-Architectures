@@ -36,7 +36,7 @@ flowchart LR
 
 ## 저장소 현재 구조 — 공개·로컬 지원
 
-‘저장소 현재 구조’에서 공개 저장소 URL·40자리 커밋 SHA·Python 소스 루트를 입력한다. 예를 들어 `backend/app`을 `app`으로 import하는 프로젝트의 소스 루트는 `backend`이다. 자동으로 `src`나 다른 루트를 추정하지 않는다. 예제는 full-stack-fastapi-template의 커밋 `d0defd5a92bfcd35ccea93873519816a2252a97e`·루트 `backend`이다.
+‘저장소 현재 구조’에서 공개 저장소 URL·Python 소스 루트를 입력한다. 커밋 SHA는 선택이며, 비우면 기본 브랜치의 최신 커밋을 조회해 전체 40자리 SHA로 고정한다. 이후 파일 목록·소스·근거 링크·캐시는 고정 SHA를 사용한다. 다시 분석하면 기본 브랜치를 재확인하며, 직접 입력한 SHA를 다른 버전으로 대체하지 않는다. 예를 들어 `backend/app`을 `app`으로 import하는 프로젝트의 소스 루트는 `backend`이다. 자동으로 `src`나 다른 루트를 추정하지 않는다. 예제는 full-stack-fastapi-template의 커밋 `d0defd5a92bfcd35ccea93873519816a2252a97e`·루트 `backend`이다.
 
 GitHub 메타데이터 → Git commit의 tree SHA → recursive tree → 고정 SHA 원본을 읽는다. tree가 잘리면 전체 목록으로 간주하지 않고 오류로 중단한다. 원본은 일반 Python 파일100개·파일당64KiB·동시6개로 제한한다. 선택한 커밋·루트의 성공한 원본만 2건·3분 캐시하며, 읽기 실패·중단은 캐시하지 않는다. API 조회는 3회이며 원본 조회는 별도이다. 근거: [GitHub Git commits](https://docs.github.com/en/rest/git/commits#get-a-commit), [Git trees](https://docs.github.com/en/rest/git/trees#get-a-tree).
 
@@ -61,7 +61,7 @@ GitHub 메타데이터 → Git commit의 tree SHA → recursive tree → 고정 
 
 각 항목은 현재 확인·다음 행동·완료 조건·고정 커밋의 코드 근거를 제공한다. 파일 수는 중복 대상을 제거한 수이며 전체 저장소의 실행 영향 수가 아니다. 관계 수는 import 구문 수와 다르며 한 구문이 여러 대상을 가리킬 수 있다. 근거 목록은 항목별 최대6곳과 정확한 생략 수를 표시한다. 그래프·선언·미확인 목록의 한도와 읽기 실패를 계획에도 남긴다. 관계가 없다는 이유로 영향 없음·미사용·테스트 없음이라고 결론 내리지 않는다.
 
-`검토 계획 복사`는 저장소·전체 커밋 SHA·소스 루트·선택 파일·목적·확인 행동·근거 URL·한도를 텍스트로 복사한다. 브라우저가 자동 복사를 거부하면 같은 텍스트를 읽기 전용 상자로 펼쳐 직접 복사할 수 있다. 표시한 선언에 맞춘 규칙 기반 검토 계획이며 테스트 실행·변경 전후 비교를 수행한 결과, 운영 개선이나 제안 아키텍처의 검증 결과는 아니다. 관련 파일은 `app/pr_preview/repository-review.js`이다.
+`검토 계획 복사`는 저장소·전체 커밋 SHA·소스 루트·선택 파일·목적·확인 행동·근거 URL·한도를 텍스트로 복사한다. PR 요약·분석 설정 링크와 공용 복사 UI를 사용하며, 상태는 버튼 옆에 표시한다. 읽기 전용 수동 복사는 항상 펼칠 수 있고 자동 복사 실패 시 같은 텍스트를 자동 선택한다. 파일·목적·관점을 바꾸면 이전 복사 상태를 제거한다. 표시한 선언에 맞춘 규칙 기반 검토 계획이며 테스트 실행·변경 전후 비교를 수행한 결과, 운영 개선이나 제안 아키텍처의 검증 결과는 아니다. 관련 파일은 `app/pr_preview/repository-review.js`, `app/pr_preview/copy-output.js`이다.
 
 ### 현재 구조와 개선 후보 비교 — 공개·로컬 지원
 

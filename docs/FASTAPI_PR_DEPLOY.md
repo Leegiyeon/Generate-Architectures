@@ -18,8 +18,8 @@
 
 1. 기존 저장소의 `main`에서 배포할 소스와 커밋을 확인합니다.
 2. **Actions → Publish FastAPI PR Review → Run workflow → main**을 선택합니다.
-3. 브라우저 동작 63개와 Python 분석·패키징 62개 회귀 검사에 이어 기존 `scripts/build_pr_preview.py`로 새 디렉터리에 빌드합니다. 실패한 빌드는 배포하지 않습니다.
-4. 선언된 웹 자산 27개만 artifact로 올린 뒤 배포합니다. 저장소 전체·로컬 런처·분석 산출물은 게시하지 않습니다. 고정 Pyodide 런타임 6개 파일의 SHA-256을 확인합니다.
+3. JavaScript 동작과 Python 분석·패키징 회귀 검사에 이어 기존 `scripts/build_pr_preview.py`로 새 디렉터리에 빌드합니다. 실패한 빌드는 배포하지 않습니다.
+4. 선언된 웹 자산 28개만 artifact로 올린 뒤 배포합니다. 저장소 전체·로컬 런처·분석 산출물은 게시하지 않습니다. 고정 Pyodide 런타임 6개 파일의 SHA-256을 확인합니다.
 5. 성공한 실행이 반환한 실제 URL에서 예제와 변경 범위를 확인합니다. 이전 버전으로 돌아가야 하면 검토한 소스 복원 커밋을 `main`에 반영하고 같은 workflow로 재배포합니다. Git 이력을 강제 변경할 필요는 없습니다.
 
 빌드는 소스·Pages 조회 권한, 배포는 `pages: write`·`id-token: write`를 사용합니다. 개인 토큰·새 Secret·서버·DB·OpenAI API 키는 필요하지 않습니다. GitHub의 [커스텀 workflow](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)와 [게시 소스 설정](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)을 따릅니다.

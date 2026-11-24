@@ -14,14 +14,19 @@ async function loader() {
   return import(url.href);
 }
 
-function fixture(t, { entries = [entry("app/main.py")], truncated = false, privateRepo = false, source, onTree } = {}) {
+function fixture(t, { entries = [entry("app/main.py")], truncated = false, privateRepo = false, source, onTree,
+  defaultBranch = "main", resolvedCommit = { sha: head, commit: { tree: { sha: treeSHA } } }, resolveStatus = 200, onResolve } = {}) {
   const requests = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
     requests.push(url);
     assert.equal(options.credentials, "omit");
     assert.equal(options.redirect, "error");
     options.signal.throwIfAborted();
-    if (url === api) return Response.json({ full_name: repository, private: privateRepo });
+    if (url === api) return Response.json({ full_name: repository, private: privateRepo, default_branch: defaultBranch });
+    if (url === api + "/commits/" + encodeURIComponent("heads/" + defaultBranch) + "?per_page=1") {
+      onResolve?.();
+      return Response.json(resolvedCommit, { status: resolveStatus });
+    }
     if (url === api + "/git/commits/" + head) return Response.json({ sha: head, tree: { sha: treeSHA } });
     if (url === api + "/git/trees/" + treeSHA + "?recursive=1") {
       onTree?.();
@@ -49,7 +54,7 @@ test("repository links canonicalize root URLs and reject other destinations", as
 test("invalid commit/root and pre-aborted requests fail before network access", async t => {
   const { loadRepository } = await loader();
   const requests = fixture(t);
-  for (const commit of ["main", "abc123", "z".repeat(40), undefined]) {
+  for (const commit of ["main", "abc123", "z".repeat(40), null, false, 42]) {
     await assert.rejects(loadRepository("https://github.com/" + repository, commit, ".", new AbortController().signal), /SHA/);
   }
   for (const root of ["/app", "../app", "app/..", "app//other", "app\\other", "app/./other", "app\0other", "C:/work", "C:work"]) {
@@ -57,7 +62,126 @@ test("invalid commit/root and pre-aborted requests fail before network access", 
   }
   const aborted = AbortSignal.abort();
   await assert.rejects(loadRepository("https://github.com/" + repository, head, ".", aborted), { name: "AbortError" });
+  await assert.rejects(loadRepository("https://github.com/" + repository, "", ".", aborted), { name: "AbortError" });
   assert.deepEqual(requests, []);
+});
+
+test("blank commit resolves the explicit default-branch ref and pins every source read", async t => {
+  const { loadRepository } = await loader();
+  const branch = "release/latest";
+  const requests = fixture(t, { defaultBranch: branch });
+  const snapshot = await loadRepository("https://github.com/" + repository, "  ", ".", new AbortController().signal);
+  assert.equal(snapshot.head, head);
+  assert.deepEqual(snapshot.resolvedFrom, { branch });
+  assert.equal(snapshot.files[0].after, "from fastapi import FastAPI\n");
+  assert.deepEqual(requests, [api, api + "/commits/heads%2Frelease%2Flatest?per_page=1",
+    api + "/git/trees/" + treeSHA + "?recursive=1", raw + "app/main.py"]);
+  assert.ok(!requests.some(url => url.includes("/tags/") || url.includes("/git/commits/")));
+  const explicit = await loadRepository("https://github.com/" + repository, head, ".", new AbortController().signal);
+  assert.equal(explicit.resolvedFrom, undefined);
+  assert.equal(explicit.files, snapshot.files);
+  assert.equal(requests.length, 4);
+});
+
+test("every blank or omitted commit resolves latest before reusing immutable source cache", async t => {
+  const { loadRepository } = await loader();
+  const requests = fixture(t);
+  const first = await loadRepository("https://github.com/" + repository, undefined, ".", new AbortController().signal);
+  const second = await loadRepository("https://github.com/" + repository, "", ".", new AbortController().signal);
+  assert.equal(second.head, head);
+  assert.deepEqual(second.resolvedFrom, { branch: "main" });
+  assert.equal(second.files, first.files);
+  assert.equal(requests.filter(url => url === api).length, 2);
+  assert.equal(requests.filter(url => url.includes("/commits/heads%2Fmain")).length, 2);
+  assert.equal(requests.filter(url => url.includes("/git/trees/")).length, 1);
+  assert.equal(requests.filter(url => url.startsWith(raw)).length, 1);
+});
+
+test("latest follows a moved default-branch tip and never uses branch raw URLs", async t => {
+  const { loadRepository } = await loader();
+  const nextHead = "c".repeat(40), nextTree = "d".repeat(40);
+  const requests = [];
+  let currentHead = head, currentTree = treeSHA;
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    requests.push(url);
+    options.signal.throwIfAborted();
+    if (url === api) return Response.json({ full_name: repository, private: false, default_branch: "main" });
+    if (url === api + "/commits/heads%2Fmain?per_page=1") {
+      return Response.json({ sha: currentHead, commit: { tree: { sha: currentTree } } });
+    }
+    if (url === api + "/git/trees/" + currentTree + "?recursive=1") {
+      return Response.json({ sha: currentTree, tree: [entry("app/main.py")], truncated: false });
+    }
+    if (url === "https://raw.githubusercontent.com/" + repository + "/" + currentHead + "/app/main.py") {
+      return new Response(currentHead === head ? "before = 1" : "after = 2");
+    }
+    throw new Error("Unexpected request: " + url);
+  });
+  const read = () => loadRepository("https://github.com/" + repository, "", ".", new AbortController().signal);
+  const before = await read();
+  currentHead = nextHead; currentTree = nextTree;
+  const after = await read();
+  assert.equal(before.head, head);
+  assert.equal(after.head, nextHead);
+  assert.equal(after.files[0].after, "after = 2");
+  currentHead = head; currentTree = treeSHA;
+  const restored = await read();
+  assert.equal(restored.files, before.files);
+  assert.equal(requests.filter(url => url.includes("/commits/heads%2Fmain")).length, 3);
+  assert.equal(requests.filter(url => url.startsWith("https://raw.githubusercontent.com/")).length, 2);
+});
+
+test("latest rejects private/missing branches and malformed commits before source reads", async t => {
+  const cases = [
+    { options: { privateRepo: true }, message: /공개 저장소만/, count: 1 },
+    ...[null, "", "bad branch", "bad\nbranch"].map(defaultBranch => ({ options: { defaultBranch }, message: /기본 브랜치/, count: 1 })),
+    ...[null, {}, { sha: "main", commit: { tree: { sha: treeSHA } } },
+      { sha: head, tree: { sha: treeSHA } }, { sha: head, commit: { tree: { sha: "invalid" } } },
+      { sha: [head], commit: { tree: { sha: treeSHA } } },
+      { sha: head, commit: { tree: { sha: [treeSHA] } } }].map(resolvedCommit => ({ options: { resolvedCommit }, message: /커밋과 파일 목록/, count: 2 })),
+    { options: { resolveStatus: 404 }, message: /찾을 수 없습니다/, count: 2 },
+    { options: { truncated: true }, message: /목록이 잘렸/, count: 3 },
+  ];
+  for (const { options, message, count } of cases) {
+    t.mock.restoreAll();
+    const { loadRepository } = await loader();
+    const requests = fixture(t, options);
+    await assert.rejects(loadRepository("https://github.com/" + repository, "", ".", new AbortController().signal), message);
+    assert.equal(requests.length, count);
+    assert.ok(requests.every(url => !url.startsWith("https://raw.githubusercontent.com/")));
+  }
+});
+
+test("latest resolution failure and abort do not create a reusable snapshot", async t => {
+  const { loadRepository } = await loader();
+  let requests = fixture(t, { resolveStatus: 404 });
+  await assert.rejects(loadRepository("https://github.com/" + repository, "", ".", new AbortController().signal), /찾을 수 없습니다/);
+  assert.equal(requests.length, 2);
+  t.mock.restoreAll();
+  const controller = new AbortController();
+  requests = fixture(t, { onTree: () => controller.abort() });
+  await assert.rejects(loadRepository("https://github.com/" + repository, "", ".", controller.signal), { name: "AbortError" });
+  assert.ok(!requests.some(url => url.startsWith(raw)));
+  t.mock.restoreAll();
+  requests = fixture(t);
+  const retry = await loadRepository("https://github.com/" + repository, "", ".", new AbortController().signal);
+  assert.equal(retry.files.length, 1);
+  assert.ok(requests.includes(raw + "app/main.py"));
+});
+
+test("aborted latest resolution cannot return a previously cached snapshot", async t => {
+  const { loadRepository } = await loader();
+  fixture(t);
+  const first = await loadRepository("https://github.com/" + repository, "", ".", new AbortController().signal);
+  t.mock.restoreAll();
+  const controller = new AbortController();
+  const requests = fixture(t, { onResolve: () => controller.abort() });
+  await assert.rejects(loadRepository("https://github.com/" + repository, "", ".", controller.signal), { name: "AbortError" });
+  assert.equal(requests.length, 2);
+  t.mock.restoreAll();
+  fixture(t);
+  const retry = await loadRepository("https://github.com/" + repository, "", ".", new AbortController().signal);
+  assert.equal(retry.files, first.files);
 });
 
 test("fixed commit raw URLs obey root, file kind and declared size limits", async t => {

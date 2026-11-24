@@ -84,8 +84,9 @@
             <input id="repository-url" type="url" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://github.com/fastapi/full-stack-fastapi-template">
             <div class="repository-fields">
               <div class="advanced-field">
-                <label for="repository-commit">확인할 커밋 SHA</label>
-                <input id="repository-commit" type="text" required pattern="[a-fA-F0-9]{40}" spellcheck="false" autocapitalize="off" placeholder="40자리 커밋 SHA">
+                <label for="repository-commit">커밋 SHA (선택)</label>
+                <input id="repository-commit" type="text" pattern="[a-fA-F0-9]{40}" spellcheck="false" autocapitalize="off" placeholder="비우면 기본 브랜치 최신 커밋" aria-describedby="repository-commit-help">
+                <p id="repository-commit-help" class="help field-help">비우면 최신 커밋을 확인해 고정합니다. 특정 버전은 전체 SHA 40자리를 입력하세요.</p>
               </div>
               <div class="advanced-field">
                 <label for="repository-root">Python 소스 루트</label>

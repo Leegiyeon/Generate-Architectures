@@ -43,11 +43,12 @@ export function repositoryRoot(input) {
 
 export async function loadRepository(input, commit, sourceRoot, signal, progress = () => {}) {
   const parsed = parseRepositoryURL(input);
-  const head = checkedCommit(commit);
+  const latest = commit === undefined || (typeof commit === "string" && !commit.trim());
+  let head = latest ? null : checkedCommit(commit);
   const root = repositoryRoot(sourceRoot);
   signal.throwIfAborted();
-  const key = JSON.stringify([parsed.repo.toLowerCase(), head, root]);
-  const existing = cache.get(key);
+  let key = head ? JSON.stringify([parsed.repo.toLowerCase(), head, root]) : null;
+  let existing = head ? cache.get(key) : null;
   if (existing && Date.now() - existing.time < 180000) {
     progress("방금 조회한 고정 커밋의 저장소 소스를 분석하고 있습니다.");
     return existing.value;
@@ -60,11 +61,37 @@ export async function loadRepository(input, commit, sourceRoot, signal, progress
   }
   const repo = parsed.repo;
   const endpoint = "/repos/" + repo;
-  const pinned = await githubJSON(endpoint + "/git/commits/" + head, signal, missingMessage);
-  if (pinned.sha !== head || !/^[a-f0-9]{40}$/.test(pinned.tree?.sha)) {
-    throw new Error("지정한 커밋의 파일 목록을 확인할 수 없습니다.");
+  let treeSHA;
+  let resolvedFrom;
+  if (latest) {
+    const branch = metadata.default_branch;
+    if (typeof branch !== "string" || !branch || branch.length > 1000 || /[\u0000-\u0020\u007f]/.test(branch)) {
+      throw new Error("저장소의 기본 브랜치를 확인할 수 없습니다. 전체 커밋 SHA를 지정해 주세요.");
+    }
+    progress("기본 브랜치의 최신 커밋을 고정하고 있습니다.");
+    // Explicit heads/ avoids resolving a same-named tag; all subsequent reads use the SHA.
+    const pinned = await githubJSON(endpoint + "/commits/" + encodeURIComponent("heads/" + branch) + "?per_page=1", signal, missingMessage);
+    signal.throwIfAborted();
+    if (typeof pinned?.sha !== "string" || !/^[a-f0-9]{40}$/.test(pinned.sha)
+        || typeof pinned.commit?.tree?.sha !== "string" || !/^[a-f0-9]{40}$/.test(pinned.commit.tree.sha)) {
+      throw new Error("기본 브랜치의 커밋과 파일 목록을 확인할 수 없습니다.");
+    }
+    head = pinned.sha;
+    treeSHA = pinned.commit.tree.sha;
+    resolvedFrom = { branch };
+    key = JSON.stringify([parsed.repo.toLowerCase(), head, root]);
+    existing = cache.get(key);
+    if (existing && Date.now() - existing.time < 180000) {
+      progress("확인한 최신 커밋의 저장소 소스를 다시 분석하고 있습니다.");
+      return { ...existing.value, resolvedFrom };
+    }
+  } else {
+    const pinned = await githubJSON(endpoint + "/git/commits/" + head, signal, missingMessage);
+    if (pinned.sha !== head || !/^[a-f0-9]{40}$/.test(pinned.tree?.sha)) {
+      throw new Error("지정한 커밋의 파일 목록을 확인할 수 없습니다.");
+    }
+    treeSHA = pinned.tree.sha;
   }
-  const treeSHA = pinned.tree.sha;
   const listing = await githubJSON(endpoint + "/git/trees/" + treeSHA + "?recursive=1", signal, missingMessage);
   if (listing.truncated !== false) throw new Error("저장소 파일 목록이 잘렸습니다. 전체 범위를 확인할 수 없어 분석하지 않았습니다.");
   if (listing.sha !== treeSHA || !Array.isArray(listing.tree) || listing.tree.length > 100000) {
@@ -125,5 +152,5 @@ export async function loadRepository(input, commit, sourceRoot, signal, progress
     if (cache.size >= 2) cache.delete(cache.keys().next().value);
     cache.set(key, { time: Date.now(), value });
   }
-  return value;
+  return resolvedFrom ? { ...value, resolvedFrom } : value;
 }

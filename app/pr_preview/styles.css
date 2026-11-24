@@ -41,7 +41,8 @@ input[type="url"]:focus, textarea:focus { border-color: var(--blue); outline: 3p
 .primary-button:hover { background: #1b43b6; border-color: #1b43b6; }
 button:disabled { cursor: wait; opacity: .62; }
 .input-help-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
-.help { color: var(--muted); font-size: .875rem; margin: 0; }
+.help { color: var(--muted); font-size: .875rem; margin: 0; overflow-wrap: anywhere; }
+.field-help { margin-top: 7px; }
 .text-button { border: 0; background: transparent; color: #254fbc; font-size: .875rem; font-weight: 600; padding: 0; text-decoration: underline; text-underline-offset: 4px; }
 .text-button:hover { color: #183b91; }
 
@@ -92,6 +93,16 @@ textarea { display: block; font-family: "SFMono-Regular", Consolas, monospace; f
 .report-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
 .report-actions button, .report-actions a { display: inline-block; border: 1px solid #bdc9dc; border-radius: 7px; background: #fff; padding: 8px 13px; color: #2e476e; font-size: .875rem; font-weight: 600; text-decoration: none; }
 .report-actions button:hover, .report-actions a:hover { background: #f0f4fb; }
+.result-navigation { padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.copy-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+.copy-output { min-width: 0; }
+.copy-output .report-actions { margin-top: 0; }
+.copy-output > .status { margin-top: 10px; }
+.copy-output-manual { margin-top: 10px; color: var(--muted); font-size: .875rem; }
+.copy-output-manual summary { color: #2e476e; padding: 4px 0; }
+.copy-output-manual label { display: block; margin-top: 8px; }
+.copy-output-manual textarea { margin-top: 7px; }
+.result-section:focus-visible, .error:focus-visible { outline: 3px solid #759cff; outline-offset: 4px; }
 code { font-family: "SFMono-Regular", Consolas, monospace; font-size: .875em; overflow-wrap: anywhere; }
 .structure-controls { margin: 14px 0; }
 .structure-controls button[aria-pressed="true"] { color: #fff; background: var(--blue); border-color: var(--blue); }
@@ -117,9 +128,7 @@ code { font-family: "SFMono-Regular", Consolas, monospace; font-size: .875em; ov
 .repository-plan h4 { margin: 0 0 10px; font-size: 1rem; color: #29364d; }
 .repository-plan .structure-list { margin-top: 8px; }
 .repository-plan-limits { margin-top: 14px; }
-.repository-plan > .status { margin-top: 10px; }
-.repository-plan-copy { display: block; margin-top: 12px; font-size: .875rem; }
-.repository-plan-copy textarea { margin-top: 7px; }
+.repository-plan > .copy-output { margin-top: 20px; }
 .repository-proposals { margin-bottom: 24px; }
 .repository-proposals > summary { color: #29364d; font-size: 1.0625rem; font-weight: 680; padding: 10px 0; }
 .repository-proposals h3 { margin-top: 16px; }
@@ -143,6 +152,7 @@ select { appearance: none; padding-right: 35px; font-size: .875rem; background-i
   .focus-option span { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .focus-option small { margin: 0; }
   .advanced-grid { grid-template-columns: 1fr; gap: 15px; }
+  .copy-actions { grid-template-columns: 1fr; }
   .repository-fields { grid-template-columns: 1fr; }
   .report-title { font-size: 1.25rem; }
 }

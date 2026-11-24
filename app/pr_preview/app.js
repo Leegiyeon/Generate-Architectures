@@ -5,6 +5,7 @@ import { architectureSection } from "./architecture.js";
 import { evidenceLocation } from "./evidence.js";
 import { loadRepository } from "./repository.js";
 import { repositoryView } from "./repository-view.js";
+import { copyOutput } from "./copy-output.js";
 
 const form = document.querySelector("#review-form");
 const repositoryForm = document.querySelector("#repository-form");
@@ -22,7 +23,7 @@ let busy = false;
 function selectMode(mode) {
   if (busy) return;
   document.querySelector(".intro h1").textContent = mode === "repository" ? "현재 코드는 어떻게 연결되나요?" : "API와 DB에서 무엇이 바뀌었나요?";
-  document.querySelector(".intro p").textContent = mode === "repository" ? "저장소와 커밋을 지정하고, 파일별 import와 라우트·모델 선언을 확인하세요." : "PR 링크를 넣고, 관련 코드 구조와 변경 사항을 코드 근거와 함께 확인하세요.";
+  document.querySelector(".intro p").textContent = mode === "repository" ? "저장소 링크와 Python 소스 루트를 넣고, 파일별 import와 라우트·모델 선언을 확인하세요." : "PR 링크를 넣고, 관련 코드 구조와 변경 사항을 코드 근거와 함께 확인하세요.";
   for (const name of ["pr", "repository"]) {
     document.getElementById(name + "-panel").hidden = mode !== name;
     document.getElementById("mode-" + name).setAttribute("aria-pressed", String(mode === name));
@@ -58,6 +59,12 @@ function lines(id) {
 }
 
 function progress(message) { status.textContent = message; }
+
+function jumpTo(element) {
+  if (!element.matches("input, textarea, select, button")) element.tabIndex = -1;
+  element.focus({ preventScroll: true });
+  element.scrollIntoView({ block: "start" });
+}
 
 function analyze(payload) {
   if (!worker) worker = new Worker("./analyzer-worker.js", { type: "module" });
@@ -137,13 +144,33 @@ function render(pull, report, options) {
     "개의 구문을 읽었습니다. 자동 비교는 파일 또는 함수에서 직접 만든 라우터의 선언과 직접 선언한 모델 필드 기준입니다.");
   results.append(scope);
   for (const warning of pull.warnings) results.append(node("p", "coverage-note", warning));
-  results.append(architectureSection(pull, report));
+  const navigation = node("nav", "report-actions result-navigation");
+  navigation.setAttribute("aria-label", "결과 바로가기");
+  function destination(label, section) {
+    const button = node("button", "", label);
+    button.type = "button";
+    button.addEventListener("click", () => jumpTo(section));
+    navigation.append(button);
+    return section;
+  }
+  const copyActions = node("div", "copy-actions");
+  copyActions.append(copyOutput({
+    label: "요약 복사", fallbackLabel: "복사할 변경 요약",
+    getText: () => [pull.title, pull.url, focusName, ...[...results.querySelectorAll(".result-section")].map(section => section.innerText)].join("\n\n"),
+    successMessage: "변경 요약과 구조에 따른 검토 항목을 복사했습니다.",
+  }), copyOutput({
+    label: "분석 설정 링크 복사", fallbackLabel: "복사할 분석 설정 링크", rows: 3,
+    getText: () => reviewURL(window.location.href, pull.url, options, focus),
+    successMessage: "PR·관점·범위를 담은 링크를 복사했습니다. 이 링크에서 분석하면 최신 PR을 비교합니다.",
+  }));
+  results.append(navigation, copyActions);
+  results.append(destination("코드 구조도", architectureSection(pull, report)));
   if (focus !== "db") {
-    results.append(evidenceSection("라우트와 핸들러", report.routes, pull));
+    results.append(destination("API 변경", evidenceSection("라우트와 핸들러", report.routes, pull)));
     results.append(evidenceSection("SQLModel 데이터 모델과 지정한 응답 모델", report.responses, pull));
   }
   if (focus !== "api") {
-    results.append(evidenceSection("DB 컬럼과 마이그레이션 선언", report.migrations, pull));
+    results.append(destination("DB 변경", evidenceSection("DB 컬럼과 마이그레이션 선언", report.migrations, pull)));
     results.append(evidenceSection("테이블 모델과 지정한 DB 모델", report.models, pull));
   }
   const reviewSection = node("section", "result-section");
@@ -160,31 +187,9 @@ function render(pull, report, options) {
   }
   if (!report.review.length) reviewSection.append(node("p", "empty", "지정한 경로에 변경 파일이 없습니다."));
   else reviewSection.append(reviewList);
-  results.append(reviewSection);
+  results.append(destination("변경 파일", reviewSection));
+  destination("입력 수정", document.querySelector("#pr-url"));
   results.append(node("p", "coverage-note", "라우터를 만드는 함수의 호출 여부, 최종 URL을 만드는 설정, 상속·다른 파일을 통한 영향, 실제 DB의 기존 데이터와 배포 순서는 별도 확인이 필요합니다."));
-  const actions = node("div", "report-actions");
-  const copy = node("button", "", "요약 복사");
-  copy.type = "button";
-  copy.addEventListener("click", async () => {
-    const text = [pull.title, pull.url, focusName, ...[...results.querySelectorAll(".result-section")].map(section => section.innerText)].join("\n\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      progress("변경 요약과 구조에 따른 검토 항목을 복사했습니다.");
-    } catch { progress("브라우저가 복사를 허용하지 않았습니다. 결과 텍스트를 선택해 복사해 주세요."); }
-  });
-  const share = node("button", "", "분석 설정 링크 복사");
-  share.type = "button";
-  share.addEventListener("click", async () => {
-    let url;
-    try { url = reviewURL(window.location.href, pull.url, options, focus); }
-    catch (error) { progress(error.message); return; }
-    try {
-      await navigator.clipboard.writeText(url);
-      progress("PR·관점·범위가 담긴 링크를 복사했습니다. 링크를 받은 사람이 분석을 실행하면 최신 PR을 비교합니다.");
-    } catch { progress("브라우저가 링크 복사를 허용하지 않았습니다. 복사 권한을 확인하고 다시 시도해 주세요."); }
-  });
-  actions.append(copy, share);
-  results.append(actions);
   results.hidden = false;
 }
 
@@ -211,10 +216,12 @@ async function run(event) {
     lastReport = { pull, report, options };
     render(pull, report, options);
     progress("비교가 끝났습니다. 필요한 관점을 바꾸어 결과를 확인할 수 있습니다.");
+    jumpTo(results);
   } catch (error) {
     errorBox.textContent = error.name === "AbortError" ? "GitHub 응답 시간이 초과되었습니다. 다시 시도해 주세요." : error.message;
     errorBox.hidden = false;
     progress("");
+    jumpTo(errorBox);
   } finally {
     clearTimeout(timer);
     busy = false;
@@ -272,10 +279,12 @@ async function runRepository(event) {
     results.replaceChildren(repositoryView(snapshot, report));
     results.hidden = false;
     progress("현재 구조를 확인했습니다. 파일과 사용 목적을 선택해 코드 근거와 검토 계획을 살펴보세요.");
+    jumpTo(results);
   } catch (error) {
     errorBox.textContent = error.name === "AbortError" ? "저장소 조회 시간이 초과되었습니다. 범위를 줄여 다시 시도해 주세요." : error.message;
     errorBox.hidden = false;
     progress("");
+    jumpTo(errorBox);
   } finally {
     clearTimeout(timer);
     busy = false;

@@ -2,6 +2,7 @@ import { sourceURL } from "./github.js";
 import { downloadSVG } from "./architecture.js";
 import { repositoryReview, repositoryReviewText } from "./repository-review.js";
 import { repositoryProposals, repositoryProposalText } from "./repository-proposals.js";
+import { copyOutput } from "./copy-output.js";
 
 const namespace = "http://www.w3.org/2000/svg";
 const MAX_NEIGHBORS = 12;
@@ -62,32 +63,12 @@ function reviewSection(snapshot, review) {
     for (const limit of review.limits) limits.append(node("li", limit));
     section.append(limits);
   }
-  const actions = node("div", undefined, "report-actions");
-  const copy = node("button", "검토 계획 복사");
-  copy.type = "button";
-  const status = node("p", "", "status");
-  status.setAttribute("role", "status");
-  const fallback = node("label", "복사할 검토 계획", "advanced-field repository-plan-copy");
-  fallback.hidden = true;
-  const text = node("textarea");
-  text.readOnly = true;
-  text.rows = 8;
-  fallback.append(text);
-  copy.addEventListener("click", async () => {
-    const value = repositoryReviewText(snapshot, review);
-    try {
-      await navigator.clipboard.writeText(value);
-      status.textContent = "커밋·소스 루트·코드 근거와 확인 범위를 포함한 검토 계획을 복사했습니다.";
-    } catch {
-      fallback.hidden = false;
-      text.value = value;
-      text.focus();
-      text.select();
-      status.textContent = "자동 복사가 허용되지 않아 텍스트를 펼쳤습니다. 선택된 계획을 복사하세요(Mac: ⌘C, Windows·Linux: Ctrl+C).";
-    }
-  });
-  actions.append(copy);
-  section.append(actions, status, fallback);
+  section.append(copyOutput({
+    label: "검토 계획 복사",
+    getText: () => repositoryReviewText(snapshot, review),
+    successMessage: "커밋·소스 루트·코드 근거와 확인 범위를 포함한 검토 계획을 복사했습니다.",
+    fallbackLabel: "복사할 검토 계획",
+  }));
   return section;
 }
 
@@ -297,6 +278,9 @@ export function repositoryView(snapshot, report) {
   const heading = node("header", undefined, "report-header");
   heading.append(node("h2", "저장소 현재 코드 구조", "report-title"));
   heading.append(node("p", snapshot.repo + " · 커밋 " + snapshot.head + " · 루트 " + snapshot.root, "report-meta"));
+  if (snapshot.resolvedFrom?.branch) {
+    heading.append(node("p", "기본 브랜치 " + snapshot.resolvedFrom.branch + "의 최신 커밋을 위 SHA로 고정했습니다. 다시 분석하면 최신 커밋을 확인합니다.", "help repository-limits"));
+  }
   section.append(heading);
   section.append(node("p", `범위의 Python ${snapshot.totalFiles}개 중 ${report.parsed_files}개 구문을 읽고 파일 ${report.nodes.length}개를 표시합니다. 고정 커밋의 직접 import 선언과 라우트·테이블 선언을 확인합니다.`, "coverage-note"));
   section.append(node("p", "소스 루트를 기준으로 모듈 경로가 하나로 정해지는 관계만 연결합니다. 패키지에서 가져오는 이름의 재수출·실제 로딩, 함수 호출, 최종 라우터 등록·운영 인프라는 확인하지 않습니다.", "help repository-limits"));
