@@ -1,36 +1,41 @@
-# FastAPI PR Review — GitHub Pages 배포 준비
+# FastAPI PR Review — GitHub Pages 배포
 
 ## 현재 상태
 
-2026-11-24 기존 Sites 프로젝트 `appgprj_6afe374162c88191af8d2970d6884a29`는 버전 4·active로 조회됐지만 쓰기 자격 증명 발급은 다시 `404 NOT_FOUND`로 실패했습니다. 기존 공개 주소의 새 버전 배포는 미완료입니다.
+2026-11-24 사용자 승인 후 기존 공개 저장소 `Leegiyeon/Generate-Architectures`의 GitHub Pages로 전환했습니다. [공개 서비스](https://leegiyeon.github.io/Generate-Architectures/)에서 실제 PR 분석·저장소 탐색·목적별 계획·조건부 구조 비교를 확인했습니다.
 
-대안으로 기존 공개 저장소 `Leegiyeon/Generate-Architectures`에 수동 배포 workflow를 로컬 준비했습니다. **GitHub Pages 설정 변경·원격 소스 반영·실제 배포는 아직 수행하지 않았습니다.** 공개 배포 경로를 바꾸는 운영 변경은 사용자의 확인 후 진행합니다. 진행률과 사용자 성과의 기준은 [테스트 문서](FASTAPI_PR_TEST.md#현재-목표와-진행률)를 유지합니다.
+- 배포 소스: `76593af19663cf5e317de3af06474f79302eef94`.
+- [성공한 배포 실행](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45314914485).
+- Pages 게시 방식: `workflow`, HTTPS 강제, 사용자 지정 도메인 없음.
+- `github-pages` 환경: `main` 브랜치 하나만 허용. 별도 태그·다른 브랜치 배포는 허용하지 않습니다.
+- 기존 Sites 사이트는 버전 4로 유지합니다. 쓰기 연결의 `404 NOT_FOUND`를 복구하지 못해 전환했으며, 기존 프로젝트·공개 범위를 바꾸거나 중복 Sites 사이트를 만들지 않았습니다.
 
-## 준비한 배포 경로
+기술 진척과 외부 사용자 성과는 [테스트 문서](FASTAPI_PR_TEST.md#현재-목표와-진행률)에서만 관리합니다. 새 공개 주소는 README·모집 문구·설정이 채워진 테스트 링크에 반영했습니다.
 
-- 소스: 기존 저장소 `main`의 선택된 커밋.
-- Workflow: [Publish FastAPI PR Review](../.github/workflows/fastapi-pr-pages.yml). `workflow_dispatch` 수동 실행만 허용하고 저장소·`main` 조건을 확인합니다.
-- 빌드: 기존 `scripts/build_pr_preview.py`를 재사용합니다. 별도 웹 프레임워크·서버·DB·OpenAI API 키를 추가하지 않습니다.
-- 배포물: 새 출력 디렉터리의 웹 자산만 업로드합니다. 전체 저장소·로컬 런처·분석 산출물을 업로드하지 않습니다. 분석 런타임은 기존 고정 SHA-256으로 검증합니다.
-- 순서: 브라우저·Python 회귀 검사 → 정적 빌드 → Pages artifact 업로드 → 성공한 빌드에 의존하는 배포.
-- 권한: 빌드는 소스·Pages 조회 권한, 배포는 `pages: write`·`id-token: write`만 사용합니다. 개인 액세스 토큰이나 새 Secret을 요구하지 않습니다.
+## 배포 방식
 
-GitHub 공식 문서는 공개 저장소의 GitHub Free 지원, 수동 workflow와 artifact 배포, `github-pages` 환경의 사용을 안내합니다. [커스텀 workflow](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages), [게시 소스 설정](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+[Publish FastAPI PR Review](../.github/workflows/fastapi-pr-pages.yml)는 수동 `workflow_dispatch`만 실행합니다. 소스를 push하거나 PR을 올리는 것만으로는 공개 배포하지 않습니다.
 
-## 확인 후 실행할 순서
+1. 기존 저장소의 `main`에서 배포할 소스와 커밋을 확인합니다.
+2. **Actions → Publish FastAPI PR Review → Run workflow → main**을 선택합니다.
+3. 브라우저 동작 63개와 Python 분석·패키징 62개 회귀 검사에 이어 기존 `scripts/build_pr_preview.py`로 새 디렉터리에 빌드합니다. 실패한 빌드는 배포하지 않습니다.
+4. 선언된 웹 자산 27개만 artifact로 올린 뒤 배포합니다. 저장소 전체·로컬 런처·분석 산출물은 게시하지 않습니다. 고정 Pyodide 런타임 6개 파일의 SHA-256을 확인합니다.
+5. 성공한 실행이 반환한 실제 URL에서 예제와 변경 범위를 확인합니다. 이전 버전으로 돌아가야 하면 검토한 소스 복원 커밋을 `main`에 반영하고 같은 workflow로 재배포합니다. Git 이력을 강제 변경할 필요는 없습니다.
 
-1. 검증된 앱 소스·분석기·테스트·workflow를 하나의 검토 가능한 변경으로 기존 저장소에 반영합니다. 현재 로컬의 무관한 변경을 함께 올리지 않습니다.
-2. 기존 Pages 사이트·도메인·배포 이력을 먼저 확인합니다. 기존 배포가 있다면 이 앱으로 덮어쓰지 않고 사용자와 충돌을 해결합니다. Pages 상태와 실제 기본 주소는 아직 확인하지 않았습니다.
-3. 충돌이 없으면 저장소 `Settings → Pages → Build and deployment → Source`를 `GitHub Actions`로 설정합니다. 저장소 관리자 또는 유지관리 권한이 필요합니다. `github-pages` 환경의 배포 대상을 `main`으로 제한합니다.
-4. `main`에서 `Publish FastAPI PR Review`를 한 번 수동 실행합니다. 실패하면 해당 실행의 로그로 원인을 확인합니다.
-5. 성공한 실행이 반환한 URL에서 PR·저장소 모드와 구조 비교 예제를 확인합니다. 공유 링크와 문서는 이 실제 URL을 확인한 뒤 갱신합니다. 예상 주소를 배포 완료 주소로 안내하지 않습니다.
+빌드는 소스·Pages 조회 권한, 배포는 `pages: write`·`id-token: write`를 사용합니다. 개인 토큰·새 Secret·서버·DB·OpenAI API 키는 필요하지 않습니다. GitHub의 [커스텀 workflow](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)와 [게시 소스 설정](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)을 따릅니다.
 
-Sites의 기존 사이트·공개 범위·프로젝트 식별자는 유지합니다. Pages가 실제로 검증되기 전에는 기존 공유 링크를 교체하지 않습니다. 이후 배포도 수동 workflow 실행으로만 이루어집니다.
+## 검증 결과와 한계
 
-## 검증 범위
+Ubuntu의 Node 22.23.5에서 JavaScript 63개, Python 3.12.16에서 Python 62개가 통과했습니다. 빌드·artifact·배포도 성공했습니다. 공개 HTTPS의 웹 자산 27개는 배포 소스와 해시가 일치하며 JS/WASM MIME·런타임 무결성을 확인했습니다.
 
-로컬에서 workflow YAML·권한·작업 의존성·셸 구문과 테스트·빌드를 확인했습니다. JavaScript 63개·Python 62개 검사가 통과했고 독립 검토에서 중요한 문제는 발견되지 않았습니다. 로컬 Node는 23.11.0이며 workflow의 Node 22·Ubuntu 환경은 아직 실행하지 않았습니다.
+공개 주소의 실제 브라우저에서 #2144의 Python 4/4개·이후 구성요소 38개, SQLModel 구조 비교 예제의 Python 2/2개·라우트 2개·테이블 1개·조건부 후보 1개를 확인했습니다. 사용 목적을 테스트 계획으로 바꾸고 전제·검증·단점을 펼쳐 확인했습니다. 데스크톱 1280×900·모바일 390×844에서 페이지 가로 넘침이 없고 브라우저 오류는 0건입니다.
 
-GitHub Pages의 저장소 하위 경로를 본뜬 `/Generate-Architectures/`에서 웹 자산 27개·HTTP MIME·브라우저 Worker·Python 런타임과 실제 PR·구조 비교 예제를 확인했습니다. 공유 URL 함수의 경로 유지 검사는 통과했지만 브라우저 클립보드 복사는 권한 거부로 검증하지 못했습니다. 결과는 [테스트 문서](FASTAPI_PR_TEST.md#github-pages-배포-준비-검증--2026-11-24)에 기록했습니다. 임시 서버는 종료했습니다.
+실제 클립보드·SVG 다운로드는 이번 공개 검증에서 재검증하지 않았습니다. 제안 적용 후의 성능이나 사용자 수요를 검증한 결과는 아닙니다. GitHub 비인증 API 한도와 정적 분석 한계가 적용됩니다. 상세 근거와 화면은 [공개 배포 검증 기록](FASTAPI_PR_TEST.md#github-pages-공개-배포-검증--2026-11-24)에 있습니다.
 
-GitHub Actions 클라우드 실행, Pages 설정과 환경 보호, 실제 HTTPS 주소는 공개 배포 후 검증할 항목입니다. 로컬 준비를 공개 배포 완료로 집계하지 않습니다.
+## 로컬 실행
+
+```bash
+python3 scripts/build_pr_preview.py --output architecture-output/pr-preview --archive architecture-output/fastapi-pr-review-local.zip
+```
+
+ZIP을 압축 해제한 폴더에서 `python3 start.py`를 실행합니다. Windows는 `py -3 start.py`, macOS는 `START.command`도 사용할 수 있습니다. Python 3.10 이상과 GitHub 접속이 필요합니다. 런타임을 포함하며 서버는 기기의 `127.0.0.1`에서만 동작합니다. Finder 더블 클릭과 Windows 실행 자체는 별도 검증하지 않았습니다.

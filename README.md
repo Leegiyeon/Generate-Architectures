@@ -1,129 +1,71 @@
 # Generate-Architectures
 
-**GitHub 저장소 한 번 분석 → AWS 참조 설계도와 선정 근거를 한국어로 확인하는 도구**입니다. AWS 계정이나 별도 서비스 서버 없이 시작할 수 있으며, 실제 인프라를 변경하지 않습니다.
+무료 [FastAPI PR 리뷰 웹 체험](https://leegiyeon.github.io/Generate-Architectures/)과 GitHub 저장소의 AWS 참조 설계 도구입니다. 현재 개발은 PR 변경·코드 구조 시각화에 집중하며, GitHub App과 AWS 도구 확장은 보류합니다. 로그인이나 OpenAI API 키 없이 시작할 수 있습니다.
 
-> 현재 지원: 코드/설정의 정적 관찰 → AWS To-Be **상세 논리 설계 제안**·서비스 선정 이유·보안/운영 검토·입력 기반 비용 분석. **실제 계정 구성이나 구축 검증 결과는 아닙니다.**
+## FastAPI PR 리뷰 체험 (실험)
 
-## 30초 사용 안내
+웹에서 `FastAPI 예제로 시작` 또는 공개 PR 링크를 입력하세요. 전체·API·DB 관점과 경로·모델 범위를 선택하면 라우트·핸들러·직접 선언한 모델 필드·마이그레이션 변경을 코드 근거와 함께 비교합니다. PR 이전·이후의 파일→라우트·모델 구조도와 SVG, 검토 제안을 제공합니다.
 
-**1.** 대상 GitHub 저장소에 [예제 Workflow](examples/aws-architecture.yml)를 `.github/workflows/aws-architecture.yml`로 복사합니다.
+`저장소 현재 구조`에서는 공개 저장소 URL·40자리 커밋 SHA·Python 소스 루트로 직접 import·라우트·테이블 선언을 탐색합니다. 파일과 사용 목적(온보딩·변경 검토·테스트 계획)에 따라 확인 순서·다음 행동·완료 조건을 제공합니다. `구조 비교 예제`로 현재 구조와 조건부 개선 후보를 확인할 수 있습니다. 후보는 같은 파일의 라우트·테이블 역할 분리와 직접 import 순환 조정 두 규칙이며, 전제·검증·단점을 함께 표시합니다. 제안의 적용이나 개선 효과를 검증한 결과는 아닙니다.
 
-**2.** 해당 저장소의 **Actions → AWS Architecture Review → Run workflow**에서 목적 하나를 선택합니다.
+분석은 브라우저 안에서 수행하며 대상 소스는 실행하지 않습니다. GitHub 비인증 조회 한도가 적용됩니다. 저장소 원본은 최대100개·파일당64KiB, 화면은 파일80개·관계400개로 제한하며 생략·미확인을 알립니다. 실제 호출·DB 접근·운영 인프라, 상속·동적 등록의 영향은 수동 확인해야 합니다.
 
-| 선택 | 목적 | 현재 가능한 결과 |
-| --- | --- | --- |
-| `new_aws` | 신규 서비스 AWS 구축 | 코드 근거를 사용한 AWS To-Be 참조 설계 및 선정 이유 |
-| `migrate_onprem` | 온프레미스에서 AWS 이전 검토 | 코드 근거 기반 AWS 후보 + **현재 인프라 정보 미확인/마이그레이션 판단 보류** 안내 |
+`분석 설정 링크 복사`는 PR·관점·범위를 공유합니다. 링크를 열고 ‘변경 확인’을 누르는 시점의 PR을 읽으며 고정된 결과를 공유하지 않습니다. 검토 계획과 비교 후보는 코드 근거를 포함한 텍스트로 확인할 수 있습니다.
 
-**3.** 실행 후 **Artifacts → aws-architecture-recommendation**을 다운로드하고 압축을 풀어 **`START-HERE.html`**을 엽니다. 한국어 요약은 `START-HERE.md`로도 확인할 수 있습니다.
+[설정이 채워진 테스트 링크·검증 기록](docs/FASTAPI_PR_TEST.md) · [코드 구조·분석 한계](docs/PR_CODE_STRUCTURE.md) · [GitHub Pages 배포·로컬 실행](docs/FASTAPI_PR_DEPLOY.md)
 
-**필수 선택은 목적 하나뿐**입니다. 로그인, AWS 계정 ID/Access Key, OpenAI API 키를 요구하지 않습니다. 코드 변경마다 설계를 자동 반복하지 않고 사용자가 요청할 때만 분석합니다.
+### 로컬 실행
 
-### 무엇을 받나요?
-
-- **AWS 설계도**: 사용 가능한 서비스와 논리 VPC/AZ·연결을 나타내는 To-Be **제안**(SVG/PNG).
-- **왜 그렇게 설계했는지**: 소스에서 관찰한 단서, 선정/제외한 서비스와 검토가 필요한 조건.
-- **보안·운영**: IAM, 네트워크, 확장, 관측, 백업의 검토용 항목(실제 정책 점검 아님).
-- **비용·다음 행동**: 비용 입력이 없으면 **미산정**, 검증이 필요한 정보와 수동 재분석 방법.
-
-기존 중간 JSON·다이어그램 파일 등 개발자용 결과물은 Artifact에 유지하며 처음부터 열 필요가 없습니다.
-
-**보고서 자동 품질 검사:** 실행마다 `report-qa.json`을 생성하고 HTML 내부 링크, SVG/PNG 구조, 참조 연결, 파일 해시를 확인합니다. 이 검사는 **실제 브라우저에서의 글꼴·겹침·클리핑을 확인한 것은 아닙니다**.
-
-별도 CI는 Chromium에서 합성 보고서 13개·78개 화면 상태를 검사합니다. 외부 저장소에서도 신규·이전 입력 없음·가상 Inventory 입력의 3경로 Actions와 다운로드 보고서 3개·18개 화면 상태를 확인했습니다. 도면 전체 수동 승인과 실제 서버·AWS 환경 검증은 남아 있습니다. [검증 범위와 실행 근거](docs/EXTERNAL_E2E.md)를 참고하세요.
-
-### 온프레미스 이전 모드를 선택했다면
-
-기존 서버의 구성을 직접 입력할 수 있습니다. [최소 Inventory 예시](examples/onprem-inventory.example.json)를 대상 저장소의 `.architecture/onprem-inventory.json`에 복사·수정하고 `migrate_onprem`으로 실행하면 **별도 As-Is 구성도(SVG)와 현재 구성 표**를 생성합니다. 모르는 값은 `unknown`으로 남기세요. [입력 방법과 개인정보 주의사항](docs/ONPREM_INVENTORY.md)을 참고하세요.
-
-**Inventory는 검증되지 않은 사용자 선언**입니다. 실제 서버에 접속하지 않으며, DB 위치·네트워크·성능을 코드만으로 확인하지 않습니다. Rehost/Replatform 비교는 *검토 초안*이고 실제 이전 적합성은 미검증입니다.
-
-`migrate_onprem`은 이전 **목적**을 기록하고, 사용자 입력 Inventory가 있다면 **선언형 As-Is 도면**도 보여줍니다. **Rehost/Replatform의 서버·선언 연결별 변경사항, 위험, 수동 전환 체크리스트를 제공하지만 최적 전략, 실제 연결 가능성 및 데이터 이전/다운타임은 검증하지 않습니다.** 입력 Inventory 및 As-Is 기능은 [#34](https://github.com/Leegiyeon/Generate-Architectures/issues/34)에서 구현했습니다. [#35 Migration Assessment](https://github.com/Leegiyeon/Generate-Architectures/issues/35)에서 사용자 선언 기반 AWS 이전 후보 비교 초안을 생성합니다. 실제 AWS 이전은 자동으로 진행하지 않습니다.
-
-## 필요할 때만 요구사항 보완
-
-처음에는 파일 없이 실행할 수 있습니다. 더 구체적인 설계를 원하면 [예제 요구사항 JSON](.architecture/requirements.example.json)을 참고해 대상 저장소에 `.architecture/requirements.json`을 만든 후 예제 Workflow의 `requirements_file` 주석을 해제합니다. 자격증명·개인정보·실제 서버 IP를 GitHub 저장소에 올리지 마세요.
-
-로컬 실행(선택)에는 Python 3.11 이상, Graphviz와 Python 의존성이 필요합니다. AST 파서는 실행 중인 Python이 지원하는 문법을 읽으므로, 이 저장소의 CI와 예제 Workflow처럼 Python 3.14를 권장합니다. 기존 Workflow에 같은 버전을 쓰려면 분석 Action 전에 예제의 `actions/setup-python` 단계를 추가하세요.
-
-```bash
-python3 -m pip install -r requirements-diagrams.txt
-python3 scripts/recommend_architecture.py --repo . --output architecture-output --analysis-goal new_aws
-# 또는 --analysis-goal migrate_onprem
-```
-
-### FastAPI PR 리뷰 체험 (실험)
-
-[웹 체험](https://fastapi-pr-review-gyl.lgy.chatgpt.site)에 공개 PR 링크를 입력하고 전체·API·DB 관점을 선택합니다. 경로와 모델 클래스를 지정해 범위를 바꿀 수 있습니다. 로그인이나 OpenAI API 키 없이 브라우저에서 정적 비교하며, GitHub의 비인증 조회 한도가 적용됩니다. 실제 DB 실행 결과와 상속·다른 파일을 통한 영향은 수동 확인이 필요합니다.
-
-결과의 ‘분석 설정 링크 복사’로 PR·관점·범위를 함께 공유할 수 있습니다. 링크를 열면 입력값만 채워지며, ‘변경 확인’을 누르는 시점의 PR을 분석합니다. 고정된 커밋의 결과 공유는 아닙니다. [API·DB 테스트 링크](docs/FASTAPI_PR_TEST.md#설정이-채워진-테스트-링크)로 시작할 수 있습니다.
-
-로컬 개발본에는 **PR 관련 코드 구조도**를 추가했습니다. 이전·이후의 파일→라우트·모델 선언, 변경 상태, 코드 근거, SVG 저장과 구조 기반 검토 제안을 제공합니다. 이 모드는 PR 변경 파일의 범위이며 실제 호출·운영 인프라는 확인하지 않습니다. [현재 구조와 확장 제안](docs/PR_CODE_STRUCTURE.md), [검증·배포 상태](docs/FASTAPI_PR_TEST.md#현재-목표와-진행률)를 참고하세요. 공개 사이트에는 아직 이 변경을 배포하지 못했습니다.
-
-후속 로컬 개발본의 **저장소 현재 구조**에서는 공개 저장소 URL·40자리 커밋 SHA·Python 소스 루트(`.`/`backend`/`src` 등)를 지정할 수 있습니다. 파일을 선택하고 ‘참조하는 모듈 / 참조받는 파일’을 바꾸면 직접 import의 근거와 라우트·테이블 선언을 확인합니다. 원본은 최대100개·파일당64KiB, 화면은 파일80개·관계400개로 제한하고 생략·미확인을 표시합니다. 패키지 경로 충돌은 파일 수집 한도 밖의 경로까지 확인하며, 조건부·동적 import와 실제 실행 관계는 추정하지 않습니다. 이 확장도 아직 공개 배포 전입니다.
-
-저장소의 **사용 목적**을 온보딩·변경 검토·테스트 계획으로 바꾸면 선택 파일의 직접 선언과 import 근거에 맞춰 확인 순서·다음 행동·완료 조건을 제공합니다. `검토 계획 복사`에는 저장소·고정 커밋·소스 루트·코드 링크·분석 한도를 함께 담습니다. 목적 전환은 추가 조회 없이 동작하며, 테스트 실행 결과나 실제 변경 영향·최적 아키텍처를 판정하지 않습니다.
-
-**구조 개선 후보 비교**는 같은 파일의 라우트·테이블 공존 또는 선택 파일의 직접 import 순환이 관찰될 때만 제공합니다. 현재 구조와 미적용 가정, 바꾸려는 관계·전제·검증·단점을 함께 보고 SVG·텍스트로 내보낼 수 있습니다. `구조 비교 예제`는 SQLModel 공식 저장소의 고정 커밋을 읽습니다. 제안 역할은 실제 새 파일이 아니며 작은 예제에서는 현재 구조 유지가 더 적합할 수도 있습니다. 코드 수정이나 실행 성능 개선은 검증하지 않습니다.
-
-파일 최상위 또는 바로 아래 함수 안에서 직접 만든 FastAPI·APIRouter의 라우트와 핸들러 인자 추가·삭제를 비교합니다. 함수 이름을 함께 표시하며, 해당 함수의 호출 여부와 최종 등록 URL은 확인하지 않습니다. 동적 경로, 불명확한 바인딩, 클래스·더 깊은 함수 안의 변경은 수동 확인 후보로 안내합니다. 웹앱 하단의 ‘피드백·오류 제보’에서 분석한 PR과 선택 범위를 담아 공개 GitHub 이슈 작성 화면을 열 수 있습니다. 제출 전에 내용을 확인하세요. [테스트 모집 문구와 검증 범위](docs/FASTAPI_PR_TEST.md)를 참고하세요.
-
-웹 배포물은 `python3 scripts/build_pr_preview.py --output architecture-output/pr-preview`로 만듭니다. 첫 빌드는 고정된 Pyodide 314.0.4 최소 런타임(약 13 MB)을 공식 배포처에서 받고 SHA-256을 확인합니다. 이후 `python3 -m http.server 8766 --bind 127.0.0.1 --directory architecture-output/pr-preview`로 로컬에서 확인할 수 있습니다.
-
-Sites 쓰기 접근 오류의 대안으로 [GitHub Pages 수동 배포 workflow](.github/workflows/fastapi-pr-pages.yml)를 로컬 준비했습니다. [배포 순서·검증 범위](docs/FASTAPI_PR_DEPLOY.md)를 참고하세요. Pages 설정 변경·원격 소스 반영·공개 배포는 아직 수행하지 않았습니다.
-
-직접 테스트할 로컬 실행 ZIP도 같은 빌더로 만들 수 있습니다.
+웹 자산과 Python 3.10 이상에서 실행할 ZIP을 만듭니다. 첫 빌드는 고정 Pyodide 런타임을 공식 배포처에서 받고 SHA-256을 확인합니다.
 
 ```bash
 python3 scripts/build_pr_preview.py --output architecture-output/pr-preview --archive architecture-output/fastapi-pr-review-local.zip
 ```
 
-ZIP 전체를 압축 해제한 뒤 `fastapi-pr-review` 폴더에서 `python3 start.py`를 실행하면 브라우저가 열립니다(Windows는 `py -3 start.py`). Python 3.10 이상이 필요하며, 분석 런타임은 패키지에 포함됩니다. 서버는 `127.0.0.1`의 빈 포트를 사용하고 Ctrl+C로 종료합니다. 공개 PR 조회에는 인터넷 연결과 GitHub 비인증 API 한도가 적용됩니다. 로컬 패키지 생성은 공개 배포 완료를 뜻하지 않습니다.
+ZIP 전체를 풀고 `fastapi-pr-review` 폴더에서 `python3 start.py`(Windows: `py -3 start.py`)를 실행하세요. macOS에서는 `START.command`도 사용할 수 있습니다. 서버는 `127.0.0.1`의 빈 포트로 열리며 Ctrl+C로 종료합니다. 공개 GitHub 조회에는 인터넷이 필요합니다. ZIP은 웹 출력 폴더 밖에 지정하세요.
 
-ZIP 경로는 웹 출력 폴더 밖에 지정해야 합니다. 입력 파일과의 충돌을 거부하며, 압축 도중 실패하면 기존 ZIP을 유지합니다.
-
-#### 로컬 Git 저장소 비교
-
-이미 받아 둔 Git 저장소의 두 커밋을 비교합니다. Python 3.10 이상과 Git만 필요하며, 대상 코드는 실행하지 않습니다. 대상 코드가 더 최신 Python 문법을 쓴다면 그 버전을 사용하세요.
+이미 받은 Git 저장소도 대상 코드를 실행하지 않고 비교합니다.
 
 ```bash
 python3 scripts/preview_fastapi_pr.py --repo /path/to/checkout --base BASE_SHA --head HEAD_SHA
 ```
 
-열린 PR은 기준 브랜치와 PR 브랜치의 공통 조상 커밋을 `BASE_SHA`에, PR 커밋을 `HEAD_SHA`에 넣으세요. [공개 FastAPI PR #2144](https://github.com/fastapi/full-stack-fastapi-template/pull/2144/files)는 병합 커밋 `3c1f7c4cdb67`과 부모 `2720308701fe`를 비교하면 목록 핸들러 2개, 테이블 모델의 `created_at` 필드 2개, 검토할 Alembic 파일 1개가 나옵니다.
+열린 PR의 `BASE_SHA`에는 기준·PR 브랜치의 공통 조상을, `HEAD_SHA`에는 PR 커밋을 지정합니다. `--focus api|db|all`, `--path`, `--model src/orm.py:Account`, `--response-model`로 범위를 바꿀 수 있습니다. Python 3.10 이상과 Git이 필요하며 대상 문법을 지원하는 Python을 사용하세요.
 
-| 리뷰 목적 | 옵션 | 보고서에 표시되는 근거 |
-| --- | --- | --- |
-| API 사용처 확인 | `--focus api` | 라우트와 핸들러 변경, 명시한 응답 모델과 `order_by` 호출 단서. `--response-model backend/app/models.py:UserPublic`을 추가하면 해당 클래스의 필드 변경도 표시합니다. |
-| DB 변경 검토 | `--focus db` | SQLModel 테이블 필드와 Alembic `upgrade()`의 직접적인 컬럼 추가·삭제·변경 선언, 명시한 타입·`nullable`·`server_default`·컬럼 이름 변경. `existing_*`는 기존 상태의 선언으로 구분합니다. `--model src/orm.py:Account`로 커스텀 모델을 지정할 수 있습니다. |
-| 전체 검토 | `--focus all` (기본값) | API와 DB 결과 모두 |
+## 30초 사용 안내
 
-`--path backend/app`으로 변경 파일 범위를 좁힐 수 있습니다. `--path`, `--model`, `--response-model`은 각각 반복 지정할 수 있습니다. 변경 위치는 비교 대상 커밋의 파일과 줄 번호를 표시하며, 삭제 항목은 이전 커밋의 위치를 표시합니다.
+기존 AWS 참조 설계 도구는 실제 인프라를 변경하지 않습니다.
 
-라우트는 선언 위치의 경로까지만 비교합니다. 모델 필드는 지정한 클래스에 직접 타입을 선언한 속성이 대상입니다. 설정으로 완성되는 URL, 다른 파일이나 상속을 통한 응답 변경, 마이그레이션 실행 결과와 기존 데이터 영향은 수동 검토가 필요합니다. 어떤 모드에서도 변경 파일 목록을 확인할 수 있습니다.
+> 현재 지원: 코드/설정의 정적 관찰 → AWS To-Be **상세 논리 설계 제안**·서비스 선정 이유·보안/운영 검토·입력 기반 비용 분석. **실제 계정 구성이나 구축 검증 결과는 아닙니다.**
 
-### 보안·신뢰성
+1. 대상 저장소에 [예제 Workflow](examples/aws-architecture.yml)를 `.github/workflows/aws-architecture.yml`로 복사합니다.
+2. **Actions → AWS Architecture Review → Run workflow**에서 목적 하나를 선택합니다.
+3. **Artifacts → aws-architecture-recommendation**을 내려받아 압축을 풀고 **`START-HERE.html`**을 엽니다. 한국어 요약은 `START-HERE.md`에도 있습니다.
 
-- 보고서는 **코드에서 확인한 사실 / 사용자 입력 / 가정 / 미확인**을 구분합니다. 외부 AI와 AWS 가격 조회는 기본 비활성화입니다.
-- AWS 비용·보안·성능·가용성은 실제 계정에서 검증하지 않았습니다. 근거 없는 수치·리소스·완료 판정은 만들지 않습니다.
-- AWS 자동 배포, 리소스 생성·수정·삭제, 사용자 Access Key 보관은 하지 않습니다.
-- 외부 저장소에서 재사용할 때 예제의 `@main`은 신뢰할 수 있는 **커밋 SHA/릴리스 태그로 고정**하는 것이 좋습니다. GitHub Actions에서 분석 코드가 저장소에 접근하는 권한도 검토하세요.
-
-## 상세 정보(선택)
-
-| 문서 | 필요한 경우 |
+| 목적 | 결과 |
 | --- | --- |
-| [제품 동작/지원 범위](docs/PRODUCT.md) | 신규·온프레미스 모드 차이와 현재 한계 |
-| [온프레미스 현재 구성 입력](docs/ONPREM_INVENTORY.md) | 비기밀 Inventory, As-Is 도면 |
-| [AWS 이전 방식·위험 비교](docs/MIGRATION_ASSESSMENT.md) | Rehost / Replatform 변경사항과 검증 전제 |
-| [간편 제품 로드맵](docs/LEAN_MIGRATION_ROADMAP.md) | 다음 개발 우선순위 |
-| [사용자 보고서](docs/REPORTING.md) | HTML/산출물 확인법 |
-| [외부 저장소 실행 검증](docs/EXTERNAL_E2E.md) | 3경로 Actions·Artifact·브라우저 검증과 남은 범위 |
-| [실제 공개 저장소 감사](docs/REAL_REPOSITORY_AUDIT.md) | 프레임워크·API·DB·인증 탐지의 확인된 한계 |
-| [요구사항·비용 입력](docs/COST_SCENARIOS.md) | 고급 요금 시나리오 |
-| [공식 비용 계산 예시 검증](docs/OFFICIAL_COST_VALIDATION.md) | 공식 예시 3건의 산술 회귀, SKU·실제 견적 검증과의 차이 |
-| [부하 테스트 입력](docs/CAPACITY_EVIDENCE.md) | 입력된 성능 집계값 검토 |
-| [AWS 서비스 대안 비용](docs/ALTERNATIVE_COST_COMPARISON.md) | ECS/EC2/Lambda 입력 비용·운영 비교 |
-| [개발자 기술 구성](docs/ARCHITECTURE.md) | 코드 파서·보안 경계·아키텍처 구성 |
+| `new_aws` 신규 서비스 AWS 구축 | 코드 근거에 따른 AWS To-Be 참조 설계·선정 이유 |
+| `migrate_onprem` 온프레미스 이전 검토 | AWS 후보와 현재 인프라 미확인·판단 보류 안내 |
 
-**Local AWS Inspector**와 로컬 온프레미스 수집기는 아직 미구현입니다. GitHub App 서버 코드는 실제 설치·운영되는 서비스가 아니며 필수 설치 대상이 아닙니다. IaC 자동 생성/자동 배포는 제품 범위 밖입니다.
+필수 선택은 목적 하나이며 AWS 계정 ID·Access Key·OpenAI API 키가 필요하지 않습니다. 분석은 수동 실행하고 push·PR에서는 테스트만 수행합니다. 설계도(SVG/PNG), 코드 근거·가정, 보안·운영 검토 항목과 다음 행동을 제공합니다. 비용 입력이 없으면 **미산정**입니다.
+
+온프레미스 모드에서는 [최소 Inventory 예시](examples/onprem-inventory.example.json)를 `.architecture/onprem-inventory.json`에 복사해 현재 구성을 입력할 수 있습니다. 모르는 값은 `unknown`으로 남기세요. **검증되지 않은 사용자 선언**으로 As-Is 도면과 Rehost/Replatform 비교 초안을 만들며, 실제 서버 연결·데이터 이전·다운타임·최적 전략은 검증하지 않습니다. [입력 안내](docs/ONPREM_INVENTORY.md), [이전 후보 비교](docs/MIGRATION_ASSESSMENT.md)를 참고하세요.
+
+더 구체적인 요구사항은 [예제 JSON](.architecture/requirements.example.json)을 `.architecture/requirements.json`으로 복사한 뒤 Workflow의 `requirements_file` 주석을 해제합니다. 자격증명·개인정보·실제 서버 IP를 저장소에 올리지 마세요.
+
+로컬 AWS 분석에는 Python 3.11 이상(권장 3.14), Graphviz와 Python 의존성이 필요합니다.
+
+```bash
+python3 -m pip install -r requirements-diagrams.txt
+python3 scripts/recommend_architecture.py --repo . --output architecture-output --analysis-goal new_aws
+```
+
+보고서 품질 검사는 링크·SVG/PNG 구조·참조·해시를 확인하고 별도 CI는 Chromium에서 합성 보고서를 검사합니다. 실제 AWS 비용·보안·성능·가용성과 도면 전체 수동 승인은 미검증입니다. [외부 실행·브라우저 검증 범위](docs/EXTERNAL_E2E.md)를 참고하세요.
+
+## 보안과 상세 정보
+
+코드에서 확인한 사실·사용자 입력·가정·미확인을 구분합니다. 외부 AI·AWS 가격 조회는 기본 비활성화이며 AWS 자동 배포·Access Key 보관을 하지 않습니다. 다른 저장소에서 Action을 사용할 때는 신뢰할 커밋 SHA/릴리스 태그로 고정하고 실행 권한을 검토하세요.
+
+**Local AWS Inspector**와 로컬 온프레미스 수집기는 미구현입니다. GitHub App 서버 코드는 실제 설치·운영 서비스가 아니며 필수 설치 대상이 아닙니다. IaC 자동 생성·자동 배포는 제품 범위 밖입니다.
+
+[제품·지원 범위](docs/PRODUCT.md) · [현재 로드맵](docs/ROADMAP.md) · [사용자 보고서](docs/REPORTING.md) · [개발자 구성](docs/ARCHITECTURE.md) · [실제 저장소 감사](docs/REAL_REPOSITORY_AUDIT.md) · [요구사항·비용 입력](docs/COST_SCENARIOS.md) · [비용 예시 검증](docs/OFFICIAL_COST_VALIDATION.md) · [부하 시험 입력](docs/CAPACITY_EVIDENCE.md) · [AWS 대안 비용](docs/ALTERNATIVE_COST_COMPARISON.md)
