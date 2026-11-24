@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { copyOutput } from "../app/pr_preview/copy-output.js";
 import { repositoryView } from "../app/pr_preview/repository-view.js";
+import { repositorySettings } from "../app/pr_preview/review-link.js";
 
 // The component needs only DOM construction, events and text selection. No browser
 // implementation is emulated: layout, native details behavior and clipboard
@@ -16,11 +17,14 @@ class Element {
     this.isConnected = true;
     this.open = false;
     this.disabled = false;
-    this.value = "";
+    this._value = "";
     this.textContent = "";
   }
   set innerHTML(value) { throw new Error("Copy output must not interpret HTML: " + value); }
   append(...children) { this.children.push(...children); }
+  replaceChildren(...children) { this.children = children; }
+  get value() { return this._value || (this.tagName === "select" ? this.children[0]?.value || "" : ""); }
+  set value(value) { this._value = value; }
   setAttribute(name, value) { this.attributes[name] = value; }
   addEventListener(name, listener) { this.listeners[name] = listener; }
   dispatch(name) { return this.listeners[name]?.(); }
@@ -29,7 +33,12 @@ class Element {
 }
 
 function install(t, clipboard) {
-  const document = { createElement(tag) { return new Element(tag, this); }, activeElement: null };
+  const document = {
+    createElement(tag) { return new Element(tag, this); },
+    createElementNS(namespace, tag) { return this.createElement(tag); },
+    createTextNode(text) { const value = this.createElement("#text"); value.textContent = text; return value; },
+    activeElement: null,
+  };
   for (const [key, value] of [["document", document], ["navigator", { clipboard }]]) {
     const descriptor = Object.getOwnPropertyDescriptor(globalThis, key);
     Object.defineProperty(globalThis, key, { value, configurable: true });
@@ -154,4 +163,83 @@ test("repository latest-origin heading keeps the exact pinned SHA and branch as 
   assert.match(heading.children[2].textContent, /기본 브랜치 feature\/<latest>의 최신 커밋을 위 SHA로 고정/);
   const explicit = repositoryView({ ...snapshot, resolvedFrom: undefined }, report);
   assert.equal(explicit.children[0].children.length, 2);
+});
+
+function descendants(root) { return [root, ...root.children.flatMap(descendants)]; }
+
+function repositoryFixture() {
+  const snapshot = { url: "https://github.com/example/repo", repo: "example/repo", head: "b".repeat(40),
+    root: "src", totalFiles: 2, warnings: [], resolvedFrom: { branch: "main" } };
+  const report = { nodes: [
+    { id: "entry-id", path: "src/entry.py", detail: "직접 선언", declarations: [{ kind: "route", label: "GET /", detail: "entry", line: 2 }] },
+    { id: "model-id", path: "src/모델 + #.py", detail: "직접 선언", declarations: [] },
+  ], edges: [], parsed_files: 2, unreadable_paths: [], unresolved: [], warnings: [],
+  omitted_nodes: 0, omitted_edges: 0, omitted_unresolved: 0 };
+  return { snapshot, report };
+}
+
+const sharingOutput = section => parts(section.children.find(child => child.className === "copy-actions").children[0]);
+const control = (section, id) => descendants(section).find(item => item.id === id);
+
+test("repository sharing restores file path, direction and purpose and pins the analyzed SHA", async t => {
+  const writes = [];
+  install(t, { async writeText(value) { writes.push(value); } });
+  const { snapshot, report } = repositoryFixture();
+  const selection = { file: "src/모델 + #.py", direction: "incoming", purpose: "testing" };
+  const section = repositoryView(snapshot, report, selection, "https://example.com/service/?old=discard#old");
+  assert.equal(control(section, "repository-file").value, "model-id");
+  assert.equal(control(section, "repository-direction").value, "incoming");
+  assert.equal(control(section, "repository-purpose").value, "testing");
+  const ui = sharingOutput(section);
+  await ui.button.dispatch("click");
+  assert.deepEqual(repositorySettings(new URL(writes[0]).hash), {
+    url: snapshot.url, commit: snapshot.head, root: "src", ...selection,
+  });
+  assert.equal(new URL(writes[0]).pathname, "/service/");
+  assert.equal(new URL(writes[0]).search, "");
+  assert.match(ui.status.textContent, /고정 커밋/);
+});
+
+test("changing repository selection replaces stale share output and copies current controls", async t => {
+  const writes = [];
+  install(t, { async writeText(value) { writes.push(value); } });
+  const { snapshot, report } = repositoryFixture();
+  const section = repositoryView(snapshot, report, {}, "https://example.com/service/");
+  const old = sharingOutput(section);
+  old.manual.open = true;
+  old.manual.dispatch("toggle");
+  const file = control(section, "repository-file");
+  file.value = "model-id";
+  file.dispatch("change");
+  const purpose = control(section, "repository-purpose");
+  purpose.value = "change";
+  purpose.dispatch("change");
+  const direction = control(section, "repository-direction");
+  direction.value = "incoming";
+  direction.dispatch("change");
+  const current = sharingOutput(section);
+  assert.notEqual(current.root, old.root);
+  assert.equal(current.text.value, "");
+  assert.equal(current.status.textContent, "");
+  await current.button.dispatch("click");
+  assert.deepEqual(repositorySettings(new URL(writes[0]).hash), {
+    url: snapshot.url, commit: snapshot.head, root: "src", file: "src/모델 + #.py", direction: "incoming", purpose: "change",
+  });
+});
+
+test("unavailable shared files are disclosed and empty reports still share the pinned input", async t => {
+  const writes = [];
+  install(t, { async writeText(value) { writes.push(value); } });
+  const { snapshot, report } = repositoryFixture();
+  const requested = { file: "src/missing.py", direction: "incoming", purpose: "testing" };
+  const section = repositoryView(snapshot, report, requested, "https://example.com/service/");
+  assert.equal(control(section, "repository-file").value, "entry-id");
+  assert.ok(descendants(section).some(item => item.textContent.includes("공유된 파일 src/missing.py") && item.textContent.includes("기본 파일로")));
+  const empty = repositoryView(snapshot, { ...report, nodes: [], parsed_files: 0 }, requested, "https://example.com/service/");
+  assert.ok(descendants(empty).some(item => item.textContent.includes("공유된 파일 src/missing.py")));
+  await sharingOutput(empty).button.dispatch("click");
+  const settings = repositorySettings(new URL(writes[0]).hash);
+  assert.equal(settings.commit, snapshot.head);
+  assert.equal(settings.file, "");
+  assert.equal(settings.root, "src");
 });

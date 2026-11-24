@@ -3,6 +3,7 @@ import { downloadSVG } from "./architecture.js";
 import { repositoryReview, repositoryReviewText } from "./repository-review.js";
 import { repositoryProposals, repositoryProposalText } from "./repository-proposals.js";
 import { copyOutput } from "./copy-output.js";
+import { repositoryURL } from "./review-link.js";
 
 const namespace = "http://www.w3.org/2000/svg";
 const MAX_NEIGHBORS = 12;
@@ -82,8 +83,9 @@ export function repositoryFocus(report, id, direction = "outgoing") {
     omitted_neighbors: Math.max(0, neighbors.length - MAX_NEIGHBORS) };
 }
 
-export function defaultRepositoryFile(report) {
-  return report.nodes.find(item => item.declarations?.some(declaration => declaration.kind === "route"))?.id
+export function defaultRepositoryFile(report, path) {
+  return report.nodes.find(item => item.path === path)?.id
+    || report.nodes.find(item => item.declarations?.some(declaration => declaration.kind === "route"))?.id
     || report.nodes.find(item => report.edges.some(edge => edge.source === item.id))?.id
     || report.nodes[0]?.id;
 }
@@ -273,7 +275,7 @@ function proposalSection(snapshot, report, id) {
   return section;
 }
 
-export function repositoryView(snapshot, report) {
+export function repositoryView(snapshot, report, settings = {}, baseURL) {
   const section = node("section", undefined, "repository-result");
   const heading = node("header", undefined, "report-header");
   heading.append(node("h2", "저장소 현재 코드 구조", "report-title"));
@@ -282,45 +284,68 @@ export function repositoryView(snapshot, report) {
     heading.append(node("p", "기본 브랜치 " + snapshot.resolvedFrom.branch + "의 최신 커밋을 위 SHA로 고정했습니다. 다시 분석하면 최신 커밋을 확인합니다.", "help repository-limits"));
   }
   section.append(heading);
+  let select, direction, purpose;
+  const sharing = node("div", undefined, "copy-actions");
+  function showSharing() {
+    sharing.replaceChildren(copyOutput({
+      label: "분석 설정 링크 복사",
+      fallbackLabel: "복사할 분석 설정 링크", rows: 3,
+      getText: () => repositoryURL(baseURL ?? window.location.href, {
+        url: snapshot.url || "https://github.com/" + snapshot.repo,
+        commit: snapshot.head, root: snapshot.root,
+        file: report.nodes.find(item => item.id === select?.value)?.path || "",
+        direction: direction?.value || "outgoing", purpose: purpose?.value || "onboarding",
+      }),
+      successMessage: "저장소·고정 커밋·루트·파일·참조 방향·목적을 담은 링크를 복사했습니다. 링크에서 ‘현재 구조 확인’을 누르세요.",
+    }));
+  }
+  section.append(sharing);
   section.append(node("p", `범위의 Python ${snapshot.totalFiles}개 중 ${report.parsed_files}개 구문을 읽고 파일 ${report.nodes.length}개를 표시합니다. 고정 커밋의 직접 import 선언과 라우트·테이블 선언을 확인합니다.`, "coverage-note"));
   section.append(node("p", "소스 루트를 기준으로 모듈 경로가 하나로 정해지는 관계만 연결합니다. 패키지에서 가져오는 이름의 재수출·실제 로딩, 함수 호출, 최종 라우터 등록·운영 인프라는 확인하지 않습니다.", "help repository-limits"));
   for (const warning of snapshot.warnings) section.append(node("p", warning, "coverage-note"));
   if (report.omitted_nodes || report.omitted_edges) section.append(node("p", `표시 한도 등으로 파일 ${report.omitted_nodes}개·관계 ${report.omitted_edges}개를 생략했습니다.`, "coverage-note"));
   if (report.unreadable_paths.length) section.append(node("p", "읽거나 해석하지 못한 파일: " + report.unreadable_paths.join(", "), "coverage-note"));
+  if (settings.file && !report.nodes.some(item => item.path === settings.file)) {
+    section.append(node("p", "공유된 파일 " + settings.file + "을 현재 분석 범위에서 표시할 수 없습니다. "
+      + (report.nodes.length ? "기본 파일로 열었습니다. " : "") + "읽기 실패·표시 한도를 확인하세요.", "coverage-note"));
+  }
   if (!report.nodes.length) {
+    showSharing();
     section.append(node("p", "표시할 Python 파일이 없습니다. 소스 루트와 읽기 실패 안내를 확인하세요.", "empty"));
     return section;
   }
   const controls = node("div", undefined, "repository-fields");
   const fileLabel = node("label", "확인할 파일", "advanced-field");
-  const select = node("select");
+  select = node("select");
   select.id = "repository-file";
   for (const item of report.nodes) {
     const option = node("option", item.path);
     option.value = item.id;
     select.append(option);
   }
-  select.value = defaultRepositoryFile(report);
+  select.value = defaultRepositoryFile(report, settings.file);
   fileLabel.append(select);
   const goalLabel = node("label", "확인할 내용", "advanced-field");
-  const direction = node("select");
+  direction = node("select");
   direction.id = "repository-direction";
   for (const [value, text] of [["outgoing", "이 파일이 참조하는 모듈"], ["incoming", "이 파일을 참조하는 파일"]]) {
     const option = node("option", text);
     option.value = value;
     direction.append(option);
   }
+  direction.value = settings.direction === "incoming" ? "incoming" : "outgoing";
   goalLabel.append(direction);
   controls.append(fileLabel, goalLabel);
   section.append(controls);
   const purposeLabel = node("label", "사용 목적", "advanced-field repository-purpose");
-  const purpose = node("select");
+  purpose = node("select");
   purpose.id = "repository-purpose";
   for (const [value, text] of [["onboarding", "온보딩 · 읽을 순서"], ["change", "변경 검토 · 확인할 사용 지점"], ["testing", "테스트 계획 · 검증할 계약"]]) {
     const option = node("option", text);
     option.value = value;
     purpose.append(option);
   }
+  purpose.value = ["change", "testing"].includes(settings.purpose) ? settings.purpose : "onboarding";
   purposeLabel.append(purpose);
   section.append(purposeLabel, node("p", "같은 분석 결과에서 목적에 맞는 확인 순서를 제안합니다. 목적 전환에는 추가 조회가 필요하지 않습니다.", "help"));
   const plan = node("div");
@@ -379,10 +404,11 @@ export function repositoryView(snapshot, report) {
     declarations.append(focus.selected.declarations.length ? declarationList : node("p", "지원하는 직접 라우트·테이블 선언이 없습니다.", "empty"));
     if (focus.selected.omitted_declarations) declarations.append(node("p", `선언 ${focus.selected.omitted_declarations}개는 목록 한도로 생략했습니다.`, "coverage-note"));
     body.append(declarations);
+    showSharing();
   }
   select.addEventListener("change", show);
   direction.addEventListener("change", show);
-  purpose.addEventListener("change", showReview);
+  purpose.addEventListener("change", () => { showReview(); showSharing(); });
   save.addEventListener("click", () => downloadSVG(currentSVG, `repository-${snapshot.head.slice(0, 7)}-${direction.value}.svg`));
   show();
   const unknown = node("details", undefined, "structure-list");

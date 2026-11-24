@@ -19,13 +19,13 @@ export function parseRepositoryURL(input) {
   return { repo, url: "https://github.com/" + repo };
 }
 
-function checkedCommit(input) {
+export function repositoryCommit(input) {
   const value = typeof input === "string" ? input.trim().toLowerCase() : "";
   if (!/^[a-f0-9]{40}$/.test(value)) throw new Error("고정할 커밋의 전체 SHA 40자리를 입력해 주세요.");
   return value;
 }
 
-function safePath(path) {
+export function isRepositoryPath(path) {
   return typeof path === "string" && path.length > 0 && path.length <= 1000
     && !/[\\\u0000-\u001f\u007f]/.test(path)
     && path.split("/").every(part => part && part !== "." && part !== "..");
@@ -35,7 +35,7 @@ export function repositoryRoot(input) {
   const value = typeof input === "string" ? input.trim() : "";
   if (!value || value === ".") return ".";
   const root = value.replace(/\/$/, "");
-  if (!safePath(root) || root.split("/")[0].includes(":")) {
+  if (!isRepositoryPath(root) || root.split("/")[0].includes(":")) {
     throw new Error("소스 루트는 . 또는 backend 같은 저장소 상대 경로로 입력해 주세요.");
   }
   return root;
@@ -44,7 +44,7 @@ export function repositoryRoot(input) {
 export async function loadRepository(input, commit, sourceRoot, signal, progress = () => {}) {
   const parsed = parseRepositoryURL(input);
   const latest = commit === undefined || (typeof commit === "string" && !commit.trim());
-  let head = latest ? null : checkedCommit(commit);
+  let head = latest ? null : repositoryCommit(commit);
   const root = repositoryRoot(sourceRoot);
   signal.throwIfAborted();
   let key = head ? JSON.stringify([parsed.repo.toLowerCase(), head, root]) : null;
@@ -103,7 +103,7 @@ export async function loadRepository(input, commit, sourceRoot, signal, progress
   const seen = new Set();
   let excludedLinks = 0;
   for (const entry of listing.tree) {
-    if (!safePath(entry.path)) throw new Error("저장소 파일 목록에 올바르지 않은 경로가 있습니다.");
+    if (!isRepositoryPath(entry.path)) throw new Error("저장소 파일 목록에 올바르지 않은 경로가 있습니다.");
     if (root !== "." && !entry.path.startsWith(root + "/")) continue;
     if (!entry.path.endsWith(".py")) continue;
     if (seen.has(entry.path)) throw new Error("저장소 파일 목록에 중복 경로가 있습니다.");

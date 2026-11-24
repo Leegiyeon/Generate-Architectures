@@ -36,3 +36,11 @@ test("initial selection shows a route file or a known dependency instead of an e
   assert.equal(defaultRepositoryFile({ nodes: [empty, file("main.py")], edges: [{ source: "main.py", target: "__init__.py" }] }), "main.py");
   assert.equal(defaultRepositoryFile({ nodes: [], edges: [] }), undefined);
 });
+test("a shared file path selects its current node ID before default route priority", () => {
+  const report = { nodes: [
+    { id: "route-id", path: "routes.py", declarations: [{ kind: "route" }] },
+    { id: "shared-id", path: "소스/모델 + #.py", declarations: [] },
+  ], edges: [] };
+  assert.equal(defaultRepositoryFile(report, "소스/모델 + #.py"), "shared-id");
+  assert.equal(defaultRepositoryFile(report, "missing.py"), "route-id");
+});

@@ -1,6 +1,6 @@
 import { loadPull, parsePullURL, sourceURL } from "./github.js";
 import { feedbackURL } from "./feedback.js";
-import { reviewSettings, reviewURL } from "./review-link.js";
+import { reviewSettings, reviewURL, repositorySettings } from "./review-link.js";
 import { architectureSection } from "./architecture.js";
 import { evidenceLocation } from "./evidence.js";
 import { loadRepository } from "./repository.js";
@@ -20,6 +20,7 @@ feedbackLink.href = feedbackURL();
 const exampleURL = "https://github.com/fastapi/full-stack-fastapi-template/pull/2144";
 let activeController;
 let lastReport;
+let sharedRepository;
 let busy = false;
 
 function selectMode(mode) {
@@ -32,6 +33,7 @@ function selectMode(mode) {
   }
   results.hidden = true;
   lastReport = null;
+  sharedRepository = null;
   errorBox.hidden = true;
   progress("");
   feedbackLink.href = feedbackURL();
@@ -228,6 +230,16 @@ async function run(event) {
 function restoreSharedSettings() {
   if (busy) return;
   try {
+    const repository = repositorySettings(window.location.hash);
+    if (repository) {
+      selectMode("repository");
+      document.getElementById("repository-url").value = repository.url;
+      document.getElementById("repository-commit").value = repository.commit;
+      document.getElementById("repository-root").value = repository.root;
+      sharedRepository = repository;
+      progress("공유된 저장소·고정 커밋·루트와 파일·참조 방향·목적을 불러왔습니다. ‘현재 구조 확인’을 누르면 지정한 커밋을 분석합니다.");
+      return;
+    }
     const shared = reviewSettings(window.location.hash);
     if (!shared) return;
     selectMode("pr");
@@ -242,6 +254,7 @@ function restoreSharedSettings() {
     feedbackLink.href = feedbackURL({ url: shared.url }, null, shared.options, shared.focus);
     progress("공유된 PR·관점·범위를 불러왔습니다. ‘변경 확인’을 누르면 최신 PR을 분석합니다.");
   } catch (error) {
+    sharedRepository = null;
     results.hidden = true;
     lastReport = null;
     errorBox.textContent = error.message;
@@ -276,7 +289,8 @@ async function runRepository(event) {
     const report = await analyze({ kind: "repository", root: snapshot.root, files: snapshot.files, known_paths: snapshot.knownPaths }, controller.signal, progress);
     controller.signal.throwIfAborted();
     results.setAttribute("aria-label", "저장소 구조 분석 결과");
-    results.replaceChildren(repositoryView(snapshot, report));
+    results.replaceChildren(repositoryView(snapshot, report, sharedRepository ?? {}, window.location.href));
+    sharedRepository = null;
     results.hidden = false;
     progress("현재 구조를 확인했습니다. 파일과 사용 목적을 선택해 코드 근거와 검토 계획을 살펴보세요.");
     jumpTo(results);
@@ -298,7 +312,11 @@ restoreSharedSettings();
 cancelButton.addEventListener("click", () => activeController?.abort());
 for (const mode of ["pr", "repository"]) document.getElementById("mode-" + mode).addEventListener("click", () => selectMode(mode));
 repositoryForm.addEventListener("submit", runRepository);
+repositoryForm.addEventListener("input", () => {
+  if (sharedRepository) { sharedRepository = null; progress(""); }
+});
 function repositoryExample(repo, commit, root) {
+  sharedRepository = null;
   document.getElementById("repository-url").value = "https://github.com/" + repo;
   document.getElementById("repository-commit").value = commit;
   document.getElementById("repository-root").value = root;
