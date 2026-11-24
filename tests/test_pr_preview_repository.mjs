@@ -307,6 +307,20 @@ test("abort during a source read propagates and is not cached", async t => {
   assert.ok(retryRequests.includes(api));
 });
 
+test("a late completed source after cancellation cannot publish progress or cache", async t => {
+  const { loadRepository } = await loader();
+  const controller = new AbortController();
+  fixture(t, { source: () => { controller.abort(); return new Response("value = 1\n"); } });
+  const messages = [];
+  await assert.rejects(loadRepository("https://github.com/" + repository, head, ".", controller.signal,
+    message => messages.push(message)), { name: "AbortError" });
+  assert.equal(messages.some(message => message.startsWith("고정 커밋의 Python 소스")), false);
+  t.mock.restoreAll();
+  const retryRequests = fixture(t);
+  await loadRepository("https://github.com/" + repository, head, ".", new AbortController().signal);
+  assert.ok(retryRequests.includes(api));
+});
+
 test("successful cache is keyed by commit/root, capped at two and expires after three minutes", async t => {
   const { loadRepository } = await loader();
   const requests = fixture(t);

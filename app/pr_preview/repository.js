@@ -139,6 +139,7 @@ export async function loadRepository(input, commit, sourceRoot, signal, progress
           file.warnings.push(error.message);
         }
       }
+      signal.throwIfAborted();
       progress(`고정 커밋의 Python 소스를 읽고 있습니다. ${++completed} / ${files.length}`);
     }
   });

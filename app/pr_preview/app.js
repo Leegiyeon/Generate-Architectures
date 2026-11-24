@@ -6,6 +6,7 @@ import { evidenceLocation } from "./evidence.js";
 import { loadRepository } from "./repository.js";
 import { repositoryView } from "./repository-view.js";
 import { copyOutput } from "./copy-output.js";
+import { analyze } from "./worker-client.js";
 
 const form = document.querySelector("#review-form");
 const repositoryForm = document.querySelector("#repository-form");
@@ -13,10 +14,11 @@ const results = document.querySelector("#results");
 const status = document.querySelector("#status");
 const errorBox = document.querySelector("#error");
 const feedbackLink = document.querySelector("#feedback-link");
+const cancelButton = document.querySelector("#analysis-cancel");
+const cancelActions = document.querySelector("#analysis-cancel-actions");
 feedbackLink.href = feedbackURL();
 const exampleURL = "https://github.com/fastapi/full-stack-fastapi-template/pull/2144";
-let worker;
-let requestId = 0;
+let activeController;
 let lastReport;
 let busy = false;
 
@@ -66,33 +68,18 @@ function jumpTo(element) {
   element.scrollIntoView({ block: "start" });
 }
 
-function analyze(payload) {
-  if (!worker) worker = new Worker("./analyzer-worker.js", { type: "module" });
-  const activeWorker = worker;
-  const id = ++requestId;
-  progress("브라우저 분석기를 준비하고 있습니다. 첫 실행은 잠시 걸립니다.");
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => finish(new Error("분석 준비 시간이 초과되었습니다. 네트워크를 확인하고 다시 시도해 주세요.")), 90000);
-    function finish(error, result) {
-      clearTimeout(timer);
-      activeWorker.removeEventListener("message", receive);
-      activeWorker.removeEventListener("error", failed);
-      if (error) {
-        activeWorker.terminate();
-        if (worker === activeWorker) worker = null;
-        reject(error);
-      } else resolve(result);
-    }
-    function receive(event) {
-      if (event.data.id !== id) return;
-      if (event.data.error) finish(new Error("소스 분석을 완료하지 못했습니다. " + event.data.error));
-      else finish(null, event.data.result);
-    }
-    function failed() { finish(new Error("브라우저 분석기를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.")); }
-    activeWorker.addEventListener("message", receive);
-    activeWorker.addEventListener("error", failed);
-    activeWorker.postMessage({ id, payload });
-  });
+function showAnalysisError(error, signal) {
+  if (signal.aborted && signal.reason?.name === "AbortError") {
+    progress("분석을 취소했습니다. 입력한 설정을 유지했으니 수정하거나 다시 분석할 수 있습니다.");
+    return true;
+  }
+  errorBox.textContent = signal.aborted
+    ? "조회·분석 시간이 90초를 초과했습니다. 경로·소스 루트를 좁히거나 네트워크를 확인하고 다시 시도해 주세요."
+    : error.message;
+  errorBox.hidden = false;
+  progress("");
+  jumpTo(errorBox);
+  return false;
 }
 
 function locationLink(location, pull) {
@@ -200,34 +187,41 @@ async function run(event) {
   errorBox.textContent = "";
   feedbackLink.href = feedbackURL();
   results.hidden = true;
+  lastReport = null;
   busy = true;
   const controls = analysisControls();
   const controller = new AbortController();
+  activeController = controller;
+  cancelActions.hidden = false;
+  let cancelled = false;
   const startedHash = window.location.hash;
-  const timer = setTimeout(() => controller.abort(), 90000);
+  const timer = setTimeout(() => controller.abort(new DOMException("분석 제한시간 초과", "TimeoutError")), 90000);
   try {
     const pullURL = parsePullURL(document.querySelector("#pr-url").value).url;
     const options = { paths: lines("paths"), models: lines("models"), responses: lines("responses") };
     feedbackLink.href = feedbackURL({ url: pullURL }, null, options, form.elements.focus.value);
     controls.forEach(control => { control.disabled = true; });
     document.querySelector("#analyze-button").textContent = "분석 중…";
-    const pull = await loadPull(pullURL, controller.signal, progress);
-    const report = await analyze({ files: pull.files, ...options });
+    const loading = loadPull(pullURL, controller.signal, progress, options.paths);
+    jumpTo(status);
+    const pull = await loading;
+    const report = await analyze({ files: pull.files, ...options }, controller.signal, progress);
+    controller.signal.throwIfAborted();
     lastReport = { pull, report, options };
     render(pull, report, options);
     progress("비교가 끝났습니다. 필요한 관점을 바꾸어 결과를 확인할 수 있습니다.");
     jumpTo(results);
   } catch (error) {
-    errorBox.textContent = error.name === "AbortError" ? "GitHub 응답 시간이 초과되었습니다. 다시 시도해 주세요." : error.message;
-    errorBox.hidden = false;
-    progress("");
-    jumpTo(errorBox);
+    cancelled = showAnalysisError(error, controller.signal);
   } finally {
     clearTimeout(timer);
     busy = false;
+    activeController = null;
+    cancelActions.hidden = true;
     controls.forEach(control => { control.disabled = false; });
-    document.querySelector("#analyze-button").textContent = "변경 요약 보기";
+    document.querySelector("#analyze-button").textContent = "변경 확인";
     if (window.location.hash !== startedHash) restoreSharedSettings();
+    else if (cancelled) jumpTo(document.querySelector("#pr-url"));
   }
 }
 
@@ -267,34 +261,41 @@ async function runRepository(event) {
   const controls = analysisControls();
   controls.forEach(control => { control.disabled = true; });
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 90000);
+  activeController = controller;
+  cancelActions.hidden = false;
+  let cancelled = false;
+  const timer = setTimeout(() => controller.abort(new DOMException("분석 제한시간 초과", "TimeoutError")), 90000);
   const startedHash = window.location.hash;
   document.getElementById("repository-analyze").textContent = "분석 중…";
   try {
-    const snapshot = await loadRepository(document.getElementById("repository-url").value,
+    const loading = loadRepository(document.getElementById("repository-url").value,
       document.getElementById("repository-commit").value, document.getElementById("repository-root").value,
       controller.signal, progress);
-    const report = await analyze({ kind: "repository", root: snapshot.root, files: snapshot.files, known_paths: snapshot.knownPaths });
+    jumpTo(status);
+    const snapshot = await loading;
+    const report = await analyze({ kind: "repository", root: snapshot.root, files: snapshot.files, known_paths: snapshot.knownPaths }, controller.signal, progress);
+    controller.signal.throwIfAborted();
     results.setAttribute("aria-label", "저장소 구조 분석 결과");
     results.replaceChildren(repositoryView(snapshot, report));
     results.hidden = false;
     progress("현재 구조를 확인했습니다. 파일과 사용 목적을 선택해 코드 근거와 검토 계획을 살펴보세요.");
     jumpTo(results);
   } catch (error) {
-    errorBox.textContent = error.name === "AbortError" ? "저장소 조회 시간이 초과되었습니다. 범위를 줄여 다시 시도해 주세요." : error.message;
-    errorBox.hidden = false;
-    progress("");
-    jumpTo(errorBox);
+    cancelled = showAnalysisError(error, controller.signal);
   } finally {
     clearTimeout(timer);
     busy = false;
+    activeController = null;
+    cancelActions.hidden = true;
     controls.forEach(control => { control.disabled = false; });
     document.getElementById("repository-analyze").textContent = "현재 구조 확인";
     if (window.location.hash !== startedHash) restoreSharedSettings();
+    else if (cancelled) jumpTo(document.querySelector("#repository-url"));
   }
 }
 
 restoreSharedSettings();
+cancelButton.addEventListener("click", () => activeController?.abort());
 for (const mode of ["pr", "repository"]) document.getElementById("mode-" + mode).addEventListener("click", () => selectMode(mode));
 repositoryForm.addEventListener("submit", runRepository);
 function repositoryExample(repo, commit, root) {

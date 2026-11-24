@@ -59,7 +59,7 @@
 
             <details class="advanced-options">
               <summary>프로젝트에 맞게 범위 지정</summary>
-              <p class="help advanced-help">필요한 항목만 한 줄에 하나씩 입력하세요. 경로는 저장소 루트를 기준으로 합니다.</p>
+              <p class="help advanced-help">필요한 항목만 한 줄에 하나씩 입력하세요. 경로는 저장소 루트 기준이며, 지정한 경로에서 Python 소스를 최대 100개 읽습니다.</p>
               <div class="advanced-grid">
                 <div class="advanced-field">
                   <label for="paths">확인할 경로</label>
@@ -105,6 +105,9 @@
 
         <div class="feedback-area">
           <p id="status" class="status" role="status" aria-live="polite"></p>
+          <div class="report-actions" id="analysis-cancel-actions" hidden>
+            <button id="analysis-cancel" type="button">분석 취소</button>
+          </div>
           <div id="error" class="error" role="alert" hidden></div>
         </div>
         <section id="results" class="results" tabindex="-1" aria-label="PR 변경 분석 결과" hidden></section>

@@ -21,6 +21,14 @@ flowchart LR
 
 근거: `app/pr_preview/github.js::loadPull`, `analyzer-worker.js::initialize`, `scripts/pr_preview_browser.py::analyze`. 기존 로컬 `application_graph.py::build_application_graph`는 파일·함수·모델·라우트와 근거를 표현하지만, 렌더러는 Graphviz 프로세스와 로컬 저장소 분석에 의존한다. 브라우저에서는 기존 라우트·SQLModel 분석 함수를 재사용하고 SVG로 표시한다.
 
+## 조회 범위와 취소
+
+PR은 변경 목록 최대300개에서 지정 경로의 정확한 파일 또는 디렉터리 하위 경로를 먼저 선택한 뒤 Python 원본 최대100개를 읽는다. 지정하지 않으면 전체 변경 목록에 같은 한도를 적용한다. 모델·응답 모델 선택은 조회 경로를 넓히지 않는다. 이름 변경 파일은 현재 경로로 선택하고 이전 소스는 이전 경로에서 읽는다. 변경 목록300개 밖은 경로를 지정해도 읽을 수 없으며 결과에 생략을 표시한다.
+
+PR 원본 캐시는 PR URL과 정렬·중복 제거·후행 슬래시 제거한 경로 조합으로 분리한다(4건·3분). 선택 범위의 원본 읽기가 실패하거나 취소되면 캐시하지 않는다. 기존 merge-base·fork 소스 조회와 조회 중 커밋 변경 검사를 유지한다.
+
+PR·저장소 모두 조회 시작부터 Worker 분석 완료까지 하나의 90초 제한시간과 AbortSignal을 사용한다. `분석 취소`는 요청을 중단하고 실행 중인 Worker를 종료한다. 입력을 보존하고 해당 URL로 포커스를 돌려 재시도할 수 있다. 취소는 오류와 구분해 안내하며 늦은 진행 상태·결과를 표시하거나 중단한 응답을 캐시하지 않는다. 제한시간 초과는 범위 축소·네트워크 확인 안내를 표시한다. 다음 분석은 새 Worker를 만들고 성공한 분석기는 재사용한다. 관련 파일은 `app/pr_preview/{app,github,repository,worker-client}.js`이다.
+
 ## 이번에 추가한 기능
 
 - PR 변경 파일의 이전·이후 구조를 전환한다. 기본은 이후 커밋이다.
@@ -89,3 +97,5 @@ GitHub 메타데이터 → Git commit의 tree SHA → recursive tree → 고정 
 비교 참고: [GitDiagram 공식 저장소](https://github.com/ahmedkhaleel2004/gitdiagram)는 저장소 아키텍처 시각화와 코드 연결을 제공한다(2026-11-24 확인). 우리 서비스는 현재 PR의 변경 전후와 확인 가능한 선언 근거를 연결하는 범위로 구현했다. 사용자 수요나 우월성을 검증한 결과는 아니다.
 
 Alembic 타입 변경의 의미는 [공식 alter_column 문서](https://alembic.sqlalchemy.org/en/latest/ops.html#alembic.operations.Operations.alter_column)에 따라 처리한다. `existing_*`는 기존 상태의 선언이며, 실제 변경 옵션과 구분한다.
+
+다음 우선순위(P2)는 저장소 모드의 선택 파일·목적·커밋·루트를 담은 설정 공유다. 이번 조회 정확성·취소 개선에는 포함하지 않는다.

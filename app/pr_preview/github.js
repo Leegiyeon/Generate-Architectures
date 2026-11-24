@@ -72,26 +72,40 @@ export async function sourceText(repo, sha, path, signal) {
   catch { throw new Error("UTF-8 소스로 읽지 못함"); }
 }
 
-export async function loadPull(input, signal, progress) {
+export async function loadPull(input, signal, progress, paths = []) {
   const pull = parsePullURL(input);
-  const existing = cache.get(pull.url);
+  // Match the analyzer's literal exact-file or directory-prefix scopes before
+  // spending the source limit. Scope order and duplicate selectors are immaterial.
+  const scope = [...new Set(paths.map(path => path.replace(/\/+$/, "")))].sort();
+  const key = JSON.stringify([pull.url, scope]);
+  function notify(message) {
+    signal.throwIfAborted();
+    progress(message);
+    signal.throwIfAborted();
+  }
+  signal.throwIfAborted();
+  const existing = cache.get(key);
   if (existing && Date.now() - existing.time < 180000) {
-    progress("방금 조회한 PR 소스로 비교하고 있습니다.");
+    notify("방금 조회한 PR 소스로 비교하고 있습니다.");
     return existing.value;
   }
-  progress("공개 PR과 비교 기준 커밋을 확인하고 있습니다.");
+  notify("공개 PR과 비교 기준 커밋을 확인하고 있습니다.");
   const endpoint = "/repos/" + pull.repo + "/pulls/" + pull.number;
   const metadata = await githubJSON(endpoint, signal);
+  signal.throwIfAborted();
   if (metadata.base.repo.private || metadata.head.repo?.private) throw new Error("공개 저장소의 PR을 입력해 주세요.");
   const baseRepo = checkedRepository(metadata.base.repo.full_name);
   const headRepo = checkedRepository(metadata.head.repo?.full_name || baseRepo);
   const baseTip = checkedSHA(metadata.base.sha);
   const head = checkedSHA(metadata.head.sha);
   const comparison = await githubJSON("/repos/" + baseRepo + "/compare/" + baseTip + "..." + head + "?per_page=1", signal);
+  signal.throwIfAborted();
   const base = checkedSHA(comparison.merge_base_commit.sha);
   const changed = [];
   for (let page = 1; changed.length < Math.min(metadata.changed_files, MAX_CHANGED_FILES); page++) {
+    signal.throwIfAborted();
     const batch = await githubJSON(endpoint + "/files?per_page=100&page=" + page, signal);
+    signal.throwIfAborted();
     changed.push(...batch.slice(0, MAX_CHANGED_FILES - changed.length));
     if (batch.length < 100) break;
   }
@@ -99,7 +113,8 @@ export async function loadPull(input, signal, progress) {
     path: file.filename, previous_path: file.previous_filename || file.filename,
     status: file.status, before: null, after: null, warnings: [],
   }));
-  const pythonFiles = files.filter(file => file.path.endsWith(".py"));
+  const pythonFiles = files.filter(file => file.path.endsWith(".py")
+    && (!scope.length || scope.some(prefix => file.path === prefix || file.path.startsWith(prefix + "/"))));
   const selected = pythonFiles.slice(0, MAX_PYTHON_FILES);
   for (const file of pythonFiles.slice(MAX_PYTHON_FILES)) file.warnings.push("Python 파일 100개를 초과해 소스를 읽지 못함");
   const tasks = selected.flatMap(file => ["before", "after"].map(side => ({ file, side })));
@@ -107,6 +122,7 @@ export async function loadPull(input, signal, progress) {
   let completed = 0;
   const workers = Array.from({ length: Math.min(6, tasks.length) }, async () => {
     while (next < tasks.length) {
+      signal.throwIfAborted();
       const { file, side } = tasks[next++];
       const missing = (side === "before" && file.status === "added") || (side === "after" && file.status === "removed");
       if (missing) file[side] = "";
@@ -119,19 +135,24 @@ export async function loadPull(input, signal, progress) {
           file.warnings.push((side === "before" ? "이전" : "이후") + " · " + error.message);
         }
       }
+      signal.throwIfAborted();
       completed++;
-      progress("변경 소스를 읽고 있습니다. " + completed + " / " + tasks.length);
+      notify("변경 소스를 읽고 있습니다. " + completed + " / " + tasks.length);
     }
   });
   await Promise.all(workers);
+  signal.throwIfAborted();
   const current = await githubJSON(endpoint, signal);
+  signal.throwIfAborted();
   if (current.head.sha !== head || current.base.sha !== baseTip) {
     throw new Error("조회 중 PR 커밋이 바뀌었습니다. 다시 분석해 주세요.");
   }
   const value = { ...pull, title: metadata.title, base, head, baseRepo, headRepo,
     files, totalFiles: metadata.changed_files, fetchedAt: new Date().toISOString(),
     warnings: metadata.changed_files > changed.length ? ["변경 파일 " + metadata.changed_files + "개 중 " + changed.length + "개를 읽었습니다."] : [] };
-  if (cache.size >= 4) cache.delete(cache.keys().next().value);
-  cache.set(pull.url, { time: Date.now(), value });
+  if (selected.every(file => file.before !== null && file.after !== null)) {
+    if (cache.size >= 4) cache.delete(cache.keys().next().value);
+    cache.set(key, { time: Date.now(), value });
+  }
   return value;
 }
