@@ -1,0 +1,82 @@
+# Design
+
+## Source of truth
+- Status: Active
+- Last refreshed: 2026-11-24
+- Primary product surfaces: 공개 FastAPI PR Review의 PR 비교·저장소 현재 구조 입력·결과·코드 구조도.
+- Evidence reviewed: `app/pr_preview/{index.html,app.js,styles.css}`, `scripts/{pr_preview_browser.py,preview_fastapi_pr.py,application_graph.py,render_application_graph.py}`, `docs/{PRODUCT.md,FASTAPI_PR_TEST.md}`.
+
+## Brand
+- Personality: 간결하고 근거를 확인할 수 있는 개발 도구.
+- Trust signals: 커밋·파일·행 링크, 읽은 범위와 미확인 범위 표시.
+- Avoid: 운영 환경을 관찰한 것처럼 표현, 근거 없는 구성요소·연결 생성.
+
+## Product goals
+- Goals: PR의 변경과 관련 코드 구조를 함께 이해하고, 고정 커밋의 Python 파일 import·직접 선언으로 현재 구조를 살펴본다. 저장소 모드에서는 온보딩·변경 검토·테스트 계획 목적에 따라 같은 근거의 읽기 순서·확인 행동·완료 조건을 제공한다. 같은 파일의 라우트·테이블 공존과 선택 파일의 직접 import 순환에 한해 현재 구조와 조건부 개선 후보를 비교한다.
+- Non-goals: 모든 언어·파일의 완전한 저장소 분석, 실제 호출·최종 라우터 등록·실제 서버·AWS 인프라 자동 진단.
+- Success signals: 실제 공개 PR의 선언과 도표·소스 링크가 일치. 사용자 실사용·재사용은 별도 미검증.
+
+## Personas and jobs
+- Primary personas: FastAPI API·DB 변경을 검토하는 개발자.
+- User jobs: 구조 파악, 변경 전후 비교, 원본 확인, 다이어그램 공유.
+- Key contexts of use: 공개 PR 리뷰와 프로젝트 온보딩.
+
+## Information architecture
+- Primary navigation: 한 페이지에서 PR 변경 분석 / 저장소 현재 구조를 선택. 전환 시 이전 결과를 숨긴다.
+- Core routes/screens: PR 입력 → 전후 구조 → 검토 제안 → 변경 근거. 저장소 URL·커밋·소스 루트 → 파일·참조 방향·사용 목적 선택 → import 도표·개선 후보 비교·목적별 검토 계획·근거·직접 선언. 개선 후보는 별도 펼침 영역에서 선택하며 해당 파일의 관찰 근거가 있을 때만 제시한다.
+- Content hierarchy: 분석 범위·커밋, 도표, 구조 기반 확인 항목, 상세 변경 근거.
+
+## Design principles
+- 관찰된 선언과 관계만 연결한다. 파일이 라우트·모델을 선언한다는 연결은 호출·DB 접근과 구분한다.
+- 모든 도표 구성요소는 같은 스냅샷의 코드 근거로 이동할 수 있다.
+- Tradeoffs: PR은 기존 조회만 재사용. 저장소 모드는 메타데이터·커밋·tree 3회와 최대100개 원본 조회를 추가하고 한도를 표시한다. 유료 API·새 서버는 추가하지 않는다.
+
+## Visual language
+- Color: 기존 파란색·회색 토큰 재사용. 상태는 색상과 문구 함께 표시.
+- Typography: 기존 시스템 글꼴, 도표 본문 14px 이상.
+- Spacing/layout rhythm: 기존 결과 카드 간격·테두리 재사용.
+- Shape/radius/elevation: 기존 카드와 동일한 작은 라운드, 그림자 추가 최소화.
+- Motion: 애니메이션 없이 전후 즉시 전환.
+- Imagery/iconography: 근거가 있는 코드 구조도만 사용.
+
+## Components
+- Existing components to reuse: 결과 섹션, source-link, coverage-note, report-actions.
+- New/changed components: 이전/이후 전환 버튼, SVG 구조도, 접근 가능한 구성요소 목록, SVG 다운로드, 구조 기반 검토 제안. 저장소 목적 선택은 native select, 검토 계획은 기존 result-section·evidence-item·source-link를 재사용하고 복사 버튼으로 커밋·범위·근거·한도를 함께 전달한다. 개선 후보의 현재·제안 도표는 동일한 SVG·가로 스크롤·저장 helper를 재사용한다. 제안 역할·관계는 점선과 ‘가정’ 문구를 함께 쓰며 가짜 파일 경로·소스 링크는 만들지 않는다.
+- Variants and states: 선언 추가·수정·삭제·동일, 미확인·표시 한도.
+- Token/component ownership: `app/pr_preview/styles.css`, `app/pr_preview/{architecture,repository-view}.js`. SVG 저장은 공통 helper를 사용한다.
+
+## Accessibility
+- Target standard: WCAG 2.2 AA를 목표로 기존 키보드·텍스트 패턴 유지. 정식 적합성 인증은 미실시.
+- Keyboard/focus behavior: 전환·다운로드는 일반 버튼, 코드 근거는 링크. SVG와 별도로 HTML 구성요소 목록 제공.
+- Contrast/readability: 상태 문구·범례 병기, 긴 경로 줄바꿈.
+- Screen-reader semantics: SVG title/description, 도표와 동일한 구성요소 목록.
+- Reduced motion and sensory considerations: 도표에 움직임 없음.
+
+## Responsive behavior
+- Supported breakpoints/devices: 기존 700px/420px, 최소 390px 검증.
+- Layout adaptations: 도표 영역만 가로 스크롤, 페이지 가로 넘침 없음. 설명·목록은 화면 폭에 맞춤.
+- Touch/hover differences: 핵심 정보는 hover에 의존하지 않는다.
+
+## Interaction states
+- Loading: 조회·분석 중 양쪽 입력과 모드 전환을 잠근다. 저장소 고정 스냅샷은 2건·3분 캐시.
+- Empty: 인식된 선언이 없거나 소스를 읽지 못한 범위를 구별해 표시. 개선 후보가 없으면 지원 규칙·표시 범위에서 후보를 찾지 못한 상태로 알린다. 구조가 적절하다거나 개선이 불필요하다는 판정으로 바꾸지 않는다.
+- Error: 기존 오류 패널. 구조도 미지원은 전체 분석 실패로 취급하지 않는다.
+- Success: 기본은 이후 구조, 이전 구조 전환과 SVG 저장 지원. 저장소는 온보딩을 기본으로 하며 목적·파일을 바꾸면 현재 스냅샷에서 즉시 검토 계획을 갱신한다. 도표 참조 방향과 사용 목적은 독립적으로 유지한다. 복사 성공·실패는 해당 계획의 live status로 알린다. 자동 복사가 거부되면 같은 내용을 읽기 전용 텍스트 상자로 펼치고 선택해 키보드·모바일 선택 메뉴로 복사할 수 있게 한다.
+- Disabled: 분석 중 기존 입력 잠금 유지.
+- Offline/slow network: 기존 GitHub·분석 제한 및 오류 처리 유지.
+
+## Content voice
+- Tone: 짧고 직접적인 한국어.
+- Terminology: ‘PR 관련 코드 구조’, ‘선언 관계’, ‘검토 제안’. 운영 시스템 전체라고 부르지 않는다.
+- Microcopy rules: 제안마다 관찰 근거와 확인할 행동을 표시. 목적별 계획에는 현재 확인·다음 행동·완료 조건·코드 근거를 구분한다. 파일 수와 import 관계 수, 표시한 선언과 전체 선언을 구분한다. 한 import문이 여러 대상을 가리킬 수 있으므로 관계 수를 구문 수로 표현하지 않는다. 평가하지 않은 항목의 통과·안전을 주장하지 않는다. 관계가 없거나 잘린 경우 영향 없음·미사용·테스트 없음으로 바꾸지 않는다.
+
+## Implementation constraints
+- Framework/styling system: 기존 정적 HTML·ES modules·CSS·Pyodide AST.
+- Design-token constraints: 별도 UI 프레임워크·디자인 시스템 추가 없음.
+- Performance constraints: 기존 파일·바이트 제한 유지. 저장소는 파일80개·관계400개·미확인100개·파일당선언20개, 선택 도표는 이웃12개와 정확한 생략 수 표시. tree의 미수집 파일 경로도 충돌 확인에 사용한다.
+- Compatibility constraints: 대상 소스 실행·import 없음. OpenAI API·키·추가 서버 없음. 사용 목적·개선 후보 전환은 이미 읽은 그래프와 선언만 사용하며 추가 GitHub 조회·재분석을 하지 않는다. 개선 후보는 코드 변경을 적용하지 않은 검토 가정이다. 전제·변경 관계·적용 행동·단점·확인 조건을 함께 표시하고, 실제 테스트·운영 개선·최적 설계가 검증됐다고 표현하지 않는다. import 순환의 한 관계를 조정하는 시나리오는 다른 순환까지 해결한다고 주장하지 않는다.
+- Proposal comparison bounds: 선택 파일별 규칙 최대2개, 후보별 소스 근거6곳·정확한 생략 수. 순환 도표는 가장 짧은 확인 경로의 파일 최대6개이며 더 긴 순환을 잘라 그리지 않는다. 역할 분리는 기존 import를 어느 역할로 배분할지 추정하지 않고 선택 파일의 직접 선언 공존만 비교한다.
+- Test/screenshot expectations: 그래프 정확성·누락·이전행·비실행 테스트, 실제 공개 PR 브라우저·390px·SVG 확인.
+
+## Open questions
+- [ ] 실제 라우터 등록·재수출·함수 호출을 확장하려면 실행 여부와 설정 경계를 별도로 설계한다.

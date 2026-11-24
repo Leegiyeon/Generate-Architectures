@@ -14,7 +14,17 @@ def _module_nodes(tree):
         if isinstance(node, ast.comprehension):
             # The iteration target is local; a walrus in the expressions can bind outside.
             pending.extend(reversed([node.iter, *node.ifs]))
-        elif not isinstance(node, (*FUNCTIONS, ast.ClassDef, ast.Lambda)):
+        elif isinstance(node, (*FUNCTIONS, ast.Lambda)):
+            # Defaults and decorators run in the enclosing scope. A walrus here
+            # can rebind an imported constructor without entering the body.
+            expressions = [*node.args.defaults, *(item for item in node.args.kw_defaults if item)]
+            if isinstance(node, FUNCTIONS):
+                expressions.extend(node.decorator_list)
+            pending.extend(reversed(expressions))
+        elif isinstance(node, ast.ClassDef):
+            pending.extend(reversed([*node.decorator_list, *node.bases,
+                                     *(item.value for item in node.keywords)]))
+        else:
             pending.extend(reversed(list(ast.iter_child_nodes(node))))
 
 

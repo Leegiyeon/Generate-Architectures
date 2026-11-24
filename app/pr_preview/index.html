@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="공개 FastAPI PR의 라우트, 응답 모델, DB 모델과 마이그레이션 변경을 코드 근거와 함께 확인하세요.">
+    <meta name="theme-color" content="#f5f7fb">
+    <title>FastAPI PR Review</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="site-header">
+        <a class="brand" href="./" aria-label="FastAPI PR Review 시작 화면">FastAPI <span>PR Review</span></a>
+        <span class="header-note">공개 GitHub 코드</span>
+      </header>
+
+      <main>
+        <div class="intro">
+          <h1>API와 DB에서<br class="mobile-break"> 무엇이 바뀌었나요?</h1>
+          <p>PR 링크를 넣고, 관련 코드 구조와 변경 사항을 코드 근거와 함께 확인하세요.</p>
+        </div>
+
+        <nav class="analysis-modes report-actions" aria-label="분석할 대상">
+          <button id="mode-pr" type="button" aria-pressed="true" aria-controls="pr-panel">PR 변경 분석</button>
+          <button id="mode-repository" type="button" aria-pressed="false" aria-controls="repository-panel">저장소 현재 구조</button>
+        </nav>
+
+        <section id="pr-panel" class="input-panel" aria-label="PR 분석 입력">
+          <form id="review-form">
+            <label class="input-label" for="pr-url">GitHub PR 링크</label>
+            <div class="url-row">
+              <input id="pr-url" name="pr-url" type="url" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://github.com/fastapi/full-stack-fastapi-template/pull/2144" aria-describedby="url-help">
+              <button class="primary-button" id="analyze-button" type="submit">변경 확인</button>
+            </div>
+            <div class="input-help-row">
+              <p class="help" id="url-help">공개 저장소의 PR 링크를 입력하세요.</p>
+              <button class="text-button" id="example-button" type="button">FastAPI 예제로 시작</button>
+            </div>
+
+            <fieldset class="focus-options">
+              <legend>어떤 변경을 확인할까요?</legend>
+              <div class="focus-grid">
+                <label class="focus-option">
+                  <input type="radio" name="focus" value="all" checked>
+                  <span><strong>전체 변경</strong><small>API와 DB를 함께</small></span>
+                </label>
+                <label class="focus-option">
+                  <input type="radio" name="focus" value="api">
+                  <span><strong>API 사용</strong><small>라우트·응답·정렬</small></span>
+                </label>
+                <label class="focus-option">
+                  <input type="radio" name="focus" value="db">
+                  <span><strong>DB 변경</strong><small>모델·컬럼·마이그레이션</small></span>
+                </label>
+              </div>
+            </fieldset>
+
+            <details class="advanced-options">
+              <summary>프로젝트에 맞게 범위 지정</summary>
+              <p class="help advanced-help">필요한 항목만 한 줄에 하나씩 입력하세요. 경로는 저장소 루트를 기준으로 합니다.</p>
+              <div class="advanced-grid">
+                <div class="advanced-field">
+                  <label for="paths">확인할 경로</label>
+                  <textarea id="paths" name="paths" rows="2" spellcheck="false" autocapitalize="off" placeholder="backend/app"></textarea>
+                </div>
+                <div class="advanced-field">
+                  <label for="models">DB 모델 클래스</label>
+                  <textarea id="models" name="models" rows="2" spellcheck="false" autocapitalize="off" placeholder="src/orm.py:Account"></textarea>
+                </div>
+                <div class="advanced-field">
+                  <label for="responses">응답 모델 클래스</label>
+                  <textarea id="responses" name="responses" rows="2" spellcheck="false" autocapitalize="off" placeholder="backend/app/models.py:UserPublic"></textarea>
+                </div>
+              </div>
+            </details>
+          </form>
+        </section>
+
+        <section id="repository-panel" class="input-panel" aria-label="저장소 구조 입력" hidden>
+          <form id="repository-form">
+            <label class="input-label" for="repository-url">공개 GitHub 저장소</label>
+            <input id="repository-url" type="url" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://github.com/fastapi/full-stack-fastapi-template">
+            <div class="repository-fields">
+              <div class="advanced-field">
+                <label for="repository-commit">확인할 커밋 SHA</label>
+                <input id="repository-commit" type="text" required pattern="[a-fA-F0-9]{40}" spellcheck="false" autocapitalize="off" placeholder="40자리 커밋 SHA">
+              </div>
+              <div class="advanced-field">
+                <label for="repository-root">Python 소스 루트</label>
+                <input id="repository-root" type="text" value="." spellcheck="false" autocapitalize="off" aria-describedby="repository-help">
+              </div>
+            </div>
+            <p id="repository-help" class="help">import 기준 디렉터리입니다. 예: backend/app을 app으로 import하면 backend, src 안의 패키지라면 src. 저장소 루트는 .입니다.</p>
+            <div class="input-help-row">
+              <button class="primary-button" id="repository-analyze" type="submit">현재 구조 확인</button>
+              <button class="text-button" id="repository-example" type="button">저장소 예제로 시작</button>
+              <button class="text-button" id="repository-proposal-example" type="button">구조 비교 예제</button>
+            </div>
+            <p class="help repository-limits">커밋을 고정해 Python 파일 최대 100개를 읽습니다. 실제 호출·최종 라우터 등록·운영 인프라는 확인하지 않습니다.</p>
+          </form>
+        </section>
+
+        <div class="feedback-area">
+          <p id="status" class="status" role="status" aria-live="polite"></p>
+          <div id="error" class="error" role="alert" hidden></div>
+        </div>
+        <section id="results" class="results" tabindex="-1" aria-label="PR 변경 분석 결과" hidden></section>
+      </main>
+
+      <footer class="site-footer">
+        <p>공개 소스를 브라우저에서 읽어 정적으로 비교합니다. 결과의 파일과 줄 번호로 변경 내용을 확인할 수 있습니다.</p>
+        <p class="feedback-note"><a id="feedback-link" href="https://github.com/Leegiyeon/Generate-Architectures/issues/new" target="_blank" rel="noopener noreferrer">피드백·오류 제보 (GitHub)</a> · 공개 이슈 작성 화면이 열립니다. 등록 전에 내용을 확인해 주세요.</p>
+      </footer>
+    </div>
+  </body>
+</html>

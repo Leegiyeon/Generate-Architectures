@@ -52,6 +52,56 @@ python3 scripts/recommend_architecture.py --repo . --output architecture-output 
 # 또는 --analysis-goal migrate_onprem
 ```
 
+### FastAPI PR 리뷰 체험 (실험)
+
+[웹 체험](https://fastapi-pr-review-gyl.lgy.chatgpt.site)에 공개 PR 링크를 입력하고 전체·API·DB 관점을 선택합니다. 경로와 모델 클래스를 지정해 범위를 바꿀 수 있습니다. 로그인이나 OpenAI API 키 없이 브라우저에서 정적 비교하며, GitHub의 비인증 조회 한도가 적용됩니다. 실제 DB 실행 결과와 상속·다른 파일을 통한 영향은 수동 확인이 필요합니다.
+
+결과의 ‘분석 설정 링크 복사’로 PR·관점·범위를 함께 공유할 수 있습니다. 링크를 열면 입력값만 채워지며, ‘변경 확인’을 누르는 시점의 PR을 분석합니다. 고정된 커밋의 결과 공유는 아닙니다. [API·DB 테스트 링크](docs/FASTAPI_PR_TEST.md#설정이-채워진-테스트-링크)로 시작할 수 있습니다.
+
+로컬 개발본에는 **PR 관련 코드 구조도**를 추가했습니다. 이전·이후의 파일→라우트·모델 선언, 변경 상태, 코드 근거, SVG 저장과 구조 기반 검토 제안을 제공합니다. 이 모드는 PR 변경 파일의 범위이며 실제 호출·운영 인프라는 확인하지 않습니다. [현재 구조와 확장 제안](docs/PR_CODE_STRUCTURE.md), [검증·배포 상태](docs/FASTAPI_PR_TEST.md#현재-목표와-진행률)를 참고하세요. 공개 사이트에는 아직 이 변경을 배포하지 못했습니다.
+
+후속 로컬 개발본의 **저장소 현재 구조**에서는 공개 저장소 URL·40자리 커밋 SHA·Python 소스 루트(`.`/`backend`/`src` 등)를 지정할 수 있습니다. 파일을 선택하고 ‘참조하는 모듈 / 참조받는 파일’을 바꾸면 직접 import의 근거와 라우트·테이블 선언을 확인합니다. 원본은 최대100개·파일당64KiB, 화면은 파일80개·관계400개로 제한하고 생략·미확인을 표시합니다. 패키지 경로 충돌은 파일 수집 한도 밖의 경로까지 확인하며, 조건부·동적 import와 실제 실행 관계는 추정하지 않습니다. 이 확장도 아직 공개 배포 전입니다.
+
+저장소의 **사용 목적**을 온보딩·변경 검토·테스트 계획으로 바꾸면 선택 파일의 직접 선언과 import 근거에 맞춰 확인 순서·다음 행동·완료 조건을 제공합니다. `검토 계획 복사`에는 저장소·고정 커밋·소스 루트·코드 링크·분석 한도를 함께 담습니다. 목적 전환은 추가 조회 없이 동작하며, 테스트 실행 결과나 실제 변경 영향·최적 아키텍처를 판정하지 않습니다.
+
+**구조 개선 후보 비교**는 같은 파일의 라우트·테이블 공존 또는 선택 파일의 직접 import 순환이 관찰될 때만 제공합니다. 현재 구조와 미적용 가정, 바꾸려는 관계·전제·검증·단점을 함께 보고 SVG·텍스트로 내보낼 수 있습니다. `구조 비교 예제`는 SQLModel 공식 저장소의 고정 커밋을 읽습니다. 제안 역할은 실제 새 파일이 아니며 작은 예제에서는 현재 구조 유지가 더 적합할 수도 있습니다. 코드 수정이나 실행 성능 개선은 검증하지 않습니다.
+
+파일 최상위 또는 바로 아래 함수 안에서 직접 만든 FastAPI·APIRouter의 라우트와 핸들러 인자 추가·삭제를 비교합니다. 함수 이름을 함께 표시하며, 해당 함수의 호출 여부와 최종 등록 URL은 확인하지 않습니다. 동적 경로, 불명확한 바인딩, 클래스·더 깊은 함수 안의 변경은 수동 확인 후보로 안내합니다. 웹앱 하단의 ‘피드백·오류 제보’에서 분석한 PR과 선택 범위를 담아 공개 GitHub 이슈 작성 화면을 열 수 있습니다. 제출 전에 내용을 확인하세요. [테스트 모집 문구와 검증 범위](docs/FASTAPI_PR_TEST.md)를 참고하세요.
+
+웹 배포물은 `python3 scripts/build_pr_preview.py --output architecture-output/pr-preview`로 만듭니다. 첫 빌드는 고정된 Pyodide 314.0.4 최소 런타임(약 13 MB)을 공식 배포처에서 받고 SHA-256을 확인합니다. 이후 `python3 -m http.server 8766 --bind 127.0.0.1 --directory architecture-output/pr-preview`로 로컬에서 확인할 수 있습니다.
+
+Sites 쓰기 접근 오류의 대안으로 [GitHub Pages 수동 배포 workflow](.github/workflows/fastapi-pr-pages.yml)를 로컬 준비했습니다. [배포 순서·검증 범위](docs/FASTAPI_PR_DEPLOY.md)를 참고하세요. Pages 설정 변경·원격 소스 반영·공개 배포는 아직 수행하지 않았습니다.
+
+직접 테스트할 로컬 실행 ZIP도 같은 빌더로 만들 수 있습니다.
+
+```bash
+python3 scripts/build_pr_preview.py --output architecture-output/pr-preview --archive architecture-output/fastapi-pr-review-local.zip
+```
+
+ZIP 전체를 압축 해제한 뒤 `fastapi-pr-review` 폴더에서 `python3 start.py`를 실행하면 브라우저가 열립니다(Windows는 `py -3 start.py`). Python 3.10 이상이 필요하며, 분석 런타임은 패키지에 포함됩니다. 서버는 `127.0.0.1`의 빈 포트를 사용하고 Ctrl+C로 종료합니다. 공개 PR 조회에는 인터넷 연결과 GitHub 비인증 API 한도가 적용됩니다. 로컬 패키지 생성은 공개 배포 완료를 뜻하지 않습니다.
+
+ZIP 경로는 웹 출력 폴더 밖에 지정해야 합니다. 입력 파일과의 충돌을 거부하며, 압축 도중 실패하면 기존 ZIP을 유지합니다.
+
+#### 로컬 Git 저장소 비교
+
+이미 받아 둔 Git 저장소의 두 커밋을 비교합니다. Python 3.10 이상과 Git만 필요하며, 대상 코드는 실행하지 않습니다. 대상 코드가 더 최신 Python 문법을 쓴다면 그 버전을 사용하세요.
+
+```bash
+python3 scripts/preview_fastapi_pr.py --repo /path/to/checkout --base BASE_SHA --head HEAD_SHA
+```
+
+열린 PR은 기준 브랜치와 PR 브랜치의 공통 조상 커밋을 `BASE_SHA`에, PR 커밋을 `HEAD_SHA`에 넣으세요. [공개 FastAPI PR #2144](https://github.com/fastapi/full-stack-fastapi-template/pull/2144/files)는 병합 커밋 `3c1f7c4cdb67`과 부모 `2720308701fe`를 비교하면 목록 핸들러 2개, 테이블 모델의 `created_at` 필드 2개, 검토할 Alembic 파일 1개가 나옵니다.
+
+| 리뷰 목적 | 옵션 | 보고서에 표시되는 근거 |
+| --- | --- | --- |
+| API 사용처 확인 | `--focus api` | 라우트와 핸들러 변경, 명시한 응답 모델과 `order_by` 호출 단서. `--response-model backend/app/models.py:UserPublic`을 추가하면 해당 클래스의 필드 변경도 표시합니다. |
+| DB 변경 검토 | `--focus db` | SQLModel 테이블 필드와 Alembic `upgrade()`의 직접적인 컬럼 추가·삭제·변경 선언, 명시한 타입·`nullable`·`server_default`·컬럼 이름 변경. `existing_*`는 기존 상태의 선언으로 구분합니다. `--model src/orm.py:Account`로 커스텀 모델을 지정할 수 있습니다. |
+| 전체 검토 | `--focus all` (기본값) | API와 DB 결과 모두 |
+
+`--path backend/app`으로 변경 파일 범위를 좁힐 수 있습니다. `--path`, `--model`, `--response-model`은 각각 반복 지정할 수 있습니다. 변경 위치는 비교 대상 커밋의 파일과 줄 번호를 표시하며, 삭제 항목은 이전 커밋의 위치를 표시합니다.
+
+라우트는 선언 위치의 경로까지만 비교합니다. 모델 필드는 지정한 클래스에 직접 타입을 선언한 속성이 대상입니다. 설정으로 완성되는 URL, 다른 파일이나 상속을 통한 응답 변경, 마이그레이션 실행 결과와 기존 데이터 영향은 수동 검토가 필요합니다. 어떤 모드에서도 변경 파일 목록을 확인할 수 있습니다.
+
 ### 보안·신뢰성
 
 - 보고서는 **코드에서 확인한 사실 / 사용자 입력 / 가정 / 미확인**을 구분합니다. 외부 AI와 AWS 가격 조회는 기본 비활성화입니다.

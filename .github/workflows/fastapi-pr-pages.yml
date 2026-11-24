@@ -1,0 +1,75 @@
+# 수동 실행으로만 현재 브라우저 앱을 배포합니다. Pages 설정은 별도로 활성화해야 합니다.
+name: Publish FastAPI PR Review
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'Leegiyeon/Generate-Architectures' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Checkout selected main commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check browser behavior
+        run: node --test tests/*.mjs
+
+      - name: Check analyzers and package behavior
+        run: >-
+          python -B -m unittest
+          tests.test_repository_structure
+          tests.test_pr_preview_structure
+          tests.test_pr_preview_browser
+          tests.test_pr_preview_factories
+          tests.test_pr_preview_alter_column
+          tests.test_pr_preview_package
+
+      - name: Build declared web assets
+        run: python -B scripts/build_pr_preview.py --output architecture-output/pr-preview-pages
+
+      - name: Configure existing GitHub Pages site
+        uses: actions/configure-pages@v5
+
+      - name: Upload web directory
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: architecture-output/pr-preview-pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish checked artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
