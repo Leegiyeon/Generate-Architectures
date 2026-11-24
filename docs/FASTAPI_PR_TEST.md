@@ -18,9 +18,9 @@
 
 외부 실사용 기록 **0/5명**, 실제 재사용 기록 **0/2명**은 그대로입니다. 사용자 성과 달성률은 **0% (0/2명)**이며 시장성은 미검증입니다. 에이전트의 예제·회귀 검사와 링크 방문을 사용자 실사용으로 집계하지 않습니다. 모집 문구는 과거 준비 자료로 아래에 남기며, 외부 게시·DM·댓글은 보내지 않습니다. 피드백 수집을 더 이상 개발 선행 조건으로 삼지 않습니다.
 
-다음 개선 요청의 P1인 PR 조회 범위 정확성과 분석 취소·통합 제한시간도 구현·공개 검증해 **100% (2/2)** 완료했습니다. 후속 P2 저장소 설정 공유는 구현·로컬 검증을 완료했고 공개 배포 검증을 진행 중입니다.
+다음 개선 요청의 P1인 PR 조회 범위 정확성과 분석 취소·통합 제한시간도 구현·공개 검증해 **100% (2/2)** 완료했습니다. 후속 P2 저장소 설정 공유도 구현·로컬 검증·공개 검증을 마쳐 **100% (3/3)** 완료했습니다.
 
-이번 P1 요청 범위의 필수 잔여 업무는 없습니다. 사용자의 전환 승인 후 기존 공개 저장소의 GitHub Pages에 배포했고, 공유 주소와 모집 문구를 실제 검증한 새 주소로 갱신했습니다. 외부 피드백 수집과 추가 기능은 자동으로 재개하지 않습니다. [배포·재배포 방법과 검증 범위](FASTAPI_PR_DEPLOY.md)를 참고하세요.
+현재 요청한 P1·P2 개선 범위의 필수 잔여 업무는 없습니다. 사용자의 전환 승인 후 기존 공개 저장소의 GitHub Pages에 배포했고, 공유 주소와 모집 문구를 실제 검증한 새 주소로 갱신했습니다. 외부 피드백 수집과 추가 기능은 자동으로 재개하지 않습니다. [배포·재배포 방법과 검증 범위](FASTAPI_PR_DEPLOY.md)를 참고하세요.
 
 ### 로컬에서도 직접 테스트
 
@@ -43,9 +43,14 @@ PR 기능·저장소 모드·목적별 검토 계획·조건부 구조 비교를
 
 ### 저장소 분석 설정 공유 — 2026-11-24
 
-- P2 범위는 저장소·분석한 전체 커밋 SHA·소스 루트·선택 파일·참조 방향·사용 목적의 공유·복원입니다. 기존 PR 링크와 복사 UI·검증기를 재사용하며 링크를 열 때 자동 분석하지 않습니다. 구현·로컬 검증을 완료했고 공개 배포 검증을 진행 중입니다.
+- P2 범위는 저장소·분석한 전체 커밋 SHA·소스 루트·선택 파일·참조 방향·사용 목적의 공유·복원입니다. 기존 PR 링크와 복사 UI·검증기를 재사용하며 링크를 열 때 자동 분석하지 않습니다. 구현·로컬 검증·공개 배포 검증을 완료했습니다.
 - JavaScript108개·관련 Python65개 통과. 고정 SHA·Unicode 경로 왕복, 잘못된/혼합/중복/긴 링크 거부, 결과 선택·공유 출력 갱신, 없는 파일 안내·빈 결과 공유, 기존 PR 링크를 회귀 검사했습니다. 독립 통합 검토에서 중요한 문제는 발견되지 않았습니다.
 - 실제 로컬 브라우저의 SQLModel 고정 예제에서 링크 복원 후 `tutorial001.py`·참조하는 파일 방향·테스트 계획을 확인했습니다. 자동 복사가 거부돼 읽기 전용 URL318자와 전체 선택을 확인했습니다. 취소 후 재시도에서도 공유 선택을 유지하며, 입력 수정 시 기본 선택으로 돌아옵니다. 표시할 수 없는 파일 안내와 중복 목적 오류도 확인했습니다.
+- 배포 소스 `31885d77c1e5d4fcd5eded5d7a251b4d54ad130a`, [성공한 배포 실행](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45331752421). Node22.23.5의 JavaScript108개·Python3.12.16의 관련62개 통과. [같은 소스의 전체 CI](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45331730566)도 Python294개·합성 보고서13개/화면78상태를 통과했습니다.
+- 공개 HTTPS 웹 자산29개가 배포 소스와 일치하며 JS/WASM MIME·런타임6개 SHA-256을 확인했습니다. 기록: `architecture-output/pages-share-live-http-check.json`.
+- 실제 공개 주소에서 SQLModel 고정 예제의 `__init__.py`·참조하는 파일 방향·테스트 계획 링크를 복사했습니다. 새로고침 후 저장소 모드·전체 SHA·루트를 복원하고 분석 전 결과 숨김·활성 시작 버튼을 확인했습니다. 분석 후 파일·방향·목적이 일치했습니다. `tutorial001.py`로 바꾼 실제 클립보드324자와 같은 수동 링크의 일치도 확인했습니다. 기존 #1258 PR 링크의 API 관점·파일 범위도 정상 복원됐습니다.
+- 데스크톱1280×900·모바일390×844에서 페이지 가로 넘침이 없고 모바일 공유 버튼은 화면 안593~634px에 표시됐습니다. 기본 viewport를 복원했고 브라우저 오류는0건입니다. 화면: `architecture-output/repository-share-live.jpg`, `repository-share-mobile.jpg`. 검사용 로컬 서버를 종료했습니다.
+- 이번 검증은 설정 전달·재분석 흐름이며 SVG 저장·제안 적용 효과·외부 실사용 성과 검증을 포함하지 않습니다.
 - ZIP32파일·웹 자산29개와 압축 해제본이 검증한 소스와 일치합니다. OpenAI API·새 서버·Secret·의존성·외부 피드백 발송은 추가하지 않았습니다.
 
 ### 조회 범위·취소 개선 — 2026-11-24
@@ -197,6 +202,8 @@ PR 기능·저장소 모드·목적별 검토 계획·조건부 구조 비교를
 
 - [API 테스트 — 사용자 삭제 핸들러](https://leegiyeon.github.io/Generate-Architectures/#pr=https%3A%2F%2Fgithub.com%2Ffastapi-users%2Ffastapi-users%2Fpull%2F1258&focus=api&path=fastapi_users%2Frouter%2Fusers.py): ‘변경 확인’을 누르면 `DELETE /{id}`의 핸들러 변경과 `request: Request` 추가를 확인할 수 있습니다.
 - [DB 테스트 — created_at 필드와 마이그레이션](https://leegiyeon.github.io/Generate-Architectures/#pr=https%3A%2F%2Fgithub.com%2Ffastapi%2Ffull-stack-fastapi-template%2Fpull%2F2144&focus=db&path=backend%2Fapp): 테이블 필드 2개와 컬럼 추가 선언 2개를 확인할 수 있습니다.
+
+- [저장소 공유 테스트 — SQLModel 고정 커밋의 테스트 계획](https://leegiyeon.github.io/Generate-Architectures/#mode=repository&repo=https%3A%2F%2Fgithub.com%2Ffastapi%2Fsqlmodel&commit=c392a113ef555f626301f56e01a3a0312ef20ee8&root=docs_src%2Ftutorial%2Ffastapi%2Fsimple_hero_api&direction=incoming&purpose=testing&file=docs_src%2Ftutorial%2Ffastapi%2Fsimple_hero_api%2Ftutorial001.py): ‘현재 구조 확인’을 누르면 `tutorial001.py`·이 파일을 참조하는 파일·테스트 계획을 복원합니다.
 
 결과 상단 ‘분석 설정 링크 복사’로 자신의 공개 PR과 선택 범위도 전달할 수 있습니다. 링크에는 PR·관점·경로·클래스 설정이 포함됩니다. 분석 결과나 커밋은 고정하지 않으며, 받은 사람이 실행하는 시점의 PR을 조회합니다. 링크를 열기만 하면 GitHub 소스를 조회하지 않습니다.
 
