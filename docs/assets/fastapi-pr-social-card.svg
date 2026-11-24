@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">FastAPI PR Review</title>
+  <desc id="desc">공개 FastAPI PR의 API와 DB 변경을 코드 근거와 함께 확인하는 무료 웹 도구. 저장된 실제 PR 예제 #2144.</desc>
+  <rect width="1200" height="630" fill="#f5f7fb"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif" fill="#192438">
+    <text x="64" y="83" font-size="28" font-weight="700">FastAPI <tspan fill="#59667a" font-weight="400">PR Review</tspan></text>
+    <text x="64" y="174" font-size="48" font-weight="700" letter-spacing="-2">API·DB에서 무엇이 바뀌었나요?</text>
+    <text x="64" y="223" font-size="25" fill="#59667a">공개 PR 링크 하나로 변경 요약과 코드 근거 확인</text>
+    <rect x="64" y="267" width="1072" height="215" rx="16" fill="#fff" stroke="#dce2ed"/>
+    <text x="92" y="310" font-size="21" fill="#59667a">저장된 실제 PR 예제 · fastapi/full-stack-fastapi-template #2144</text>
+    <line x1="600" y1="336" x2="600" y2="450" stroke="#dce2ed"/>
+    <text x="92" y="366" font-size="20" fill="#2556d9">API 변경</text>
+    <text x="92" y="407" font-size="27" font-weight="600">GET /items/ 핸들러 수정</text>
+    <text x="92" y="444" font-size="21" fill="#59667a">items.py 25행 ↗</text>
+    <text x="628" y="366" font-size="20" fill="#2556d9">DB 변경</text>
+    <text x="628" y="407" font-size="27" font-weight="600">Item.created_at 필드 추가</text>
+    <text x="628" y="444" font-size="21" fill="#59667a">models.py 89행 ↗</text>
+    <text x="64" y="548" font-size="25" font-weight="600" fill="#2556d9">무료 · 로그인·설치·API 키 불필요</text>
+    <text x="64" y="589" font-size="21" fill="#59667a">leegiyeon.github.io/Generate-Architectures/</text>
+  </g>
+</svg>

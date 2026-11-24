@@ -28,6 +28,18 @@ button, input, textarea, summary, a { -webkit-tap-highlight-color: transparent; 
 h1 { margin: 0 0 14px; font-size: clamp(1.9rem, 4.1vw, 2.65rem); line-height: 1.3; font-weight: 720; letter-spacing: -.055em; word-break: keep-all; }
 .intro p { color: var(--muted); margin: 0; letter-spacing: -.015em; }
 .mobile-break { display: none; }
+.service-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; padding: 0; margin: 17px 0 0; color: #3f526f; font-size: .875rem; }
+.service-facts li::before { content: "✓ "; color: #2556d9; }
+.sample-preview { margin-bottom: 24px; border: 1px solid #bdc9dc; border-radius: 12px; background: #fff; }
+.sample-preview > summary { padding: 15px 20px; color: #254fbc; font-size: .9375rem; font-weight: 650; }
+.sample-preview > summary span { margin-left: 9px; color: var(--muted); font-size: .8125rem; font-weight: 400; }
+.sample-content { padding: 4px 20px 22px; }
+.sample-content h2 { font-size: 1.35rem; letter-spacing: -.035em; margin: 10px 0; }
+.sample-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 12px 0; }
+.sample-grid .evidence-item { margin: 0; }
+.sample-grid h3 { font-size: .875rem; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.sample-grid p { font-size: .9375rem; margin: 0 0 12px; }
+.sample-content .sample-note { margin-top: 12px; }
 
 .input-panel { padding: 30px; border: 1px solid var(--border); border-radius: 16px; background: #fff; box-shadow: 0 6px 24px #263d6210; }
 .input-label, legend { font-size: .9375rem; font-weight: 650; color: #29364d; }
@@ -154,6 +166,7 @@ select { appearance: none; padding-right: 35px; font-size: .875rem; background-i
   .focus-option small { margin: 0; }
   .advanced-grid { grid-template-columns: 1fr; gap: 15px; }
   .copy-actions { grid-template-columns: 1fr; }
+  .sample-grid { grid-template-columns: 1fr; }
   .repository-fields { grid-template-columns: 1fr; }
   .report-title { font-size: 1.25rem; }
 }
@@ -165,6 +178,9 @@ select { appearance: none; padding-right: 35px; font-size: .875rem; background-i
   .mobile-break { display: initial; }
   .input-panel, .results { padding: 19px 16px; }
   .input-help-row { gap: 8px; }
+  .sample-preview > summary { padding: 14px 16px; }
+  .sample-preview > summary span { display: block; margin: 3px 0 0 17px; }
+  .sample-content { padding: 4px 16px 18px; }
   .focus-option span { gap: 2px 10px; }
   .evidence-item { padding: 12px; }
 }

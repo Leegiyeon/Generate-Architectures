@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="공개 FastAPI PR의 라우트, 응답 모델, DB 모델과 마이그레이션 변경을 코드 근거와 함께 확인하세요.">
     <meta name="theme-color" content="#f5f7fb">
+    <link rel="canonical" href="https://leegiyeon.github.io/Generate-Architectures/">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ko_KR">
+    <meta property="og:title" content="FastAPI PR Review — API·DB 변경을 코드 근거와 함께">
+    <meta property="og:description" content="공개 FastAPI PR의 라우트·모델·마이그레이션 변경을 확인하세요. 무료, 로그인·설치·API 키 없이 브라우저에서 분석합니다.">
+    <meta property="og:url" content="https://leegiyeon.github.io/Generate-Architectures/">
+    <meta property="og:image" content="https://leegiyeon.github.io/Generate-Architectures/social-preview.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="FastAPI PR Review. 실제 공개 PR 예제의 GET /items/ 핸들러 수정과 Item.created_at 필드 추가를 코드 근거와 함께 확인하는 무료 도구.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="FastAPI PR Review — API·DB 변경을 코드 근거와 함께">
+    <meta name="twitter:description" content="공개 FastAPI PR을 무료로 분석하세요. 로그인·설치·API 키가 필요 없습니다.">
+    <meta name="twitter:image" content="https://leegiyeon.github.io/Generate-Architectures/social-preview.jpg">
     <title>FastAPI PR Review</title>
     <link rel="stylesheet" href="styles.css">
     <script type="module" src="app.js"></script>
@@ -20,7 +34,37 @@
         <div class="intro">
           <h1>API와 DB에서<br class="mobile-break"> 무엇이 바뀌었나요?</h1>
           <p>PR 링크를 넣고, 관련 코드 구조와 변경 사항을 코드 근거와 함께 확인하세요.</p>
+          <ul class="service-facts" aria-label="체험 조건">
+            <li>무료</li><li>로그인·설치·API 키 불필요</li><li>공개 Python 코드</li>
+          </ul>
         </div>
+
+        <details id="sample-preview" class="sample-preview">
+          <summary>저장된 결과 먼저 보기 <span>분석 대기 없이</span></summary>
+          <div class="sample-content">
+            <p class="report-meta">저장된 실제 PR 예제 · 2026-11-24 조회 · 변경 근거 일부 발췌</p>
+            <h2>created_at 추가, API와 DB에서는?</h2>
+            <p class="help"><a href="https://github.com/fastapi/full-stack-fastapi-template/pull/2144" target="_blank" rel="noopener noreferrer">fastapi/full-stack-fastapi-template #2144</a> · Python 4/4개 비교<br><code>6c33235 → 17fe3b0</code> · 아래 근거는 이후 커밋에 고정됩니다.</p>
+            <div class="sample-grid">
+              <section class="evidence-item">
+                <h3>API 사용자가 확인할 변경</h3>
+                <p><strong>GET /items/ 핸들러 수정</strong><br><code>Item.created_at.desc()</code>를 사용한 <code>order_by</code> 호출이 추가됐습니다.</p>
+                <a class="source-link" href="https://github.com/fastapi/full-stack-fastapi-template/blob/17fe3b071a5519ca92e49af30bf3efd21ad11527/backend/app/api/routes/items.py#L25" target="_blank" rel="noopener noreferrer">items.py 25행에서 확인 ↗</a>
+              </section>
+              <section class="evidence-item">
+                <h3>DB 변경을 검토할 근거</h3>
+                <p><strong>Item.created_at 필드 추가</strong><br><code>datetime | None</code> 선언과 <code>item.created_at</code> 컬럼 추가를 함께 확인합니다.</p>
+                <a class="source-link" href="https://github.com/fastapi/full-stack-fastapi-template/blob/17fe3b071a5519ca92e49af30bf3efd21ad11527/backend/app/models.py#L89" target="_blank" rel="noopener noreferrer">models.py 89행 ↗</a> · <a class="source-link" href="https://github.com/fastapi/full-stack-fastapi-template/blob/17fe3b071a5519ca92e49af30bf3efd21ad11527/backend/app/alembic/versions/fe56fa70289e_add_created_at_to_user_and_item.py#L22" target="_blank" rel="noopener noreferrer">마이그레이션 22행 ↗</a>
+              </section>
+            </div>
+            <p class="help">다음 확인: 정렬의 API 계약 테스트와 기존 데이터·마이그레이션 적용 순서. 정적 선언의 비교이며 실제 DB 호환성·실행 결과는 별도 확인이 필요합니다.</p>
+            <div class="report-actions">
+              <button id="sample-analyze" type="button">이 예제 최신 PR 분석</button>
+              <button id="sample-own-pr" type="button">내 PR 입력하기</button>
+            </div>
+            <p class="help sample-note">최신 분석은 현재 PR을 다시 조회합니다. 저장된 예제와 결과가 달라질 수 있습니다.</p>
+          </div>
+        </details>
 
         <nav class="analysis-modes report-actions" aria-label="분석할 대상">
           <button id="mode-pr" type="button" aria-pressed="true" aria-controls="pr-panel">PR 변경 분석</button>
@@ -35,7 +79,7 @@
               <button class="primary-button" id="analyze-button" type="submit">변경 확인</button>
             </div>
             <div class="input-help-row">
-              <p class="help" id="url-help">공개 저장소의 PR 링크를 입력하세요.</p>
+              <p class="help" id="url-help">공개 PR만 지원합니다. 첫 분석은 분석기 준비로 잠시 걸릴 수 있습니다.</p>
               <button class="text-button" id="example-button" type="button">FastAPI 예제로 시작</button>
             </div>
 

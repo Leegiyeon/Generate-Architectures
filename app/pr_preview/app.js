@@ -16,6 +16,7 @@ const errorBox = document.querySelector("#error");
 const feedbackLink = document.querySelector("#feedback-link");
 const cancelButton = document.querySelector("#analysis-cancel");
 const cancelActions = document.querySelector("#analysis-cancel-actions");
+const samplePreview = document.querySelector("#sample-preview");
 feedbackLink.href = feedbackURL();
 const exampleURL = "https://github.com/fastapi/full-stack-fastapi-template/pull/2144";
 let activeController;
@@ -25,6 +26,7 @@ let busy = false;
 
 function selectMode(mode) {
   if (busy) return;
+  samplePreview.open = false;
   document.querySelector(".intro h1").textContent = mode === "repository" ? "현재 코드는 어떻게 연결되나요?" : "API와 DB에서 무엇이 바뀌었나요?";
   document.querySelector(".intro p").textContent = mode === "repository" ? "저장소 링크와 Python 소스 루트를 넣고, 파일별 import와 라우트·모델 선언을 확인하세요." : "PR 링크를 넣고, 관련 코드 구조와 변경 사항을 코드 근거와 함께 확인하세요.";
   for (const name of ["pr", "repository"]) {
@@ -40,7 +42,7 @@ function selectMode(mode) {
 }
 
 function analysisControls() {
-  return [...document.querySelectorAll("#review-form input, #review-form button, #review-form textarea, #repository-form input, #repository-form button, .analysis-modes button")];
+  return [...document.querySelectorAll("#review-form input, #review-form button, #review-form textarea, #repository-form input, #repository-form button, .analysis-modes button, .sample-preview button")];
 }
 
 function node(tag, className, text) {
@@ -191,6 +193,8 @@ async function run(event) {
   results.hidden = true;
   lastReport = null;
   busy = true;
+  samplePreview.open = false;
+  samplePreview.inert = true;
   const controls = analysisControls();
   const controller = new AbortController();
   activeController = controller;
@@ -218,6 +222,7 @@ async function run(event) {
   } finally {
     clearTimeout(timer);
     busy = false;
+    samplePreview.inert = false;
     activeController = null;
     cancelActions.hidden = true;
     controls.forEach(control => { control.disabled = false; });
@@ -271,6 +276,8 @@ async function runRepository(event) {
   errorBox.hidden = true;
   feedbackLink.href = feedbackURL();
   busy = true;
+  samplePreview.open = false;
+  samplePreview.inert = true;
   const controls = analysisControls();
   controls.forEach(control => { control.disabled = true; });
   const controller = new AbortController();
@@ -301,6 +308,7 @@ async function runRepository(event) {
   } finally {
     clearTimeout(timer);
     busy = false;
+    samplePreview.inert = false;
     activeController = null;
     cancelActions.hidden = true;
     controls.forEach(control => { control.disabled = false; });
@@ -330,9 +338,21 @@ document.getElementById("repository-proposal-example").addEventListener("click",
   repositoryExample("fastapi/sqlmodel", "c392a113ef555f626301f56e01a3a0312ef20ee8", "docs_src/tutorial/fastapi/simple_hero_api"));
 window.addEventListener("hashchange", restoreSharedSettings);
 form.addEventListener("submit", run);
-document.querySelector("#example-button").addEventListener("click", () => {
+function startExample() {
+  if (busy) return;
+  selectMode("pr");
   document.querySelector("#pr-url").value = exampleURL;
+  form.elements.focus.value = "all";
+  for (const id of ["paths", "models", "responses"]) document.getElementById(id).value = "";
+  document.querySelector(".advanced-options").open = false;
   form.requestSubmit();
+}
+document.querySelector("#example-button").addEventListener("click", startExample);
+document.querySelector("#sample-analyze").addEventListener("click", startExample);
+document.querySelector("#sample-own-pr").addEventListener("click", () => {
+  if (busy) return;
+  selectMode("pr");
+  jumpTo(document.querySelector("#pr-url"));
 });
 for (const input of form.querySelectorAll('input[name="focus"]')) {
   input.addEventListener("change", () => {
