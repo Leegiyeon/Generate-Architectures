@@ -8,11 +8,11 @@
 
 | 이번 사용자 확보 준비의 우선순위 | 상태 | 완료 조건 |
 | --- | --- | --- |
-| P1. 첫 방문 → 실제 결과 → 본인 PR | 로컬 검증 완료 | 무료·가입/설치/API 키 불필요 안내, 실제 #2144 저장 발췌와 고정 근거, 최신 예제/본인 PR 전환 |
+| P1. 첫 방문 → 실제 결과 → 본인 PR | 완료 | 무료·가입/설치/API 키 불필요 안내, 실제 #2144 저장 발췌와 고정 근거, 최신 예제/본인 PR 전환 |
 | P2. 바로 공유할 소개 자료 | 완료 | 한국어·영문 소개, 관점별 예제 링크, 대표 이미지와 공유 메타데이터 |
-| P3. 공개 배포·모바일 확인 | 진행 중 | CI·Pages 성공, 실제 공개 주소의 미리보기/분석/공유 설정 확인, 390px 검증 |
+| P3. 공개 배포·모바일 확인 | 완료 | CI·Pages 성공, 실제 공개 주소의 미리보기/분석/공유 설정 확인, 390px 검증 |
 
-이번 준비 작업의 진척률은 **67% (2/3)**입니다. 세 완료 조건에 같은 비중을 둔 체크리스트이며 실제 사용자 증가나 성공 확률을 뜻하지 않습니다. 이전 코드 구조·제안 기능과 사용 흐름 개선은 각각 정의한 기술 범위의 구현·배포를 완료했습니다. 상세 검증은 아래에 보존합니다.
+이번 준비 작업의 진척률은 **100% (3/3)**입니다. 세 완료 조건에 같은 비중을 둔 체크리스트이며 실제 사용자 증가나 성공 확률을 뜻하지 않습니다. 이전 코드 구조·제안 기능과 사용 흐름 개선은 각각 정의한 기술 범위의 구현·배포를 완료했습니다. 상세 검증은 아래에 보존합니다.
 
 외부 공유에 필요한 내용은 [사용 초대 문구](FASTAPI_PR_SHARE.md)에 모았습니다. 이후 우선순위는 **사용자 직접 공유 → 본인 PR에서의 첫 사용 5명 확인 → 다른 PR에서 실제 재사용 2명 확인**입니다. 예제 체험·방문·재사용 의향을 실사용으로 계산하지 않습니다. 사용자 수를 모르는 방문은 미확인으로 남기며 자동 집계·외부 추적기를 추가하지 않습니다.
 
@@ -31,17 +31,28 @@
 동일 기능의 로컬 실행본은 `architecture-output/fastapi-pr-review-local.zip`으로 준비했습니다. ZIP 전체를 압축 해제하고 `fastapi-pr-review` 폴더에서 `python3 start.py`를 실행합니다(Windows는 `py -3 start.py`). Python 3.10 이상과 GitHub 접속이 필요합니다. 분석 런타임을 포함하며 OpenAI API 키는 사용하지 않습니다. `PR 변경 분석`에서 예제·본인의 공개 PR을 확인하거나, `저장소 현재 구조`에서 `저장소 예제로 시작` 또는 `구조 비교 예제`를 선택합니다. 본인의 공개 저장소 URL·Python 소스 루트로 바꾸고(커밋 SHA는 선택), 파일·사용 목적을 선택해 검토 계획과 근거가 있는 구조 개선 후보를 확인할 수 있습니다. 후보에는 현재·가정 도표, 적용 전제·순서·검증·단점과 SVG·텍스트 출력이 있습니다. 웹 배포와 별도로 기기 안에서 실행하는 패키지입니다.
 
 - 재생성: `python3 scripts/build_pr_preview.py --output architecture-output/pr-preview --archive architecture-output/fastapi-pr-review-local.zip`.
-- 최신 ZIP은 32개 파일·웹 자산 29개·6,416,717바이트입니다. 저장소 복구·탐색 소스와 압축 해제본의 바이트 일치를 확인했습니다. 이전 30파일 패키지에서는 다른 작업 경로의 실행·HTTP 200·JS/WASM MIME·런타임 SHA-256·127.0.0.1 연결·정상 종료·잘못된 포트 거부·README 비노출을 확인했습니다. 런처와 런타임은 이번에 변경하지 않았습니다.
-- 최신 패키지 일치 기록: `architecture-output/explore-package-check.json`, 이전 실행 기록: `architecture-output/local-package-smoke.json`. ZIP SHA-256은 `a500de17fdb24f32ac54de1b668afaeb980bc81832e9a99172c58d5d68e3d866`입니다. macOS Finder 더블 클릭 및 Windows 실행은 별도로 확인하지 않았습니다. 새 기능 화면은 아래 구조 비교·목적별 계획·저장소 모드 검증 기록을 참고합니다.
+- 최신 ZIP은 33개 파일·웹 자산 30개·6,461,581바이트입니다. 첫 사용·공유 개선 소스와 압축 해제본의 바이트 일치를 확인했습니다. 이전 30파일 패키지에서는 다른 작업 경로의 실행·HTTP 200·JS/WASM MIME·런타임 SHA-256·127.0.0.1 연결·정상 종료·잘못된 포트 거부·README 비노출을 확인했습니다. 런처와 런타임은 이번에 변경하지 않았습니다.
+- 최신 패키지 일치 기록: `architecture-output/acquisition-package-check.json`, 이전 실행 기록: `architecture-output/local-package-smoke.json`. ZIP SHA-256은 `f0e98b3be46afe6aaa88ba5a41efd0033be54f83e965f658e49cbd656752b79c`입니다. macOS Finder 더블 클릭 및 Windows 실행은 별도로 확인하지 않았습니다. 새 기능 화면은 아래 구조 비교·목적별 계획·저장소 모드 검증 기록을 참고합니다.
 
 ### 마무리 상태
 
 PR 기능·저장소 모드·목적별 검토 계획·조건부 구조 비교를 공개 배포하고 실제 주소에서 검증했습니다. 로컬 실행 ZIP도 유지합니다. 아래 패키징 기록과 과거 배포 차단 기록은 검증 범위의 이력이며, 현재 공개 배포 상태는 다음 항목을 따릅니다. 외부 사용자 성과는 미검증입니다.
 
-- 직접 실행할 압축 해제본: `architecture-output/local-preview/fastapi-pr-review/START.command`. macOS에서는 이 파일을 열거나, 같은 폴더에서 `python3 start.py`를 실행합니다. 기존 파일이 이전 패키지와 일치하는지 확인한 뒤 갱신했고, 최신 ZIP 32개 파일과 압축 해제본의 일치를 확인했습니다.
+- 직접 실행할 압축 해제본: `architecture-output/local-preview/fastapi-pr-review/START.command`. macOS에서는 이 파일을 열거나, 같은 폴더에서 `python3 start.py`를 실행합니다. 기존 파일이 이전 패키지와 일치하는지 확인한 뒤 갱신했고, 최신 ZIP 33개 파일과 압축 해제본의 일치를 확인했습니다.
 - 기본 `python3`를 사용하는 `START.command`를 다른 작업 폴더에서 실행해 새 구조도 자산 제공·실행 권한·정상 종료를 확인했습니다. 검사 중 브라우저 자동 열기를 억제했으므로 Finder 더블 클릭 자체와 Windows 실행은 검증하지 않았습니다. 기록은 `architecture-output/local-launcher-smoke.json`입니다.
 - 최종 패키징 검토에서 발견한 입력 파일 덮어쓰기 위험을 수정했습니다. 웹 출력 폴더 안의 ZIP 경로·잘못된 확장자·원본 소스 충돌을 거부하고, 임시 ZIP 작성 후 교체해 실패 시 이전 ZIP을 보존합니다. 관련 회귀 검사 4개 통과 및 수정 후 재검토에서 추가 중요한 문제 없음.
 - 최초 배포 시점 ZIP의 웹 자산 27개·런타임 무결성 6개·HTTP MIME·정상 종료를 재검증했습니다. 당시 검사용 서버는 모두 종료했습니다. 최신 UX 패키지 검증 범위는 위 기록을 따릅니다.
+
+### 첫 사용·공유 자료 공개 검증 — 2026-11-24
+
+- P1: 무료·로그인/설치/API 키 불필요·공개 Python 범위를 첫 화면에 명시했습니다. 네트워크·Worker 실행 없이 여는 실제 #2144 발췌는 조회 날짜·고정 커밋·코드 행과 최신 재분석의 차이를 표시합니다. 열기/닫기는 입력을 보존하고, ‘내 PR 입력하기’는 입력으로 포커스를 옮깁니다. 명시적 예제 분석은 관점·경로·모델을 예제 기본값으로 초기화합니다. 분석 중에는 미리보기를 닫고 잠그며 취소/완료 뒤 복구합니다.
+- 저장 예제 근거: merge-base `6c3323547bf7d14687e56f4a3c6f316610d67a53` → head `17fe3b071a5519ca92e49af30bf3efd21ad11527`, Python4/4개. 이후 `items.py:25`의 정렬 호출, `models.py:89`의 필드, `fe56fa70289e_add_created_at_to_user_and_item.py:22`의 컬럼을 기존 분석기로 재확인했습니다. 원본·결과 JSON은 `architecture-output/pr-validation/full-stack-2144{,-result}.json`에 보관합니다.
+- P2: [사용 초대 문구](FASTAPI_PR_SHARE.md)의 한국어2종·영문1종, 관점별 설정 링크, 대표 JPEG1200×630과 OG/Twitter/canonical을 준비했습니다. 카드는 [원본 SVG](assets/fastapi-pr-social-card.svg)를 브라우저에서 렌더해 생성했습니다. 플랫폼별 미리보기 노출·캐시와 검색 유입은 미검증입니다. 게시·DM·메일·홍보 댓글을 보내지 않았고 사용자가 직접 공유합니다.
+- 로컬 JavaScript113개·관련 Python65개가 통과했습니다. 독립 읽기 검토에서 조치가 필요한 회귀는 발견되지 않았습니다. [배포 실행](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45342707360)의 Node22 JavaScript113개·Python3.12 관련62개와 [동일 소스 전체 CI](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45342678490)의 Python294개·합성 보고서13개/화면78상태가 통과했습니다. 소스는 `bf28ebec02d4cb44b813b3368b9e2038880da322`입니다.
+- 공개 HTTPS 자산30개가 검증한 소스와 일치합니다. JS/WASM/JPEG MIME·런타임6개 SHA-256을 확인했습니다. `architecture-output/pages-acquisition-live-http-check.json`에 기록했습니다. ZIP33파일·압축 해제본도 일치하며 기존 런처와 런타임은 유지했습니다.
+- 실제 공개 주소에서 DB 관점·경로 설정 복원 → 미리보기 열기/입력 보존 → 예제 전체 범위 초기화 → 취소/복구 → 재시도 후 Python4/4개 결과·포커스를 확인했습니다. 데스크톱1280×900·모바일390×844에서 페이지 가로 넘침이 없고 저장소 설정 링크도 정상 복원됐습니다. 화면: `architecture-output/acquisition-preview-live.jpg`, `acquisition-preview-live-mobile.jpg`. 기본 viewport를 복원했습니다.
+- 브라우저 기록에는 공개 서비스 검증 전 06:41:58 UTC의 `animation` TypeError1건이 남아 있습니다. 공개 검증 이전 로컬 점검 시점의 기록이며, 스크립트 없는 카드 SVG·앱 소스에는 해당 처리 코드가 없습니다. 원인은 확정하지 않았습니다. 이후 공개 흐름에서 추가 오류는 없었고 분석·취소/재시도는 완료됐습니다. 원본 로그는 `architecture-output/acquisition-browser-check.json`에 보존해 오류0건으로 기록하지 않습니다.
+- 실제 사용자 증가·재사용·플랫폼 공유 미리보기·클립보드·SVG 다운로드는 이번 검증에 포함하지 않습니다. OpenAI API·새 서버·추적기·의존성을 추가하지 않았습니다. 다음 성과 단계는 사용자 직접 공유 후 본인 PR 실사용5명·다른 PR 재사용2명 확인이며, 피드백 응답은 체험 조건이 아닙니다.
 
 ### 저장소 실패 안내·연관 파일 탐색 — 2026-11-24
 
