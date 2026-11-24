@@ -305,13 +305,24 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
   for (const warning of snapshot.warnings) section.append(node("p", warning, "coverage-note"));
   if (report.omitted_nodes || report.omitted_edges) section.append(node("p", `표시 한도 등으로 파일 ${report.omitted_nodes}개·관계 ${report.omitted_edges}개를 생략했습니다.`, "coverage-note"));
   if (report.unreadable_paths.length) section.append(node("p", "읽거나 해석하지 못한 파일: " + report.unreadable_paths.join(", "), "coverage-note"));
+  if (report.warnings?.length) {
+    const warnings = node("details", undefined, "structure-list");
+    warnings.open = !report.nodes.length;
+    warnings.append(node("summary", `해석 한도와 추가 확인 ${report.warnings.length}건`));
+    const list = node("ul", undefined, "review-list");
+    for (const warning of report.warnings) list.append(node("li", warning));
+    warnings.append(list);
+    section.append(warnings);
+  }
   if (settings.file && !report.nodes.some(item => item.path === settings.file)) {
     section.append(node("p", "공유된 파일 " + settings.file + "을 현재 분석 범위에서 표시할 수 없습니다. "
       + (report.nodes.length ? "기본 파일로 열었습니다. " : "") + "읽기 실패·표시 한도를 확인하세요.", "coverage-note"));
   }
   if (!report.nodes.length) {
     showSharing();
-    section.append(node("p", "표시할 Python 파일이 없습니다. 소스 루트와 읽기 실패 안내를 확인하세요.", "empty"));
+    section.append(node("p", snapshot.totalFiles === 0
+      ? "지정한 소스 루트에 분석 가능한 일반 Python 파일이 없습니다. 저장소의 Python 파일 경로와 소스 루트를 확인하세요."
+      : "표시할 Python 파일이 없습니다. 위의 읽기·해석 실패 원인을 확인한 뒤 다시 분석하세요.", "empty"));
     return section;
   }
   const controls = node("div", undefined, "repository-fields");
@@ -374,6 +385,38 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
     body.append(viewport);
     if (focus.omitted_neighbors) body.append(node("p", `도표에서 이웃 파일 ${focus.omitted_neighbors}개를 더 생략했습니다. 관계의 코드 근거 목록도 확인하세요.`, "coverage-note"));
     body.append(node("p", direction.value === "incoming" ? "수정할 때 아래 import문을 출발점으로 사용 지점과 관련 테스트를 확인하세요. 실행 영향이 전파된다는 판정은 아닙니다." : "아래 모듈과 직접 선언을 읽어 파일의 역할을 살펴보세요. 호출 순서나 모듈 경계를 변경해야 한다는 판정은 아닙니다.", "coverage-note"));
+    const links = node("section", undefined, "result-section");
+    links.append(node("h3", "관계의 코드 근거"));
+    const list = node("ul", undefined, "review-list");
+    const neighbors = new Map();
+    for (const edge of focus.edges) {
+      const id = direction.value === "incoming" ? edge.source : edge.target;
+      if (!neighbors.has(id)) neighbors.set(id, []);
+      neighbors.get(id).push(edge);
+    }
+    for (const neighbor of report.nodes.filter(item => neighbors.has(item.id)).sort((a, b) => a.path.localeCompare(b.path))) {
+      const item = node("li");
+      item.append(node("p", neighbor.path));
+      const actions = node("div", undefined, "report-actions repository-neighbor-actions");
+      const open = node("button", "이 파일 구조 보기");
+      open.type = "button";
+      open.setAttribute("aria-label", "이 파일 구조 보기 · " + neighbor.path);
+      open.addEventListener("click", () => {
+        select.value = neighbor.id;
+        show();
+        select.focus({ preventScroll: true });
+        select.scrollIntoView({ block: "start" });
+      });
+      actions.append(open);
+      item.append(actions);
+      for (const edge of neighbors.get(neighbor.id)) {
+        item.append(node("p", `${edge.source} → ${edge.target} · ${edge.label}`));
+        item.append(source(snapshot, edge.evidence.path, edge.evidence.line, `${edge.evidence.path}:${edge.evidence.line}`));
+      }
+      list.append(item);
+    }
+    links.append(focus.edges.length ? list : node("p", "표시한 범위에서 확정한 직접 import 관계가 없습니다. 아래 미확인 범위를 함께 확인하세요.", "empty"));
+    body.append(links);
     if (proposalFile !== select.value) {
       proposals = proposalSection(snapshot, report, select.value);
       proposalFile = select.value;
@@ -381,17 +424,6 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
     body.append(proposals);
     showReview();
     body.append(plan);
-    const links = node("section", undefined, "result-section");
-    links.append(node("h3", "관계의 코드 근거"));
-    const list = node("ul", undefined, "review-list");
-    for (const edge of focus.edges) {
-      const item = node("li");
-      item.append(node("p", `${edge.source} → ${edge.target} · ${edge.label}`));
-      item.append(source(snapshot, edge.evidence.path, edge.evidence.line, `${edge.evidence.path}:${edge.evidence.line}`));
-      list.append(item);
-    }
-    links.append(focus.edges.length ? list : node("p", "표시한 범위에서 확정한 직접 import 관계가 없습니다. 아래 미확인 범위를 함께 확인하세요.", "empty"));
-    body.append(links);
     const declarations = node("section", undefined, "result-section");
     declarations.append(node("h3", "선택 파일의 라우트·테이블 선언"));
     declarations.append(source(snapshot, focus.selected.path, 1, focus.selected.path));
@@ -423,13 +455,5 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
   unknown.append(unknownList);
   if (report.omitted_unresolved) unknown.append(node("p", `목록 한도로 ${report.omitted_unresolved}건을 더 생략했습니다.`, "help"));
   section.append(unknown);
-  if (report.warnings.length) {
-    const warnings = node("details", undefined, "structure-list");
-    warnings.append(node("summary", `해석 한도와 추가 확인 ${report.warnings.length}건`));
-    const list = node("ul", undefined, "review-list");
-    for (const warning of report.warnings) list.append(node("li", warning));
-    warnings.append(list);
-    section.append(warnings);
-  }
   return section;
 }

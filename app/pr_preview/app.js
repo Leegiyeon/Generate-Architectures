@@ -292,7 +292,9 @@ async function runRepository(event) {
     results.replaceChildren(repositoryView(snapshot, report, sharedRepository ?? {}, window.location.href));
     sharedRepository = null;
     results.hidden = false;
-    progress("현재 구조를 확인했습니다. 파일과 사용 목적을 선택해 코드 근거와 검토 계획을 살펴보세요.");
+    progress(report.nodes.length
+      ? "현재 구조를 확인했습니다. 파일과 사용 목적을 선택해 코드 근거와 검토 계획을 살펴보세요."
+      : "표시할 파일이 없습니다. 결과의 분석 범위와 읽기·해석 실패 안내를 확인하세요.");
     jumpTo(results);
   } catch (error) {
     cancelled = showAnalysisError(error, controller.signal);
