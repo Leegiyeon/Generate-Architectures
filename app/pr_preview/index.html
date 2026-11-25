@@ -31,6 +31,7 @@
 
       <main>
         <div class="intro">
+          <span class="intro-eyebrow">FASTAPI · PYTHON 코드 리뷰</span>
           <h1>API와 DB에서<br class="mobile-break"> 무엇이 바뀌었나요?</h1>
           <p>PR 링크를 넣고, 관련 코드 구조와 변경 사항을 코드 근거와 함께 확인하세요.</p>
           <ul class="service-facts" aria-label="체험 조건">
@@ -46,40 +47,31 @@
           <noscript><p>JavaScript가 꺼져 있습니다. 브라우저에서 JavaScript를 허용한 뒤 새로고침해 주세요. 저장된 결과 예제는 아래에서 읽을 수 있습니다.</p></noscript>
         </aside>
 
-        <details id="sample-preview" class="sample-preview">
-          <summary>저장된 결과 먼저 보기 <span>분석 대기 없이</span></summary>
-          <div class="sample-content">
-            <p class="report-meta">저장된 실제 PR 예제 · 2026-11-24 조회 · 변경 근거 일부 발췌</p>
-            <h2>created_at 추가, API와 DB에서는?</h2>
-            <p class="help"><a href="https://github.com/fastapi/full-stack-fastapi-template/pull/2144" target="_blank" rel="noopener noreferrer">fastapi/full-stack-fastapi-template #2144</a> · Python 4/4개 비교<br><code>6c33235 → 17fe3b0</code> · 아래 근거는 이후 커밋에 고정됩니다.</p>
-            <div class="sample-grid">
-              <section class="evidence-item">
-                <h3>API 사용자가 확인할 변경</h3>
-                <p><strong>GET /items/ 핸들러 수정</strong><br><code>Item.created_at.desc()</code>를 사용한 <code>order_by</code> 호출이 추가됐습니다.</p>
-                <a class="source-link" href="https://github.com/fastapi/full-stack-fastapi-template/blob/17fe3b071a5519ca92e49af30bf3efd21ad11527/backend/app/api/routes/items.py#L25" target="_blank" rel="noopener noreferrer">items.py 25행에서 확인 ↗</a>
-              </section>
-              <section class="evidence-item">
-                <h3>DB 변경을 검토할 근거</h3>
-                <p><strong>Item.created_at 필드 추가</strong><br><code>datetime | None</code> 선언과 <code>item.created_at</code> 컬럼 추가를 함께 확인합니다.</p>
-                <a class="source-link" href="https://github.com/fastapi/full-stack-fastapi-template/blob/17fe3b071a5519ca92e49af30bf3efd21ad11527/backend/app/models.py#L89" target="_blank" rel="noopener noreferrer">models.py 89행 ↗</a> · <a class="source-link" href="https://github.com/fastapi/full-stack-fastapi-template/blob/17fe3b071a5519ca92e49af30bf3efd21ad11527/backend/app/alembic/versions/fe56fa70289e_add_created_at_to_user_and_item.py#L22" target="_blank" rel="noopener noreferrer">마이그레이션 22행 ↗</a>
-              </section>
-            </div>
-            <p class="help">다음 확인: 정렬의 API 계약 테스트와 기존 데이터·마이그레이션 적용 순서. 정적 선언의 비교이며 실제 DB 호환성·실행 결과는 별도 확인이 필요합니다.</p>
-            <div class="report-actions">
-              <button id="sample-analyze" type="button" disabled data-startup-lock>이 예제 최신 PR 분석</button>
-              <button id="sample-own-pr" type="button" disabled data-startup-lock>내 PR 입력하기</button>
-            </div>
-            <p class="help sample-note">최신 분석은 현재 PR을 다시 조회합니다. 저장된 예제와 결과가 달라질 수 있습니다.</p>
-          </div>
-        </details>
-
-        <nav class="analysis-modes report-actions" aria-label="분석할 대상">
-          <button id="mode-pr" type="button" aria-pressed="true" aria-controls="pr-panel" disabled data-startup-lock>PR 변경 분석</button>
-          <button id="mode-repository" type="button" aria-pressed="false" aria-controls="repository-panel" disabled data-startup-lock>저장소 현재 구조</button>
-          <button id="mode-local" type="button" aria-pressed="false" aria-controls="local-panel" disabled data-startup-lock>로컬 폴더 분석</button>
+        <div class="section-heading">
+          <p class="section-kicker">01 · 분석 대상</p>
+          <h2>무엇을 확인할까요?</h2>
+        </div>
+        <nav class="analysis-modes" aria-label="분석할 대상">
+          <button id="mode-pr" type="button" aria-label="PR 변경 분석" aria-pressed="true" aria-controls="pr-panel" aria-describedby="mode-pr-kind mode-pr-description" disabled data-startup-lock>
+            <span class="mode-top"><span id="mode-pr-kind" class="mode-kind">공개 PR</span><span class="mode-selected" aria-hidden="true">✓ 선택됨</span></span>
+            <strong>PR 변경 분석</strong><span id="mode-pr-description" class="mode-description">API·DB에서 무엇이 바뀌었는지 비교</span>
+          </button>
+          <button id="mode-repository" type="button" aria-label="저장소 현재 구조" aria-pressed="false" aria-controls="repository-panel" aria-describedby="mode-repository-kind mode-repository-description" disabled data-startup-lock>
+            <span class="mode-top"><span id="mode-repository-kind" class="mode-kind">공개 저장소</span><span class="mode-selected" aria-hidden="true">✓ 선택됨</span></span>
+            <strong>저장소 현재 구조</strong><span id="mode-repository-description" class="mode-description">파일 연결과 검토할 지점을 탐색</span>
+          </button>
+          <button id="mode-local" type="button" aria-label="로컬 폴더 분석" aria-pressed="false" aria-controls="local-panel" aria-describedby="mode-local-kind mode-local-description" disabled data-startup-lock>
+            <span class="mode-top"><span id="mode-local-kind" class="mode-kind">private도 가능</span><span class="mode-selected" aria-hidden="true">✓ 선택됨</span></span>
+            <strong>로컬 폴더 분석</strong><span id="mode-local-description" class="mode-description">내 컴퓨터의 Python 프로젝트 분석</span>
+          </button>
         </nav>
 
         <section id="pr-panel" class="input-panel" aria-label="PR 분석 입력">
+          <div class="panel-heading">
+            <p class="section-kicker">02 · 분석 설정</p>
+            <h2>PR 링크로 변경 비교</h2>
+            <p class="help">공개 PR의 변경 사항과 이전·이후 구조를 확인합니다.</p>
+          </div>
           <form id="review-form">
             <fieldset class="form-fields" disabled data-startup-lock>
             <label class="input-label" for="pr-url">GitHub PR 링크</label>
@@ -133,6 +125,11 @@
         </section>
 
         <section id="repository-panel" class="input-panel" aria-label="저장소 구조 입력" hidden>
+          <div class="panel-heading">
+            <p class="section-kicker">02 · 분석 설정</p>
+            <h2>저장소 구조 살펴보기</h2>
+            <p class="help">한 버전의 파일 연결과 라우트·테이블 선언을 탐색합니다.</p>
+          </div>
           <form id="repository-form">
             <fieldset class="form-fields" disabled data-startup-lock>
             <label class="input-label" for="repository-url">공개 GitHub 저장소</label>
@@ -160,27 +157,72 @@
         </section>
 
         <section id="local-panel" class="input-panel" aria-label="로컬 폴더 구조 입력" hidden>
+          <div class="panel-heading">
+            <p class="section-kicker">02 · 분석 설정</p>
+            <h2>내 컴퓨터의 폴더 분석</h2>
+            <p class="help">clone하거나 압축을 푼 프로젝트를 선택하세요.</p>
+          </div>
           <form id="local-form">
             <fieldset class="form-fields" disabled data-startup-lock>
-              <label class="input-label" for="local-files">로컬 프로젝트 폴더</label>
-              <p id="local-help" class="help">private 저장소를 clone하거나 ZIP을 풀고 프로젝트 폴더를 선택하세요. 선택한 소스와 폴더명은 외부로 전송하지 않습니다.</p>
-              <input id="local-files" type="file" webkitdirectory multiple aria-describedby="local-help local-selection">
-              <p id="local-selection" class="help local-selection" role="status" aria-live="polite">선택한 폴더가 없습니다.</p>
+              <p id="local-help" class="privacy-note">선택한 소스와 폴더명은 외부로 전송하지 않습니다.</p>
+              <div class="folder-picker">
+                <label class="input-label" for="local-files">로컬 프로젝트 폴더</label>
+                <input id="local-files" type="file" webkitdirectory multiple aria-describedby="local-help local-selection">
+                <p id="local-selection" class="help local-selection" role="status" aria-live="polite">폴더를 선택하면 분석할 수 있습니다.</p>
+              </div>
               <p id="local-unsupported" class="coverage-note" hidden>이 브라우저에서는 폴더 선택을 지원하지 않습니다. 최신 데스크톱 Chrome·Edge·Firefox·Safari에서 다시 열어 주세요.</p>
-              <div class="advanced-field repository-purpose">
+              <div class="advanced-field local-root-field">
                 <label for="local-root">Python 소스 루트</label>
                 <input id="local-root" type="text" value="." spellcheck="false" autocapitalize="off" aria-describedby="local-root-help">
-                <p id="local-root-help" class="help field-help">선택한 폴더 기준입니다. backend/app을 app으로 import하면 backend, src 안의 패키지는 src. 전체 폴더는 .입니다.</p>
+                <p id="local-root-help" class="help field-help">전체 폴더는 <code>.</code>을 유지하세요. 패키지의 import 기준 폴더를 지정할 수도 있습니다.</p>
+                <details class="input-guidance">
+                  <summary>소스 루트 지정 예시</summary>
+                  <p class="help"><code>backend/app</code>을 <code>app</code>으로 import하면 <code>backend</code>, <code>src</code> 안의 패키지는 <code>src</code>를 입력합니다. 선택한 폴더 기준 상대 경로입니다.</p>
+                </details>
               </div>
               <div class="report-actions local-actions">
                 <button class="primary-button" id="local-analyze" type="submit" disabled>폴더 구조 확인</button>
                 <button id="local-clear" type="button" disabled>선택 해제</button>
               </div>
-              <p class="help repository-limits">Python 최대100개·파일당64KiB를 읽습니다. .git·가상환경·의존성·캐시 폴더와 .env 같은 비Python 파일은 읽지 않습니다. 선택 시점의 현재 구조이며 PR 전후 비교는 아닙니다.</p>
-              <p class="help field-help">코드를 실행하지 않습니다. 웹서비스의 첫 분석에는 분석기 다운로드가 필요합니다. 파일을 수정했다면 폴더를 다시 선택하세요. 선택 해제·새로고침으로 선택과 결과를 지울 수 있습니다.</p>
+              <p class="help repository-limits">Python 현재 구조 · 최대 100개 파일 · 파일당 64KiB</p>
+              <details class="input-guidance input-limits">
+                <summary>지원 범위·파일 처리 안내</summary>
+                <ul class="guidance-list">
+                  <li>.git·가상환경·의존성·캐시와 .env 같은 비Python 파일은 읽지 않습니다. 코드를 실행하지 않습니다.</li>
+                  <li>선택 시점의 현재 구조를 분석합니다. PR 전후 비교는 포함하지 않습니다.</li>
+                  <li>웹의 첫 분석에는 분석기 다운로드가 필요합니다. 파일을 수정했다면 다시 선택하세요. 선택 해제·새로고침으로 선택과 결과를 지울 수 있습니다.</li>
+                </ul>
+              </details>
             </fieldset>
           </form>
         </section>
+
+        <details id="sample-preview" class="sample-preview">
+          <summary>저장된 결과 먼저 보기 <span>분석 대기 없이</span></summary>
+          <div class="sample-content">
+            <p class="report-meta">저장된 실제 PR 예제 · 2026-11-24 조회 · 변경 근거 일부 발췌</p>
+            <h2>created_at 추가, API와 DB에서는?</h2>
+            <p class="help"><a href="https://github.com/fastapi/full-stack-fastapi-template/pull/2144" target="_blank" rel="noopener noreferrer">fastapi/full-stack-fastapi-template #2144</a> · Python 4/4개 비교<br><code>6c33235 → 17fe3b0</code> · 아래 근거는 이후 커밋에 고정됩니다.</p>
+            <div class="sample-grid">
+              <section class="evidence-item">
+                <h3>API 사용자가 확인할 변경</h3>
+                <p><strong>GET /items/ 핸들러 수정</strong><br><code>Item.created_at.desc()</code>를 사용한 <code>order_by</code> 호출이 추가됐습니다.</p>
+                <a class="source-link" href="https://github.com/fastapi/full-stack-fastapi-template/blob/17fe3b071a5519ca92e49af30bf3efd21ad11527/backend/app/api/routes/items.py#L25" target="_blank" rel="noopener noreferrer">items.py 25행에서 확인 ↗</a>
+              </section>
+              <section class="evidence-item">
+                <h3>DB 변경을 검토할 근거</h3>
+                <p><strong>Item.created_at 필드 추가</strong><br><code>datetime | None</code> 선언과 <code>item.created_at</code> 컬럼 추가를 함께 확인합니다.</p>
+                <a class="source-link" href="https://github.com/fastapi/full-stack-fastapi-template/blob/17fe3b071a5519ca92e49af30bf3efd21ad11527/backend/app/models.py#L89" target="_blank" rel="noopener noreferrer">models.py 89행 ↗</a> · <a class="source-link" href="https://github.com/fastapi/full-stack-fastapi-template/blob/17fe3b071a5519ca92e49af30bf3efd21ad11527/backend/app/alembic/versions/fe56fa70289e_add_created_at_to_user_and_item.py#L22" target="_blank" rel="noopener noreferrer">마이그레이션 22행 ↗</a>
+              </section>
+            </div>
+            <p class="help">다음 확인: 정렬의 API 계약 테스트와 기존 데이터·마이그레이션 적용 순서. 정적 선언의 비교이며 실제 DB 호환성·실행 결과는 별도 확인이 필요합니다.</p>
+            <div class="report-actions">
+              <button id="sample-analyze" type="button" disabled data-startup-lock>이 예제 최신 PR 분석</button>
+              <button id="sample-own-pr" type="button" disabled data-startup-lock>내 PR 입력하기</button>
+            </div>
+            <p class="help sample-note">최신 분석은 현재 PR을 다시 조회합니다. 저장된 예제와 결과가 달라질 수 있습니다.</p>
+          </div>
+        </details>
 
         <div class="feedback-area">
           <p id="status" class="status" role="status" aria-live="polite"></p>

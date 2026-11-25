@@ -149,6 +149,15 @@ function render(pull, report, options) {
   heading.append(node("p", "report-meta", pull.base.slice(0, 7) + " → " + pull.head.slice(0, 7) + " · " + date + " 조회"));
   header.append(heading, link("원본 PR 보기", pull.url));
   results.append(header);
+  const summary = node("div", "summary-grid");
+  summary.setAttribute("aria-label", "PR 분석 범위 요약");
+  for (const [value, label] of [[report.changed_files, "범위의 변경 파일"],
+    [report.parsed_files + " / " + report.python_files, "비교한 Python 파일"]]) {
+    const metric = node("div", "summary-count");
+    metric.append(node("strong", "", String(value)), document.createTextNode(label));
+    summary.append(metric);
+  }
+  results.append(summary);
   const scope = node("p", "coverage-note",
     "선택 범위의 변경 파일 " + report.changed_files + "개 중 Python 파일 " + report.parsed_files + " / " + report.python_files +
     "개의 구문을 읽었습니다. 자동 비교는 파일 또는 함수에서 직접 만든 라우터의 선언과 직접 선언한 모델 필드 기준입니다.");
@@ -406,13 +415,13 @@ localFiles.addEventListener("change", () => {
   const name = files?.[0]?.webkitRelativePath?.split("/")[0];
   document.getElementById("local-selection").textContent = files?.length
     ? (name || "선택한 폴더") + " · " + files.length + "개 파일 선택됨. ‘폴더 구조 확인’을 누르면 Python 소스를 읽습니다."
-    : "선택한 폴더가 없습니다.";
+    : "폴더를 선택하면 분석할 수 있습니다.";
   syncLocalControls();
 });
 localRoot.addEventListener("input", clearResults);
 document.getElementById("local-clear").addEventListener("click", () => {
   localFiles.value = "";
-  document.getElementById("local-selection").textContent = "선택한 폴더가 없습니다.";
+  document.getElementById("local-selection").textContent = "폴더를 선택하면 분석할 수 있습니다.";
   clearResults();
   syncLocalControls();
   jumpTo(localFiles);

@@ -156,7 +156,7 @@ test("repository latest-origin heading keeps the exact pinned SHA and branch as 
   install(t, undefined);
   const sha = "a".repeat(40);
   const snapshot = { repo: "example/repo", head: sha, root: ".", totalFiles: 0, warnings: [], resolvedFrom: { branch: "feature/<latest>" } };
-  const report = { parsed_files: 0, nodes: [], unreadable_paths: [] };
+  const report = { parsed_files: 0, nodes: [], edges: [], unresolved: [], omitted_unresolved: 0, unreadable_paths: [] };
   const section = repositoryView(snapshot, report);
   const heading = section.children[0];
   assert.match(heading.children[1].textContent, new RegExp(sha));

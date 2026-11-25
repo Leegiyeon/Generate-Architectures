@@ -211,7 +211,6 @@ function proposalSection(snapshot, report, id) {
     for (const limit of result.limits) section.append(node("p", limit, "help"));
     return section;
   }
-  section.open = true;
   const select = node("select");
   select.id = "repository-proposal";
   for (const candidate of result.candidates) {
@@ -310,6 +309,19 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
     heading.append(node("p", "기본 브랜치 " + snapshot.resolvedFrom.branch + "의 최신 커밋을 위 SHA로 고정했습니다. 다시 분석하면 최신 커밋을 확인합니다.", "help repository-limits"));
   }
   section.append(heading);
+  const summary = node("div", undefined, "summary-grid");
+  summary.setAttribute("aria-label", "분석 결과 요약");
+  for (const [value, label] of [
+    [`${report.parsed_files} / ${snapshot.totalFiles}`, "읽은 Python 파일"],
+    [report.nodes.length, "표시한 파일"],
+    [report.edges.length, "표시한 import 관계"],
+    [report.unresolved.length + report.omitted_unresolved, "대상 미확인 import"],
+  ]) {
+    const metric = node("div", undefined, "summary-count");
+    metric.append(node("strong", String(value)), node("span", label));
+    summary.append(metric);
+  }
+  section.append(summary);
   let select, direction, purpose;
   const sharing = node("div", undefined, "copy-actions");
   function showSharing() {
@@ -327,9 +339,14 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
     }));
   }
   if (!local) section.append(sharing);
-  section.append(node("p", `범위의 Python ${snapshot.totalFiles}개 중 ${report.parsed_files}개 구문을 읽고 파일 ${report.nodes.length}개를 표시합니다. ${local ? "선택 시점" : "고정 커밋"}의 직접 import 선언과 라우트·테이블 선언을 확인합니다.`, "coverage-note"));
-  section.append(node("p", "소스 루트를 기준으로 모듈 경로가 하나로 정해지는 관계만 연결합니다. 패키지에서 가져오는 이름의 재수출·실제 로딩, 함수 호출, 최종 라우터 등록·운영 인프라는 확인하지 않습니다.", "help repository-limits"));
-  for (const warning of snapshot.warnings) section.append(node("p", warning, "coverage-note"));
+  const coverage = node("details", undefined, "repository-coverage structure-list");
+  coverage.open = !report.nodes.length && Boolean(snapshot.warnings.length || report.warnings?.length || report.unreadable_paths.length);
+  coverage.append(node("summary", "분석 범위와 한계"));
+  coverage.append(node("p", `범위의 Python ${snapshot.totalFiles}개 중 ${report.parsed_files}개 구문을 읽고 파일 ${report.nodes.length}개를 표시합니다. ${local ? "선택 시점" : "고정 커밋"}의 직접 import 선언과 라우트·테이블 선언을 확인합니다.`, "help"));
+  coverage.append(node("p", "소스 루트를 기준으로 모듈 경로가 하나로 정해지는 관계만 연결합니다. 패키지에서 가져오는 이름의 재수출·실제 로딩, 함수 호출, 최종 라우터 등록·운영 인프라는 확인하지 않습니다. 미확인 import 수는 실제 실행 의존성이나 오류 수가 아닙니다.", "help repository-limits"));
+  for (const warning of snapshot.warnings) coverage.append(node("p", warning, "help repository-limits"));
+  section.append(coverage);
+  if (snapshot.totalFiles > report.parsed_files) section.append(node("p", `범위의 Python ${snapshot.totalFiles}개 중 ${snapshot.totalFiles - report.parsed_files}개는 구문을 읽지 못했거나 분석 한도로 제외했습니다. ‘분석 범위와 한계’에서 상세 내용을 확인하세요.`, "coverage-note"));
   if (report.omitted_nodes || report.omitted_edges) section.append(node("p", `표시 한도 등으로 파일 ${report.omitted_nodes}개·관계 ${report.omitted_edges}개를 생략했습니다.`, "coverage-note"));
   if (report.unreadable_paths.length) section.append(node("p", "읽거나 해석하지 못한 파일: " + report.unreadable_paths.join(", "), "coverage-note"));
   if (report.warnings?.length) {
@@ -339,7 +356,7 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
     const list = node("ul", undefined, "review-list");
     for (const warning of report.warnings) list.append(node("li", warning));
     warnings.append(list);
-    section.append(warnings);
+    coverage.append(warnings);
   }
   if (settings.file && !report.nodes.some(item => item.path === settings.file)) {
     section.append(node("p", (local ? "선택한 파일 " : "공유된 파일 ") + settings.file + "을 현재 분석 범위에서 표시할 수 없습니다. "
@@ -352,7 +369,7 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
       : "표시할 Python 파일이 없습니다. 위의 읽기·해석 실패 원인을 확인한 뒤 다시 분석하세요.", "empty"));
     return section;
   }
-  const controls = node("div", undefined, "repository-fields");
+  const controls = node("div", undefined, "repository-toolbar");
   const fileLabel = node("label", "확인할 파일", "advanced-field");
   select = node("select");
   select.id = "repository-file";
@@ -375,7 +392,7 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
   goalLabel.append(direction);
   controls.append(fileLabel, goalLabel);
   section.append(controls);
-  const purposeLabel = node("label", "사용 목적", "advanced-field repository-purpose");
+  const purposeLabel = node("label", "사용 목적", "advanced-field");
   purpose = node("select");
   purpose.id = "repository-purpose";
   for (const [value, text] of [["onboarding", "온보딩 · 읽을 순서"], ["change", "변경 검토 · 확인할 사용 지점"], ["testing", "테스트 계획 · 검증할 계약"]]) {
@@ -385,24 +402,39 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
   }
   purpose.value = ["change", "testing"].includes(settings.purpose) ? settings.purpose : "onboarding";
   purposeLabel.append(purpose);
-  section.append(purposeLabel, node("p", "같은 분석 결과에서 목적에 맞는 확인 순서를 제안합니다. 목적 전환에는 추가 조회가 필요하지 않습니다.", "help"));
+  controls.append(purposeLabel);
+  section.append(node("p", "파일·방향·목적을 바꾸어 같은 분석 결과를 살펴보세요. 추가 조회 없이 바로 반영됩니다.", "help"));
   const plan = node("div");
   plan.id = "repository-review";
   function showReview() {
     plan.replaceChildren(reviewSection(snapshot, repositoryReview(report, select.value, purpose.value)));
   }
   const body = node("div");
+  const navigation = node("nav", undefined, "report-actions result-navigation repository-result-navigation");
+  navigation.setAttribute("aria-label", "저장소 분석 결과 바로가기");
   const actions = node("div", undefined, "report-actions");
   const save = node("button", "선택 구조 SVG 저장");
   save.type = "button";
   actions.append(save);
-  section.append(body, actions);
+  section.append(navigation, body, actions);
   let currentSVG;
   let proposalFile;
   let proposals;
   function show() {
     const focus = repositoryFocus(report, select.value, direction.value);
     body.replaceChildren();
+    navigation.replaceChildren();
+    function destination(label, target) {
+      const button = node("button", label);
+      button.type = "button";
+      button.addEventListener("click", () => {
+        if (target.tagName.toLowerCase() === "details") target.open = true;
+        if (target.tabIndex !== 0) target.tabIndex = -1;
+        target.focus({ preventScroll: true });
+        target.scrollIntoView({ block: "start" });
+      });
+      navigation.append(button);
+    }
     currentSVG = diagram(snapshot, focus, direction.value);
     const viewport = node("div", undefined, "structure-viewport");
     viewport.tabIndex = 0;
@@ -410,6 +442,7 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
     viewport.setAttribute("aria-label", "선택 파일 import 구조도. 좌우로 스크롤할 수 있습니다.");
     viewport.append(currentSVG);
     body.append(viewport);
+    destination("구조도", viewport);
     if (focus.omitted_neighbors) body.append(node("p", `도표에서 이웃 파일 ${focus.omitted_neighbors}개를 더 생략했습니다. 관계의 코드 근거 목록도 확인하세요.`, "coverage-note"));
     body.append(node("p", direction.value === "incoming" ? "수정할 때 아래 import문을 출발점으로 사용 지점과 관련 테스트를 확인하세요. 실행 영향이 전파된다는 판정은 아닙니다." : "아래 모듈과 직접 선언을 읽어 파일의 역할을 살펴보세요. 호출 순서나 모듈 경계를 변경해야 한다는 판정은 아닙니다.", "coverage-note"));
     const links = node("section", undefined, "result-section");
@@ -444,13 +477,16 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
     }
     links.append(focus.edges.length ? list : node("p", "표시한 범위에서 확정한 직접 import 관계가 없습니다. 아래 미확인 범위를 함께 확인하세요.", "empty"));
     body.append(links);
+    destination("코드 근거", links);
     if (proposalFile !== select.value) {
       proposals = proposalSection(snapshot, report, select.value);
       proposalFile = select.value;
     }
-    body.append(proposals);
     showReview();
     body.append(plan);
+    destination("검토 계획", plan);
+    body.append(proposals);
+    destination("개선 후보", proposals);
     const declarations = node("section", undefined, "result-section");
     declarations.append(node("h3", "선택 파일의 라우트·테이블 선언"));
     declarations.append(source(snapshot, focus.selected.path, 1, focus.selected.path));
@@ -463,6 +499,7 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
     declarations.append(focus.selected.declarations.length ? declarationList : node("p", "지원하는 직접 라우트·테이블 선언이 없습니다.", "empty"));
     if (focus.selected.omitted_declarations) declarations.append(node("p", `선언 ${focus.selected.omitted_declarations}개는 목록 한도로 생략했습니다.`, "coverage-note"));
     body.append(declarations);
+    destination("직접 선언", declarations);
     showSharing();
   }
   select.addEventListener("change", show);

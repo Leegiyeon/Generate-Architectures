@@ -121,6 +121,62 @@ test("relationship navigation groups repeated imports without losing pinned evid
   assert.ok(body.children.indexOf(links) < body.children.findIndex(child => child.id === "repository-review"));
 });
 
+test("result metrics distinguish parsed files, displayed relationships, and omitted unknown imports", t => {
+  install(t);
+  const { snapshot, report } = fixture();
+  snapshot.totalFiles = 5;
+  snapshot.warnings.push("Python 파일 수 제한으로 원본 일부를 읽지 않았습니다.");
+  report.omitted_nodes = 2;
+  report.omitted_edges = 4;
+  report.omitted_unresolved = 5;
+  report.unresolved.push({ path: "src/entry.py", line: 1, label: "import external", reason: "범위 밖" },
+    { path: "src/entry.py", line: 2, label: "import maybe", reason: "조건부" });
+  const section = repositoryView(snapshot, report, {}, "https://example.com/service/");
+  const metrics = descendants(section).filter(node => node.className === "summary-count");
+  assert.deepEqual(metrics.map(metric => metric.children.map(child => child.textContent)), [
+    ["3 / 5", "읽은 Python 파일"], ["3", "표시한 파일"], ["3", "표시한 import 관계"], ["7", "대상 미확인 import"],
+  ]);
+  const coverage = descendants(section).find(node => node.className === "repository-coverage structure-list");
+  assert.equal(coverage.open, false);
+  assert.equal(coverage.children[0].textContent, "분석 범위와 한계");
+  assert.match(content(coverage), /Python 파일 수 제한/);
+  const visible = section.children.filter(node => node.className === "coverage-note");
+  assert.ok(visible.some(node => node.textContent.includes("2개는 구문을 읽지 못했거나")));
+  assert.ok(visible.some(node => node.textContent.includes("파일 2개·관계 4개를 생략")));
+  const toolbar = descendants(section).find(node => node.className === "repository-toolbar");
+  assert.deepEqual(toolbar.children.map(label => label.children[0].id),
+    ["repository-file", "repository-direction", "repository-purpose"]);
+});
+
+test("section navigation focuses current content and opens improvement candidates only on request", t => {
+  const document = install(t);
+  const { snapshot, report } = fixture();
+  report.nodes[0].declarations.push({ kind: "model", line: 3, label: "Item", detail: "테이블" });
+  const section = repositoryView(snapshot, report, {}, "https://example.com/service/");
+  const proposals = control(section, "repository-proposals");
+  assert.equal(proposals.open, false);
+  const body = descendants(section).find(node => node.children.some(child => child.className === "structure-viewport"));
+  assert.ok(body.children.indexOf(control(section, "repository-review")) < body.children.indexOf(proposals));
+  button(section, "개선 후보").dispatch("click");
+  assert.equal(proposals.open, true);
+  assert.equal(document.activeElement, proposals);
+  assert.equal(proposals.scrollOptions.block, "start");
+  button(section, "구조도").dispatch("click");
+  assert.equal(document.activeElement.className, "structure-viewport");
+  assert.equal(document.activeElement.tabIndex, 0, "scrollable diagrams remain keyboard reachable");
+
+  const previousEvidence = document.activeElement;
+  const file = control(section, "repository-file");
+  file.value = "store-id";
+  file.dispatch("change");
+  button(section, "직접 선언").dispatch("click");
+  assert.notEqual(document.activeElement, previousEvidence);
+  assert.match(content(document.activeElement), /src\/모델 \+ #\.py/);
+  assert.equal(document.activeElement.tabIndex, -1);
+  button(section, "검토 계획").dispatch("click");
+  assert.match(content(document.activeElement), /src\/모델 \+ #\.py/);
+});
+
 for (const [direction, purpose, destinationId, destinationPath, purposeTitle] of [
   ["outgoing", "testing", "store-id", "src/모델 + #.py", "테스트 계획"],
   ["incoming", "change", "caller-id", "src/client.py", "변경 검토"],
