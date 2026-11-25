@@ -4,8 +4,8 @@
 
 2026-11-24 사용자 승인 후 기존 공개 저장소 `Leegiyeon/Generate-Architectures`의 GitHub Pages로 전환했습니다. [공개 서비스](https://leegiyeon.github.io/Generate-Architectures/)에서 실제 PR 분석·저장소 탐색·목적별 계획·조건부 구조 비교를 확인했습니다.
 
-- 배포 소스: `18fb7aed325e4ef35ae1a40f0ebf31843c574b2b` (2026-11-25 시작 오류 복구).
-- [성공한 배포 실행](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45533654516).
+- 배포 소스: `e4d57a961920e05a979ac501e763e302790f759b` (2026-11-25 로컬 폴더 분석).
+- [성공한 배포 실행](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45548482147).
 - Pages 게시 방식: `workflow`, HTTPS 강제, 사용자 지정 도메인 없음.
 - `github-pages` 환경: `main` 브랜치 하나만 허용. 별도 태그·다른 브랜치 배포는 허용하지 않습니다.
 - 기존 Sites 사이트는 버전 4로 유지합니다. 쓰기 연결의 `404 NOT_FOUND`를 복구하지 못해 전환했으며, 기존 프로젝트·공개 범위를 바꾸거나 중복 Sites 사이트를 만들지 않았습니다.
@@ -26,7 +26,9 @@
 
 ## 검증 결과와 한계
 
-2026-11-25 배포 실행의 Node22 JavaScript121개·Python3.12 관련62개가 통과했습니다. 빌드·artifact·배포도 성공했습니다. 공개 HTTPS 웹 자산31개는 배포 소스와 해시가 일치하며 JPEG/JS/WASM MIME·런타임6개 무결성을 확인했습니다. [같은 소스의 전체 CI](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45533613461)도 자동 테스트와 합성 보고서13개/화면78상태를 통과했습니다.
+2026-11-25 로컬 폴더 분석 배포의 JavaScript143개·관련 Python62개와 빌드·배포가 통과했습니다. [같은 소스의 전체 CI](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45548469669)도 성공했습니다. 공개 HTTPS 자산33개·런타임6개 무결성과 JS/WASM MIME이 검증한 빌드와 일치합니다. 공개 주소에서 합성 폴더를 선택해 Python3/3개·import·라우트·테이블·조건부 후보·로컬 코드 문맥을 확인했습니다. 데스크톱1280px·모바일390×844에서 가로 넘침과 기록된 브라우저 오류·경고가 없었습니다. 민감한 실제 저장소·모든 OS/브라우저 조합·심볼릭 링크는 시험하지 않았으며 트래픽 전체를 패킷 캡처한 검증도 아닙니다. [로컬 폴더 검증 기록](FASTAPI_PR_TEST.md#private-저장소-로컬-폴더-분석--2026-11-25)을 참고하세요.
+
+이전 시작 복구 배포 실행의 Node22 JavaScript121개·Python3.12 관련62개가 통과했습니다. 빌드·artifact·배포도 성공했습니다. 공개 HTTPS 웹 자산31개는 배포 소스와 해시가 일치하며 JPEG/JS/WASM MIME·런타임6개 무결성을 확인했습니다. [같은 소스의 전체 CI](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45533613461)도 자동 테스트와 합성 보고서13개/화면78상태를 통과했습니다.
 
 이번 공개 브라우저 검증에서는 시작 잠금 해제·설정 복원 뒤 SALGU #7의 변경220개 중 Python40/40개와 추가 라우트7개를 확인했습니다. 폭792px 결과 화면·390×844 입력 화면에 가로 넘침이 없고 기록된 브라우저 오류·경고는 없습니다. 파일 직접 열기는 도구의 URL 정책으로 직접 조작하지 못했으며, 파일 모드·모듈 실패·기본 GET 차단·설정 복구는 자동 회귀 검사로 검증했습니다. [시작 오류 복구 검증](FASTAPI_PR_TEST.md#로컬-html-직접-열기시작-오류-복구--2026-11-25)에 기록합니다.
 

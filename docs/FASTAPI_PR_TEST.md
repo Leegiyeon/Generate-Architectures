@@ -29,10 +29,11 @@
 ### private 저장소 로컬 폴더 분석 — 2026-11-25
 
 - 사용 범위: clone·압축 해제한 프로젝트 폴더의 Python 현재 구조·목적별 계획·조건부 후보. GitHub 인증·private URL 조회·PR 전후 비교는 추가하지 않았습니다. 소스·폴더명 전송과 영구 저장, 원본 캐시·대상 코드 실행은 없습니다. 로컬 결과는 상대 경로·행의 코드 문맥을 제공하며 설정 공유 링크를 만들지 않습니다.
-- 구현·로컬 검증을 완료했습니다. 공개 배포·공개 브라우저 확인이 남아 진척률은 **67% (2/3)**입니다. 기존 외부 실사용·재사용 성과 수치는 바꾸지 않습니다.
+- 구현·로컬 검증·공개 배포 검증을 완료해 진척률은 **100% (3/3)**입니다. 기존 외부 실사용·재사용 성과 수치는 바꾸지 않습니다.
 - JavaScript143개·관련 Python65개 통과. 신규22개는 경로·UTF-8·용량·동시읽기·취소·재선택·소스 비실행·네트워크 미사용·로컬 근거·SVG·Worker 종료를 검증합니다. 시작 실패 시 세 입력 폼의 기본 GET 제출도 차단합니다. 별도 읽기 전용 검토에서 중요한 결함은 발견되지 않았습니다.
 - 실제 loopback 브라우저에서 합성 폴더7파일 중 Python3/3개를 분석했습니다. 소스 루트 backend에서 직접 import1개·GET /items·Audit 테이블·역할 분리 후보를 확인했습니다. 루트 .에서는 비Python2개·제외 폴더 Python2개를 읽지 않았습니다. 대상의 최상위 raise를 실행하지 않고 분석했습니다. 근거3행의 1–6행 코드 문맥·목적 전환·빈 루트 안내·취소/포커스 복구·재시도·선택 해제·폴더 재선택을 확인했습니다.
 - 로컬 결과의 외부 근거 링크0개·설정 공유0개이며 피드백 URL은 일반 입력 화면입니다. 1280px·390×844에서 가로 넘침이 없고 브라우저 오류·경고0건입니다. 기존 공개 SQLModel 예제도 Python2/2개·라우트2개·테이블1개와 고정 SHA 근거·공유 UI를 유지했습니다. 소스 전송 없음은 수집기 네트워크 금지 검사·코드 검토로 확인했으며 브라우저 전체 트래픽을 패킷 캡처한 검증은 아닙니다.
+- 배포 소스 `e4d57a961920e05a979ac501e763e302790f759b`의 [Pages 실행](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45548482147)과 [전체 CI](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45548469669)가 성공했습니다. 공개 HTTPS 자산33개와 빌드 바이트 일치·런타임6개 SHA-256·JS/WASM MIME을 확인했습니다. 공개 주소에서도 합성 폴더를 실제 선택해 Python3/3개·import1개·라우트1개·테이블1개·조건부 후보1개와 코드3행 문맥을 확인했습니다. 1280px·390×844에서 가로 넘침·브라우저 오류·경고가 없고 로컬 결과의 외부 링크·설정 공유는0개입니다. 기록: `architecture-output/pages-local-folder-live-http-check.json`, `local-folder-browser-check.json`, 화면: `local-folder-live.jpg`, `local-folder-live-mobile.jpg`.
 - 로컬 ZIP36파일·웹 자산33개와 압축 해제본의 바이트 일치, 기존 추출본의 사용자 수정 없음 확인 후 갱신했습니다. 기록: `architecture-output/local-folder-package-check.json`, 모바일: `architecture-output/local-folder-mobile.jpg`. 실제 OS별 폴더 권한·심볼릭 링크·90초 대기·모든 브라우저 조합·실제 민감한 저장소는 테스트하지 않았습니다.
 
 ### 로컬에서도 직접 테스트
