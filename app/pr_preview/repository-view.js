@@ -4,6 +4,7 @@ import { repositoryReview, repositoryReviewText } from "./repository-review.js";
 import { repositoryProposals, repositoryProposalText } from "./repository-proposals.js";
 import { copyOutput } from "./copy-output.js";
 import { repositoryURL } from "./review-link.js";
+import { isLocalRepository, selectionTime, localCodeContext } from "./repository-source.js";
 
 const namespace = "http://www.w3.org/2000/svg";
 const MAX_NEIGHBORS = 12;
@@ -16,6 +17,16 @@ function node(tag, text, className) {
 }
 
 function source(snapshot, path, line, text) {
+  if (isLocalRepository(snapshot)) {
+    const details = node("details", undefined, "local-source");
+    details.append(node("summary", (text || path) + " · 코드 문맥 보기"));
+    const context = localCodeContext(snapshot, path, line);
+    if (context) {
+      details.append(node("p", `${path}:${line} · ${context.start}–${context.end}행 발췌 · > 표시는 근거 행입니다. 전체 파일은 선택한 폴더에서 확인하세요.`, "help"));
+      details.append(node("pre", context.text, "local-source-code"));
+    } else details.append(node("p", "코드 근거 미확인: 선택한 파일의 내용이 없거나 근거 행이 유효하지 않습니다.", "help"));
+    return details;
+  }
   const anchor = node("a", text || path, "source-link");
   anchor.href = sourceURL(snapshot.repo, snapshot.head, path, line);
   anchor.target = "_blank";
@@ -67,7 +78,9 @@ function reviewSection(snapshot, review) {
   section.append(copyOutput({
     label: "검토 계획 복사",
     getText: () => repositoryReviewText(snapshot, review),
-    successMessage: "커밋·소스 루트·코드 근거와 확인 범위를 포함한 검토 계획을 복사했습니다.",
+    successMessage: isLocalRepository(snapshot)
+      ? "선택 시각·상대경로 근거와 확인 범위를 포함한 검토 계획을 복사했습니다."
+      : "커밋·소스 루트·코드 근거와 확인 범위를 포함한 검토 계획을 복사했습니다.",
     fallbackLabel: "복사할 검토 계획",
   }));
   return section;
@@ -94,10 +107,14 @@ function diagram(snapshot, focus, direction) {
   const height = Math.max(190, 100 + focus.neighbors.length * 84);
   const svg = svgNode("svg", { xmlns: namespace, viewBox: `0 0 640 ${height}`, width: 640, height,
     role: "img", "aria-label": "선택 파일의 직접 import 선언 대상" });
-  svg.append(svgNode("title", {}, "고정 커밋에서 확인한 import 선언"));
+  svg.append(svgNode("title", {}, isLocalRepository(snapshot) ? "선택 시점의 로컬 import 선언" : "고정 커밋에서 확인한 import 선언"));
   svg.append(svgNode("desc", {}, "왼쪽은 선택 파일, 오른쪽은 표시한 import 관계의 이웃 파일입니다. 화살표는 import 방향이며 실제 함수 호출이나 실행 여부를 뜻하지 않습니다. 아래에 같은 관계의 코드 근거 목록이 있습니다."));
+  if (isLocalRepository(snapshot)) svg.append(svgNode("metadata", {}, JSON.stringify({ source: "local", folder: snapshot.repo,
+    selectedAt: selectionTime(snapshot), root: snapshot.root, state: "current-structure" })));
   svg.append(svgNode("rect", { width: 640, height, fill: "#f7f9fc" }));
-  svg.append(svgNode("text", { x: 18, y: 24, fill: "#203451", "font-size": 14 }, short(snapshot.repo, 47) + " · " + snapshot.head.slice(0, 7)));
+  svg.append(svgNode("text", { x: 18, y: 24, fill: "#203451", "font-size": 14 }, isLocalRepository(snapshot)
+    ? short(snapshot.repo, 20) + " · 선택 " + selectionTime(snapshot)
+    : short(snapshot.repo, 47) + " · " + snapshot.head.slice(0, 7)));
   svg.append(svgNode("text", { x: 18, y: 47, fill: "#53627a", "font-size": 14 },
     `루트 ${short(snapshot.root, 18)} · ${direction === "incoming" ? "선택 파일을 참조" : "선택 파일이 참조"} · 이웃 ${focus.neighbors.length}개 표시`));
   const definitions = svgNode("defs");
@@ -107,7 +124,8 @@ function diagram(snapshot, focus, direction) {
   definitions.append(marker);
   svg.append(definitions);
   function card(item, x, y, selected = false) {
-    const anchor = svgNode("a", { href: sourceURL(snapshot.repo, snapshot.head, item.path, 1), target: "_blank", rel: "noopener noreferrer" });
+    const anchor = isLocalRepository(snapshot) ? svgNode("g")
+      : svgNode("a", { href: sourceURL(snapshot.repo, snapshot.head, item.path, 1), target: "_blank", rel: "noopener noreferrer" });
     anchor.append(svgNode("title", {}, item.path + "\n" + item.detail));
     anchor.append(svgNode("rect", { x, y, width: 250, height: 65, rx: 8, fill: "#fff", stroke: selected ? "#2556d9" : "#a7b6cb", "stroke-width": 1.5 }));
     const label = svgNode("svg", { x: x + 12, y: y + 9, width: 226, height: 50 });
@@ -132,11 +150,15 @@ function comparisonDiagram(snapshot, candidate) {
     role: "img", "aria-label": "현재 구조와 조건부 개선 후보 비교" });
   svg.append(svgNode("title", {}, candidate.title));
   svg.append(svgNode("desc", {}, "왼쪽은 관찰한 현재 구조의 일부이고 오른쪽은 코드에 적용하지 않은 가정입니다. 점선은 제안한 역할이나 관계이며 아래에 같은 내용의 텍스트·전제·코드 근거가 있습니다."));
-  svg.append(svgNode("metadata", {}, JSON.stringify({ repo: snapshot.repo, commit: snapshot.head,
+  svg.append(svgNode("metadata", {}, JSON.stringify({ ...(isLocalRepository(snapshot)
+    ? { source: "local", folder: snapshot.repo, selectedAt: selectionTime(snapshot) }
+    : { repo: snapshot.repo, commit: snapshot.head }),
     root: snapshot.root, candidate: candidate.id, state: "hypothetical-not-applied" })));
   svg.append(svgNode("rect", { width: 960, height, fill: "#f7f9fc" }));
   svg.append(svgNode("text", { x: 20, y: 25, fill: "#203451", "font-size": 14 },
-    short(snapshot.repo, 48) + " · " + snapshot.head.slice(0, 7) + " · 루트 " + short(snapshot.root, 30)));
+    isLocalRepository(snapshot)
+      ? short(snapshot.repo, 30) + " · 선택 " + selectionTime(snapshot) + " · 루트 " + short(snapshot.root, 24)
+      : short(snapshot.repo, 48) + " · " + snapshot.head.slice(0, 7) + " · 루트 " + short(snapshot.root, 30)));
   const defs = svgNode("defs");
   for (const [name, color] of [["observed", "#7c90ae"], ["proposed", "#966519"]]) {
     const marker = svgNode("marker", { id: "proposal-arrow-" + name, viewBox: "0 0 10 10", refX: 9, refY: 5,
@@ -162,7 +184,7 @@ function comparisonDiagram(snapshot, candidate) {
     }
     for (const item of graph.nodes) {
       const y = positions.get(item.id);
-      const card = item.path && !item.proposed
+      const card = item.path && !item.proposed && !isLocalRepository(snapshot)
         ? svgNode("a", { href: sourceURL(snapshot.repo, snapshot.head, item.path, item.line || 1), target: "_blank", rel: "noopener noreferrer" })
         : svgNode("g");
       card.append(svgNode("title", {}, item.label + "\n" + item.detail));
@@ -256,7 +278,7 @@ function proposalSection(snapshot, report, id) {
     const actions = node("div", undefined, "report-actions");
     const save = node("button", "구조 비교 SVG 저장");
     save.type = "button";
-    save.addEventListener("click", () => downloadSVG(svg, `proposal-${snapshot.head.slice(0, 7)}-${candidate.id}.svg`));
+    save.addEventListener("click", () => downloadSVG(svg, `proposal-${isLocalRepository(snapshot) ? "local" : snapshot.head.slice(0, 7)}-${candidate.id}.svg`));
     actions.append(save);
     body.append(actions);
     const exportText = node("details", undefined, "structure-list");
@@ -278,15 +300,20 @@ function proposalSection(snapshot, report, id) {
 export function repositoryView(snapshot, report, settings = {}, baseURL) {
   const section = node("section", undefined, "repository-result");
   const heading = node("header", undefined, "report-header");
-  heading.append(node("h2", "저장소 현재 코드 구조", "report-title"));
-  heading.append(node("p", snapshot.repo + " · 커밋 " + snapshot.head + " · 루트 " + snapshot.root, "report-meta"));
-  if (snapshot.resolvedFrom?.branch) {
+  const local = isLocalRepository(snapshot);
+  heading.append(node("h2", local ? "로컬 폴더 현재 코드 구조" : "저장소 현재 코드 구조", "report-title"));
+  heading.append(node("p", snapshot.repo + (local ? " · 선택 시각 " + selectionTime(snapshot) : " · 커밋 " + snapshot.head) + " · 루트 " + snapshot.root, "report-meta"));
+  if (local) {
+    heading.append(node("p", "선택 시점의 현재 구조입니다. 이전 상태와의 변경 비교는 포함하지 않습니다. 도표의 파일 근거는 아래 ‘코드 문맥 보기’에서 확인하세요.", "help repository-limits"));
+    heading.append(node("p", "복사한 결과와 저장한 SVG에는 파일명·선언 정보가 포함됩니다. 공유 전에 내용을 확인하세요.", "help"));
+  } else if (snapshot.resolvedFrom?.branch) {
     heading.append(node("p", "기본 브랜치 " + snapshot.resolvedFrom.branch + "의 최신 커밋을 위 SHA로 고정했습니다. 다시 분석하면 최신 커밋을 확인합니다.", "help repository-limits"));
   }
   section.append(heading);
   let select, direction, purpose;
   const sharing = node("div", undefined, "copy-actions");
   function showSharing() {
+    if (local) return;
     sharing.replaceChildren(copyOutput({
       label: "분석 설정 링크 복사",
       fallbackLabel: "복사할 분석 설정 링크", rows: 3,
@@ -299,8 +326,8 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
       successMessage: "저장소·고정 커밋·루트·파일·참조 방향·목적을 담은 링크를 복사했습니다. 링크에서 ‘현재 구조 확인’을 누르세요.",
     }));
   }
-  section.append(sharing);
-  section.append(node("p", `범위의 Python ${snapshot.totalFiles}개 중 ${report.parsed_files}개 구문을 읽고 파일 ${report.nodes.length}개를 표시합니다. 고정 커밋의 직접 import 선언과 라우트·테이블 선언을 확인합니다.`, "coverage-note"));
+  if (!local) section.append(sharing);
+  section.append(node("p", `범위의 Python ${snapshot.totalFiles}개 중 ${report.parsed_files}개 구문을 읽고 파일 ${report.nodes.length}개를 표시합니다. ${local ? "선택 시점" : "고정 커밋"}의 직접 import 선언과 라우트·테이블 선언을 확인합니다.`, "coverage-note"));
   section.append(node("p", "소스 루트를 기준으로 모듈 경로가 하나로 정해지는 관계만 연결합니다. 패키지에서 가져오는 이름의 재수출·실제 로딩, 함수 호출, 최종 라우터 등록·운영 인프라는 확인하지 않습니다.", "help repository-limits"));
   for (const warning of snapshot.warnings) section.append(node("p", warning, "coverage-note"));
   if (report.omitted_nodes || report.omitted_edges) section.append(node("p", `표시 한도 등으로 파일 ${report.omitted_nodes}개·관계 ${report.omitted_edges}개를 생략했습니다.`, "coverage-note"));
@@ -315,7 +342,7 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
     section.append(warnings);
   }
   if (settings.file && !report.nodes.some(item => item.path === settings.file)) {
-    section.append(node("p", "공유된 파일 " + settings.file + "을 현재 분석 범위에서 표시할 수 없습니다. "
+    section.append(node("p", (local ? "선택한 파일 " : "공유된 파일 ") + settings.file + "을 현재 분석 범위에서 표시할 수 없습니다. "
       + (report.nodes.length ? "기본 파일로 열었습니다. " : "") + "읽기 실패·표시 한도를 확인하세요.", "coverage-note"));
   }
   if (!report.nodes.length) {
@@ -441,7 +468,7 @@ export function repositoryView(snapshot, report, settings = {}, baseURL) {
   select.addEventListener("change", show);
   direction.addEventListener("change", show);
   purpose.addEventListener("change", () => { showReview(); showSharing(); });
-  save.addEventListener("click", () => downloadSVG(currentSVG, `repository-${snapshot.head.slice(0, 7)}-${direction.value}.svg`));
+  save.addEventListener("click", () => downloadSVG(currentSVG, `repository-${local ? "local" : snapshot.head.slice(0, 7)}-${direction.value}.svg`));
   show();
   const unknown = node("details", undefined, "structure-list");
   unknown.append(node("summary", `대상을 확정하지 못한 import ${report.unresolved.length + report.omitted_unresolved}건`));

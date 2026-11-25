@@ -1,4 +1,4 @@
-import { sourceURL } from "./github.js";
+import { repositoryIdentityText, repositoryEvidenceText } from "./repository-source.js";
 import { repositoryReview } from "./repository-review.js";
 
 const MAX_EVIDENCE = 6;
@@ -161,8 +161,8 @@ const oneLine = value => String(value).replace(/[\r\n]+/g, " ");
 
 export function repositoryProposalText(snapshot, result, candidateId) {
   const candidate = result.candidates.find(item => item.id === candidateId);
-  const lines = ["저장소 구조 개선 후보 비교 — 미적용 가정", `저장소: ${oneLine(snapshot.repo)}`,
-    `커밋: ${oneLine(snapshot.head)}`, `Python 소스 루트: ${oneLine(snapshot.root)}`,
+  const lines = ["저장소 구조 개선 후보 비교 — 미적용 가정", ...repositoryIdentityText(snapshot),
+    `Python 소스 루트: ${oneLine(snapshot.root)}`,
     `선택 파일: ${oneLine(result.selected_path || "미선택")}`];
   if (result.coverage) lines.push(`범위: Python 원본 ${snapshot.totalFiles}개 중 구문 분석 ${result.coverage.parsed_files}개, 그래프 파일 ${result.coverage.displayed_files}개·관계 ${result.coverage.displayed_edges}개 표시`);
   if (candidate) {
@@ -180,7 +180,7 @@ export function repositoryProposalText(snapshot, result, candidateId) {
       lines.push("", title, ...items.map(oneLine));
     }
     lines.push("", "현재 코드 근거");
-    for (const item of candidate.evidence) lines.push(`${oneLine(item.label)} (${oneLine(item.path)}:${item.line})`, sourceURL(snapshot.repo, snapshot.head, item.path, item.line));
+    for (const item of candidate.evidence) lines.push(`${oneLine(item.label)} (${oneLine(item.path)}:${item.line})`, repositoryEvidenceText(snapshot, item.path, item.line));
     if (candidate.omitted_evidence) lines.push(`근거 ${candidate.omitted_evidence}곳은 목록 한도로 생략했습니다.`);
   } else lines.push("", candidateId ? "선택한 개선 후보를 찾을 수 없습니다. 표시된 후보에서 다시 선택하세요." : oneLine(result.empty_reason));
   lines.push("", "한도와 미확인 범위", ...result.limits.map(oneLine), ...(snapshot.warnings || []).map(oneLine));

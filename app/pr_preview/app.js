@@ -4,12 +4,17 @@ import { reviewSettings, reviewURL, repositorySettings } from "./review-link.js"
 import { architectureSection } from "./architecture.js";
 import { evidenceLocation } from "./evidence.js";
 import { loadRepository } from "./repository.js";
+import { loadLocalRepository } from "./local-repository.js";
 import { repositoryView } from "./repository-view.js";
 import { copyOutput } from "./copy-output.js";
 import { analyze } from "./worker-client.js";
 
 const form = document.querySelector("#review-form");
 const repositoryForm = document.querySelector("#repository-form");
+const localForm = document.querySelector("#local-form");
+const localFiles = document.querySelector("#local-files");
+const localRoot = document.querySelector("#local-root");
+const folderSelectionSupported = "webkitdirectory" in localFiles;
 const results = document.querySelector("#results");
 const status = document.querySelector("#status");
 const errorBox = document.querySelector("#error");
@@ -24,25 +29,39 @@ let lastReport;
 let sharedRepository;
 let busy = false;
 
-function selectMode(mode) {
-  if (busy) return;
-  samplePreview.open = false;
-  document.querySelector(".intro h1").textContent = mode === "repository" ? "현재 코드는 어떻게 연결되나요?" : "API와 DB에서 무엇이 바뀌었나요?";
-  document.querySelector(".intro p").textContent = mode === "repository" ? "저장소 링크와 Python 소스 루트를 넣고, 파일별 import와 라우트·모델 선언을 확인하세요." : "PR 링크를 넣고, 관련 코드 구조와 변경 사항을 코드 근거와 함께 확인하세요.";
-  for (const name of ["pr", "repository"]) {
-    document.getElementById(name + "-panel").hidden = mode !== name;
-    document.getElementById("mode-" + name).setAttribute("aria-pressed", String(mode === name));
-  }
+function clearResults() {
   results.hidden = true;
+  results.replaceChildren();
   lastReport = null;
-  sharedRepository = null;
   errorBox.hidden = true;
+  errorBox.textContent = "";
   progress("");
   feedbackLink.href = feedbackURL();
 }
 
+function syncLocalControls() {
+  const selected = Boolean(localFiles.files?.length);
+  localFiles.disabled = busy || !folderSelectionSupported;
+  document.getElementById("local-analyze").disabled = busy || !folderSelectionSupported || !selected;
+  document.getElementById("local-clear").disabled = busy || !selected;
+  document.getElementById("local-unsupported").hidden = folderSelectionSupported;
+}
+
+function selectMode(mode) {
+  if (busy) return;
+  samplePreview.open = false;
+  document.querySelector(".intro h1").textContent = mode === "local" ? "내 폴더의 코드는 어떻게 연결되나요?" : mode === "repository" ? "현재 코드는 어떻게 연결되나요?" : "API와 DB에서 무엇이 바뀌었나요?";
+  document.querySelector(".intro p").textContent = mode === "local" ? "private 저장소도 로컬 폴더를 선택해 import와 라우트·모델 선언을 확인하세요. 소스는 브라우저 안에서만 처리합니다." : mode === "repository" ? "저장소 링크와 Python 소스 루트를 넣고, 파일별 import와 라우트·모델 선언을 확인하세요." : "PR 링크를 넣고, 관련 코드 구조와 변경 사항을 코드 근거와 함께 확인하세요.";
+  for (const name of ["pr", "repository", "local"]) {
+    document.getElementById(name + "-panel").hidden = mode !== name;
+    document.getElementById("mode-" + name).setAttribute("aria-pressed", String(mode === name));
+  }
+  clearResults();
+  sharedRepository = null;
+}
+
 function analysisControls() {
-  return [...document.querySelectorAll("#review-form input, #review-form button, #review-form textarea, #repository-form input, #repository-form button, .analysis-modes button, .sample-preview button")];
+  return [...document.querySelectorAll("#review-form input, #review-form button, #review-form textarea, #repository-form input, #repository-form button, #local-form input, #local-form button, .analysis-modes button, .sample-preview button")];
 }
 
 function node(tag, className, text) {
@@ -226,6 +245,7 @@ async function run(event) {
     activeController = null;
     cancelActions.hidden = true;
     controls.forEach(control => { control.disabled = false; });
+    syncLocalControls();
     document.querySelector("#analyze-button").textContent = "변경 확인";
     if (window.location.hash !== startedHash) restoreSharedSettings();
     else if (cancelled) jumpTo(document.querySelector("#pr-url"));
@@ -235,6 +255,11 @@ async function run(event) {
 function restoreSharedSettings() {
   if (busy) return;
   try {
+    if (window.location.hash === "#mode=local") {
+      selectMode("local");
+      progress("분석할 프로젝트 폴더를 선택해 주세요. 폴더와 코드는 링크에 저장되지 않습니다.");
+      return;
+    }
     const repository = repositorySettings(window.location.hash);
     if (repository) {
       selectMode("repository");
@@ -312,15 +337,87 @@ async function runRepository(event) {
     activeController = null;
     cancelActions.hidden = true;
     controls.forEach(control => { control.disabled = false; });
+    syncLocalControls();
     document.getElementById("repository-analyze").textContent = "현재 구조 확인";
     if (window.location.hash !== startedHash) restoreSharedSettings();
     else if (cancelled) jumpTo(document.querySelector("#repository-url"));
   }
 }
 
+async function runLocal(event) {
+  event.preventDefault();
+  if (busy || !folderSelectionSupported || !localForm.reportValidity()) return;
+  clearResults();
+  if (!localFiles.files?.length) {
+    errorBox.textContent = "분석할 프로젝트 폴더를 먼저 선택해 주세요.";
+    errorBox.hidden = false;
+    jumpTo(localFiles);
+    return;
+  }
+  busy = true;
+  samplePreview.open = false;
+  samplePreview.inert = true;
+  const controls = analysisControls();
+  controls.forEach(control => { control.disabled = true; });
+  const controller = new AbortController();
+  activeController = controller;
+  cancelActions.hidden = false;
+  let cancelled = false;
+  const timer = setTimeout(() => controller.abort(new DOMException("분석 제한시간 초과", "TimeoutError")), 90000);
+  const startedHash = window.location.hash;
+  document.getElementById("local-analyze").textContent = "분석 중…";
+  try {
+    const loading = loadLocalRepository(localFiles.files, localRoot.value, controller.signal, progress);
+    jumpTo(status);
+    const snapshot = await loading;
+    const report = await analyze({ source: "local", kind: "repository", root: snapshot.root,
+      files: snapshot.files, known_paths: snapshot.knownPaths }, controller.signal, progress);
+    controller.signal.throwIfAborted();
+    results.setAttribute("aria-label", "로컬 폴더 구조 분석 결과");
+    results.replaceChildren(repositoryView(snapshot, report, {}, window.location.href));
+    results.hidden = false;
+    progress(report.nodes.length
+      ? "로컬 폴더의 현재 구조를 확인했습니다. 파일과 사용 목적을 선택해 코드 근거와 검토 계획을 살펴보세요."
+      : "표시할 파일이 없습니다. 결과의 분석 범위와 읽기·해석 실패 안내를 확인하세요.");
+    jumpTo(results);
+  } catch (error) {
+    cancelled = showAnalysisError(error, controller.signal);
+  } finally {
+    clearTimeout(timer);
+    busy = false;
+    samplePreview.inert = false;
+    activeController = null;
+    cancelActions.hidden = true;
+    controls.forEach(control => { control.disabled = false; });
+    syncLocalControls();
+    document.getElementById("local-analyze").textContent = "폴더 구조 확인";
+    if (window.location.hash !== startedHash) restoreSharedSettings();
+    else if (cancelled) jumpTo(localFiles);
+  }
+}
+
 restoreSharedSettings();
 cancelButton.addEventListener("click", () => activeController?.abort());
-for (const mode of ["pr", "repository"]) document.getElementById("mode-" + mode).addEventListener("click", () => selectMode(mode));
+for (const mode of ["pr", "repository", "local"]) document.getElementById("mode-" + mode).addEventListener("click", () => selectMode(mode));
+localForm.addEventListener("submit", runLocal);
+localFiles.addEventListener("change", () => {
+  clearResults();
+  const files = localFiles.files;
+  const name = files?.[0]?.webkitRelativePath?.split("/")[0];
+  document.getElementById("local-selection").textContent = files?.length
+    ? (name || "선택한 폴더") + " · " + files.length + "개 파일 선택됨. ‘폴더 구조 확인’을 누르면 Python 소스를 읽습니다."
+    : "선택한 폴더가 없습니다.";
+  syncLocalControls();
+});
+localRoot.addEventListener("input", clearResults);
+document.getElementById("local-clear").addEventListener("click", () => {
+  localFiles.value = "";
+  document.getElementById("local-selection").textContent = "선택한 폴더가 없습니다.";
+  clearResults();
+  syncLocalControls();
+  jumpTo(localFiles);
+});
+syncLocalControls();
 repositoryForm.addEventListener("submit", runRepository);
 repositoryForm.addEventListener("input", () => {
   if (sharedRepository) { sharedRepository = null; progress(""); }

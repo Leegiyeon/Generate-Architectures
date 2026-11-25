@@ -1,6 +1,6 @@
 # PR 관련 코드 구조와 다음 확장
 
-2026-11-24. 현재 구현·디자인 계약은 [DESIGN.md](../DESIGN.md)를 따른다. 공개 배포와 작업 진행 상태는 [실행 기록](FASTAPI_PR_TEST.md#현재-목표와-진행률)에서만 관리한다.
+2026-11-25. 현재 구현·디자인 계약은 [DESIGN.md](../DESIGN.md)를 따른다. 공개 배포와 작업 진행 상태는 [실행 기록](FASTAPI_PR_TEST.md#현재-목표와-진행률)에서만 관리한다.
 
 ## 현재 구조에서 가능한 일
 
@@ -11,7 +11,8 @@ flowchart LR
   Input[공개 PR · 경로 · 모델 선택] --> Fetch[브라우저 GitHub 조회]
   GitHub[공개 GitHub API · 고정 커밋 소스] --> Fetch
   Fetch --> Snapshots[변경 파일의 이전·이후 소스]
-  Snapshots --> Worker[Web Worker · Pyodide AST]
+  Local[선택한 로컬 Python 폴더] --> Worker[Web Worker · Pyodide AST]
+  Snapshots --> Worker
   Worker --> Changes[API · 모델 · Alembic 변경 근거]
   Worker --> Structure[파일 · 라우트 · 모델 선언 그래프]
   Structure --> View[이전·이후 SVG · 코드 링크]
@@ -27,7 +28,7 @@ PR은 변경 목록 최대300개에서 지정 경로의 정확한 파일 또는 
 
 PR 원본 캐시는 PR URL과 정렬·중복 제거·후행 슬래시 제거한 경로 조합으로 분리한다(4건·3분). 선택 범위의 원본 읽기가 실패하거나 취소되면 캐시하지 않는다. 기존 merge-base·fork 소스 조회와 조회 중 커밋 변경 검사를 유지한다.
 
-PR·저장소 모두 조회 시작부터 Worker 분석 완료까지 하나의 90초 제한시간과 AbortSignal을 사용한다. `분석 취소`는 요청을 중단하고 실행 중인 Worker를 종료한다. 입력을 보존하고 해당 URL로 포커스를 돌려 재시도할 수 있다. 취소는 오류와 구분해 안내하며 늦은 진행 상태·결과를 표시하거나 중단한 응답을 캐시하지 않는다. 제한시간 초과는 범위 축소·네트워크 확인 안내를 표시한다. 종료한 분석기는 다음 분석 때 새로 만들고 성공한 분석기는 재사용한다. 관련 파일은 `app/pr_preview/{app,github,repository,worker-client}.js`이다.
+PR·저장소 모두 조회 시작부터 Worker 분석 완료까지 하나의 90초 제한시간과 AbortSignal을 사용한다. `분석 취소`는 요청을 중단하고 실행 중인 Worker를 종료한다. 입력을 보존하고 해당 URL로 포커스를 돌려 재시도할 수 있다. 취소는 오류와 구분해 안내하며 늦은 진행 상태·결과를 표시하거나 중단한 응답을 캐시하지 않는다. 제한시간 초과는 범위 축소·네트워크 확인 안내를 표시한다. 종료한 분석기는 다음 분석 때 새로 만들고, 공개 분석에 성공한 분석기는 재사용한다. 로컬 소스를 처리한 분석기는 성공해도 종료한다. 관련 파일은 `app/pr_preview/{app,github,repository,worker-client}.js`이다.
 
 ## 이번에 추가한 기능
 
@@ -42,7 +43,13 @@ PR·저장소 모두 조회 시작부터 Worker 분석 완료까지 하나의 90
 
 동일한 HTTP 데코레이터 후보의 경로·바인딩을 한쪽에서 확정하지 못하면, 라우트를 양쪽 구조 비교에서 제외하고 미확인 경로를 표시한다. 해석 실패를 실제 추가·삭제로 취급하지 않는다. 필드 선언 문자열은 코드 위치처럼 보이는 내용이 있더라도 근거 링크로 해석하지 않는다.
 
-## 저장소 현재 구조 — 공개·로컬 지원
+## 저장소 현재 구조 — 공개 GitHub·로컬 폴더 지원
+
+`로컬 폴더 분석`에서는 clone한 private 저장소나 압축을 푼 프로젝트 폴더를 직접 선택한다. `webkitdirectory`와 `webkitRelativePath`로 받은 상대 경로를 검증하고, Python 소스만 기존 Worker로 전달한다. 선택 목록100000개·Python100개·파일당64KiB·동시읽기6개로 제한하며 `.git`·가상환경·의존성·캐시 폴더와 비Python 파일은 읽지 않는다. 소스 루트 밖 파일은 한도를 쓰지 않으며 읽지 못한 후보는 미확인으로 남긴다. 소스 전송·영구저장·원본 캐시·실행은 없다.
+
+로컬 결과는 커밋 대신 선택 시각과 상대 경로·행을 표시하고, 근거를 펼치면 앞뒤3행을 읽기 전용 텍스트로 보여준다. 목적별 계획·조건부 후보·SVG를 재사용하되 GitHub 근거·설정 공유 링크를 만들지 않는다. 피드백 링크에도 폴더·파일 정보를 넣지 않는다. 복사·SVG에는 파일명·선언이 포함되므로 공유 전 확인한다. 선택 해제·폴더 재선택·루트 수정·모드 전환은 이전 결과를 제거한다. 선택 해제와 새로고침은 파일 선택도 지운다. 성공한 로컬 분석기도 즉시 종료한다. Git 이력·심볼릭 링크 여부·private PR 전후 비교는 확인하지 않는다. 웹 첫 분석은 정적 분석기 다운로드가 필요하며 ZIP 런처는 런타임을 포함한다.
+
+관련 파일은 `app/pr_preview/{local-repository,repository-source}.js`이다. 브라우저 기능을 감지해 미지원이면 폴더 입력을 비활성화한다. [MDN 폴더 선택](https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/webkitdirectory), [상대 경로](https://developer.mozilla.org/en-US/docs/Web/API/File/webkitRelativePath), [파일 바이트 읽기](https://developer.mozilla.org/en-US/docs/Web/API/Blob/arrayBuffer)를 따른다. 실제 디스크 읽기는 취소할 수 없어 AbortSignal로 대기를 즉시 끝내고 늦은 결과를 무시한다.
 
 ‘저장소 현재 구조’에서 공개 저장소 URL·Python 소스 루트를 입력한다. 커밋 SHA는 선택이며, 비우면 기본 브랜치의 최신 커밋을 조회해 전체 40자리 SHA로 고정한다. 이후 파일 목록·소스·근거 링크·캐시는 고정 SHA를 사용한다. 다시 분석하면 기본 브랜치를 재확인하며, 직접 입력한 SHA를 다른 버전으로 대체하지 않는다. 예를 들어 `backend/app`을 `app`으로 import하는 프로젝트의 소스 루트는 `backend`이다. 자동으로 `src`나 다른 루트를 추정하지 않는다. 예제는 full-stack-fastapi-template의 커밋 `d0defd5a92bfcd35ccea93873519816a2252a97e`·루트 `backend`이다.
 

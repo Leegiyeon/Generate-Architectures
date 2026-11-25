@@ -35,6 +35,13 @@ h1 { margin: 0 0 14px; font-size: clamp(1.9rem, 4.1vw, 2.65rem); line-height: 1.
 .startup-notice p { margin: 8px 0; }
 .startup-notice .help { margin-bottom: 0; }
 .form-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+.local-actions { margin-top: 18px; }
+.local-selection { margin-top: 8px; }
+input[type="file"] { display: block; width: 100%; min-width: 0; color: var(--muted); margin-top: 16px; font-size: .875rem; }
+input[type="file"]::file-selector-button { font: inherit; color: #254fbc; border: 1px solid #b6c1d2; border-radius: 8px; background: #fff; padding: 10px 14px; margin-right: 12px; cursor: pointer; }
+.local-source { margin: 8px 0; max-width: 100%; min-width: 0; }
+.local-source > summary { color: #254fbc; overflow-wrap: anywhere; }
+.local-source-code { max-width: 100%; max-height: 320px; overflow: auto; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: #f7f9fc; font: .8125rem/1.6 "SFMono-Regular", Consolas, monospace; white-space: pre; tab-size: 4; }
 .sample-preview { margin-bottom: 24px; border: 1px solid #bdc9dc; border-radius: 12px; background: #fff; }
 .sample-preview > summary { padding: 15px 20px; color: #254fbc; font-size: .9375rem; font-weight: 650; }
 .sample-preview > summary span { margin-left: 9px; color: var(--muted); font-size: .8125rem; font-weight: 400; }

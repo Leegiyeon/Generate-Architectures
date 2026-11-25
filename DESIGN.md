@@ -3,7 +3,7 @@
 ## Source of truth
 - Status: Active
 - Last refreshed: 2026-11-25
-- Primary product surfaces: 공개 FastAPI PR Review의 PR 비교·저장소 현재 구조 입력·결과·코드 구조도.
+- Primary product surfaces: FastAPI PR Review의 공개 PR 비교·공개 저장소 및 로컬 폴더의 현재 구조 입력·결과·코드 구조도.
 - Evidence reviewed: `app/pr_preview/{index.html,app.js,styles.css}`, `scripts/{pr_preview_browser.py,preview_fastapi_pr.py,application_graph.py,render_application_graph.py}`, `docs/{PRODUCT.md,FASTAPI_PR_TEST.md}`.
 
 ## Brand
@@ -23,7 +23,7 @@
 - Key contexts of use: 공개 PR 리뷰와 프로젝트 온보딩.
 
 ## Information architecture
-- Primary navigation: 한 페이지에서 PR 변경 분석 / 저장소 현재 구조를 선택. 전환 시 이전 결과를 숨긴다.
+- Primary navigation: 한 페이지에서 PR 변경 분석 / 저장소 현재 구조 / 로컬 폴더 분석을 선택. 전환 시 이전 결과 DOM을 비운다. 로컬 폴더는 사용자가 clone하거나 압축 해제한 프로젝트를 native 폴더 입력으로 선택하고 Python 소스 루트를 지정한 뒤 명시적으로 분석한다. GitHub 인증·업로드 서버는 추가하지 않는다.
 - Core routes/screens: PR 입력 → 결과 시작·복사·바로가기 → 전후 구조 → 검토 제안 → 변경 근거. 저장소 URL·선택 커밋·소스 루트 → 파일·참조 방향·사용 목적 선택 → import 도표·개선 후보 비교·목적별 검토 계획·근거·직접 선언. 결과 상단의 분석 설정 공유는 저장소·분석한 전체 SHA·소스 루트·선택 파일·참조 방향·사용 목적을 URL fragment에 담는다. 링크를 열면 저장소 모드와 입력을 복원하며 분석은 사용자가 시작한다. 커밋을 생략하면 기본 브랜치 최신 커밋을 한 번 조회해 전체 SHA로 고정한다. 명시한 SHA는 임의 대체하지 않는다. 개선 후보는 별도 펼침 영역에서 선택하며 해당 파일의 관찰 근거가 있을 때만 제시한다.
 - Content hierarchy: 분석 범위·커밋, 도표, 구조 기반 확인 항목, 상세 변경 근거.
 - First-use hierarchy: 대상과 얻는 결과 → 무료 체험 조건 → 입력 및 ‘저장된 결과 먼저 보기’ → 저장 시점·고정 커밋·원본 행이 있는 실제 PR 발췌 → 최신 예제 분석/내 PR 입력. 미리보기는 네트워크·Worker 없이 열고, 현재 분석 결과와 별도 영역으로 구분한다. 분석 시작 또는 모드 전환 시 닫고 분석 중에는 열지 않는다. 기존 입력·관점·범위는 미리보기 열기/닫기로 변경하지 않는다.
@@ -63,6 +63,9 @@
 - Touch/hover differences: 핵심 정보는 hover에 의존하지 않는다.
 
 ## Interaction states
+- Local selection: 폴더를 선택한 뒤에만 분석·선택 해제를 활성화한다. 새 선택·루트 변경·선택 해제는 이전 결과를 비우고, 선택 해제는 FileList도 해제한다. 빈 선택·미지원 브라우저·Python 없음·모든 파일 실패를 구분한다. 모드 전환은 분석하지 않으며 로컬 경로나 소스를 URL·피드백·스토리지에 기록하지 않는다. `#mode=local`은 입력 없는 진입 링크만 지원한다.
+- Local evidence: 선택 시점의 파일·상대경로·행·읽기 전용 코드 문맥으로 근거를 표시한다. Git 커밋을 추정하지 않는다. 로컬 SVG에는 외부 소스 링크를 넣지 않으며 설정 공유 링크를 만들지 않는다. 기존 파일/참조 방향/목적별 계획·조건부 후보를 재사용한다. 복사·SVG 저장에는 파일명과 선언 정보가 포함됨을 알린다.
+- Local privacy: 선택한 Python 원본은 같은 브라우저 Worker로만 전달하며 업로드·GitHub 요청·영구 저장·소스 실행을 하지 않는다. 로컬 분석 성공 후에도 Worker를 종료해 런타임을 유지하지 않는다. 첫 웹 분석에서는 분석기 정적 자산 다운로드가 필요하다. 폴더 선택 API는 브라우저 지원을 확인하고 미지원이면 데스크톱 브라우저 사용 방법을 안내한다.
 - Startup failure: HTML의 분석 입력·버튼은 기본 잠금 상태이며 전체 모듈 초기화가 끝난 뒤 해제한다. 모듈과 독립적인 classic 시작 스크립트가 file:// 직접 열기·모듈 읽기/초기화 실패·JavaScript 비활성화를 안내한다. 준비 전 기본 폼 GET 제출을 막아 입력이 query로 바뀌며 무반응처럼 보이지 않게 한다. 파일 모드에서는 모듈을 요청하지 않으며 자동 외부 이동 없이 배포 서비스 링크와 ZIP의 START.command/start.py 실행 방법을 제공한다.
 - Startup recovery: 고정된 canonical 배포 주소의 fragment에 알려진 PR·범위 또는 공유 설정만 전달한다. 로컬 파일 경로·알 수 없는 query 값·토큰은 복구 링크로 복사하지 않는다. 기존 공유 설정 검증기를 목적지에서 사용하고 자동 분석하지 않는다. 저장된 예제는 시작 실패 상태에서도 읽을 수 있다.
 - Loading: 조회·분석 중 양쪽 입력과 모드 전환을 잠그고 진행 상태·취소 버튼으로 이동한다. 취소 버튼은 활성 상태를 유지하며 사용자 취소 후 입력을 보존하고 해당 입력으로 돌아간다. 조회부터 Worker 분석까지 하나의 90초 제한시간을 사용하고, 취소·시간 초과는 원본 조회와 Worker를 중단한다. 저장소 고정 스냅샷은 2건·3분 캐시.
@@ -81,7 +84,7 @@
 ## Implementation constraints
 - Framework/styling system: 기존 정적 HTML·ES modules·CSS·Pyodide AST.
 - Design-token constraints: 별도 UI 프레임워크·디자인 시스템 추가 없음.
-- Performance constraints: 기존 파일·바이트 제한 유지. PR은 최대300개 변경 목록에서 사용자가 지정한 현재 경로를 먼저 적용한 뒤 Python 원본100개를 읽는다. 원본 캐시는 PR·정규화 경로 범위별로 구분하고 중단·읽기 실패는 재사용하지 않는다. 저장소는 파일80개·관계400개·미확인100개·파일당선언20개, 선택 도표는 이웃12개와 정확한 생략 수 표시. tree의 미수집 파일 경로도 충돌 확인에 사용한다.
+- Performance constraints: 기존 파일·바이트 제한 유지. 로컬은 목록100000개·Python100개·파일당64KiB·읽기 동시6개를 한도로 하며 .git·가상환경·의존성·캐시를 제외하고 생략을 표시한다. File 읽기 중에도 취소·90초 제한을 적용한다. PR은 최대300개 변경 목록에서 사용자가 지정한 현재 경로를 먼저 적용한 뒤 Python 원본100개를 읽는다. 원본 캐시는 PR·정규화 경로 범위별로 구분하고 중단·읽기 실패는 재사용하지 않는다. 저장소는 파일80개·관계400개·미확인100개·파일당선언20개, 선택 도표는 이웃12개와 정확한 생략 수 표시. tree의 미수집 파일 경로도 충돌 확인에 사용한다.
 - Compatibility constraints: 대상 소스 실행·import 없음. OpenAI API·키·추가 서버 없음. 사용 목적·개선 후보 전환은 이미 읽은 그래프와 선언만 사용하며 추가 GitHub 조회·재분석을 하지 않는다. 개선 후보는 코드 변경을 적용하지 않은 검토 가정이다. 전제·변경 관계·적용 행동·단점·확인 조건을 함께 표시하고, 실제 테스트·운영 개선·최적 설계가 검증됐다고 표현하지 않는다. import 순환의 한 관계를 조정하는 시나리오는 다른 순환까지 해결한다고 주장하지 않는다.
 - Proposal comparison bounds: 선택 파일별 규칙 최대2개, 후보별 소스 근거6곳·정확한 생략 수. 순환 도표는 가장 짧은 확인 경로의 파일 최대6개이며 더 긴 순환을 잘라 그리지 않는다. 역할 분리는 기존 import를 어느 역할로 배분할지 추정하지 않고 선택 파일의 직접 선언 공존만 비교한다.
 - Test/screenshot expectations: 그래프 정확성·누락·이전행·비실행 테스트, 실제 공개 PR 브라우저·390px·SVG 확인.

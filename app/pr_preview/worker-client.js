@@ -16,12 +16,12 @@ export async function analyze(payload, signal, progress = () => {}) {
       activeWorker.removeEventListener("message", receive);
       activeWorker.removeEventListener("error", failed);
       signal.removeEventListener("abort", cancelled);
-      if (succeeded) resolve(value);
-      else {
+      if (!succeeded || payload.source === "local") {
         activeWorker.terminate();
         if (worker === activeWorker) worker = null;
-        reject(value);
       }
+      if (succeeded) resolve(value);
+      else reject(value);
     }
     function receive(event) {
       if (event.data?.id !== id) return;

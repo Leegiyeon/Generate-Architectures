@@ -22,15 +22,19 @@ function start(url) {
   const ids = Object.fromEntries(["startup-notice", "startup-title", "startup-message", "startup-service"]
     .map(id => [id, element()]));
   ids["startup-service"].href = serviceURL;
-  const locks = Array.from({ length: 6 }, () => element());
-  const forms = [element(), element()];
+  const locks = Array.from({ length: 8 }, () => element());
+  const forms = [element(), element(), element()];
   const modules = [];
   const window = element();
   const document = element({
     head: { append(script) { modules.push(script); } },
     getElementById(id) { return ids[id]; },
     querySelector() { return { href: serviceURL }; },
-    querySelectorAll(selector) { return selector === "[data-startup-lock]" ? locks : forms; },
+    querySelectorAll(selector) {
+      if (selector === "[data-startup-lock]") return locks;
+      assert.deepEqual(selector.split(",").map(value => value.trim()).sort(), ["#local-form", "#repository-form", "#review-form"]);
+      return forms;
+    },
     createElement() { return element(); },
   });
   vm.runInNewContext(source, { document, window, location: new URL(url), URL, URLSearchParams });

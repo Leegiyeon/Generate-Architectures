@@ -83,6 +83,24 @@ test("unrelated or late request IDs cannot settle a different analysis", async t
   assert.deepEqual(await promise, { current: true });
 });
 
+test("a successful local analysis discards its source-bearing Worker before the next analysis", async t => {
+  const { analyze, instances } = await client(t);
+  const controller = new AbortController();
+  const first = analyze({ source: "local", kind: "repository", files: [{ path: "private.py", after: "SECRET = 1" }] }, controller.signal);
+  const localWorker = instances[0];
+  localWorker.reply({ nodes: [{ path: "private.py" }] });
+  assert.deepEqual(await first, { nodes: [{ path: "private.py" }] });
+  assert.equal(localWorker.terminated, 1);
+  noListeners(localWorker);
+  controller.abort();
+  assert.equal(localWorker.terminated, 1);
+  const next = analyze({ kind: "repository", files: [] }, new AbortController().signal);
+  assert.equal(instances.length, 2);
+  instances[1].reply({ nodes: [] });
+  await next;
+  assert.equal(instances[1].terminated, 0);
+});
+
 test("pre-aborted input rejects its reason without preparing or constructing a Worker", async t => {
   const { analyze, instances } = await client(t);
   const reason = new DOMException("User cancelled", "AbortError");

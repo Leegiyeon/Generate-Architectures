@@ -7,7 +7,7 @@
   let ready = false;
 
   // Keep native GET submission from replacing the page before handlers exist.
-  for (const form of document.querySelectorAll("#review-form, #repository-form")) {
+  for (const form of document.querySelectorAll("#review-form, #repository-form, #local-form")) {
     form.addEventListener("submit", event => { if (!ready) event.preventDefault(); }, true);
   }
 

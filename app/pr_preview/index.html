@@ -26,7 +26,7 @@
     <div class="shell">
       <header class="site-header">
         <a class="brand" href="./" aria-label="FastAPI PR Review 시작 화면">FastAPI <span>PR Review</span></a>
-        <span class="header-note">공개 GitHub 코드</span>
+        <span class="header-note">브라우저 코드 분석</span>
       </header>
 
       <main>
@@ -34,7 +34,7 @@
           <h1>API와 DB에서<br class="mobile-break"> 무엇이 바뀌었나요?</h1>
           <p>PR 링크를 넣고, 관련 코드 구조와 변경 사항을 코드 근거와 함께 확인하세요.</p>
           <ul class="service-facts" aria-label="체험 조건">
-            <li>무료</li><li>로그인·설치·API 키 불필요</li><li>공개 Python 코드</li>
+            <li>무료</li><li>로그인·설치·API 키 불필요</li><li>Python · 공개 GitHub 또는 로컬 폴더</li>
           </ul>
         </div>
 
@@ -76,6 +76,7 @@
         <nav class="analysis-modes report-actions" aria-label="분석할 대상">
           <button id="mode-pr" type="button" aria-pressed="true" aria-controls="pr-panel" disabled data-startup-lock>PR 변경 분석</button>
           <button id="mode-repository" type="button" aria-pressed="false" aria-controls="repository-panel" disabled data-startup-lock>저장소 현재 구조</button>
+          <button id="mode-local" type="button" aria-pressed="false" aria-controls="local-panel" disabled data-startup-lock>로컬 폴더 분석</button>
         </nav>
 
         <section id="pr-panel" class="input-panel" aria-label="PR 분석 입력">
@@ -158,6 +159,29 @@
           </form>
         </section>
 
+        <section id="local-panel" class="input-panel" aria-label="로컬 폴더 구조 입력" hidden>
+          <form id="local-form">
+            <fieldset class="form-fields" disabled data-startup-lock>
+              <label class="input-label" for="local-files">로컬 프로젝트 폴더</label>
+              <p id="local-help" class="help">private 저장소를 clone하거나 ZIP을 풀고 프로젝트 폴더를 선택하세요. 선택한 소스와 폴더명은 외부로 전송하지 않습니다.</p>
+              <input id="local-files" type="file" webkitdirectory multiple aria-describedby="local-help local-selection">
+              <p id="local-selection" class="help local-selection" role="status" aria-live="polite">선택한 폴더가 없습니다.</p>
+              <p id="local-unsupported" class="coverage-note" hidden>이 브라우저에서는 폴더 선택을 지원하지 않습니다. 최신 데스크톱 Chrome·Edge·Firefox·Safari에서 다시 열어 주세요.</p>
+              <div class="advanced-field repository-purpose">
+                <label for="local-root">Python 소스 루트</label>
+                <input id="local-root" type="text" value="." spellcheck="false" autocapitalize="off" aria-describedby="local-root-help">
+                <p id="local-root-help" class="help field-help">선택한 폴더 기준입니다. backend/app을 app으로 import하면 backend, src 안의 패키지는 src. 전체 폴더는 .입니다.</p>
+              </div>
+              <div class="report-actions local-actions">
+                <button class="primary-button" id="local-analyze" type="submit" disabled>폴더 구조 확인</button>
+                <button id="local-clear" type="button" disabled>선택 해제</button>
+              </div>
+              <p class="help repository-limits">Python 최대100개·파일당64KiB를 읽습니다. .git·가상환경·의존성·캐시 폴더와 .env 같은 비Python 파일은 읽지 않습니다. 선택 시점의 현재 구조이며 PR 전후 비교는 아닙니다.</p>
+              <p class="help field-help">코드를 실행하지 않습니다. 웹서비스의 첫 분석에는 분석기 다운로드가 필요합니다. 파일을 수정했다면 폴더를 다시 선택하세요. 선택 해제·새로고침으로 선택과 결과를 지울 수 있습니다.</p>
+            </fieldset>
+          </form>
+        </section>
+
         <div class="feedback-area">
           <p id="status" class="status" role="status" aria-live="polite"></p>
           <div class="report-actions" id="analysis-cancel-actions" hidden>
@@ -169,7 +193,7 @@
       </main>
 
       <footer class="site-footer">
-        <p>공개 소스를 브라우저에서 읽어 정적으로 비교합니다. 결과의 파일과 줄 번호로 변경 내용을 확인할 수 있습니다.</p>
+        <p>선택한 Python 코드를 브라우저에서 정적으로 분석합니다. 결과의 파일과 줄 번호로 근거를 확인할 수 있습니다.</p>
         <p class="feedback-note"><a id="feedback-link" href="https://github.com/Leegiyeon/Generate-Architectures/issues/new" target="_blank" rel="noopener noreferrer">피드백·오류 제보 (GitHub)</a> · 공개 이슈 작성 화면이 열립니다. 등록 전에 내용을 확인해 주세요.</p>
       </footer>
     </div>

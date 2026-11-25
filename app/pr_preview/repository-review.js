@@ -1,4 +1,4 @@
-import { sourceURL } from "./github.js";
+import { repositoryIdentityText, repositoryEvidenceText } from "./repository-source.js";
 
 const PURPOSES = { onboarding: "온보딩", change: "변경 검토", testing: "테스트 계획" };
 const MAX_EVIDENCE = 6;
@@ -43,7 +43,7 @@ export function repositoryReview(report, id, purpose = "onboarding") {
     declarations.length
       ? (purpose === "onboarding"
         ? "라우트 핸들러·테이블의 직접 선언과 본문을 읽고 이 파일의 역할을 정리하세요. 최종 URL과 상속 필드는 원본에서 별도로 확인하세요."
-        : "수정하려는 라우트의 입력·응답과 테이블 필드의 전후 차이를 PR 비교에서 확인하세요. 현재 커밋 하나만으로 변경 여부나 DB 호환성을 판단하지 마세요.")
+        : "수정하려는 라우트의 입력·응답과 테이블 필드의 전후 차이를 PR 비교에서 확인하세요. 현재 스냅샷 하나만으로 변경 여부나 DB 호환성을 판단하지 마세요.")
       : (purpose === "onboarding"
         ? "원본의 함수·클래스와 사용 지점을 읽어 파일의 역할을 정리하세요. 선언 생략 안내가 있다면 함께 확인하세요. 지원하는 선언이 없다는 이유로 역할이 없다고 판단하지 마세요."
         : "원본의 함수·클래스와 실제 사용 지점을 확인한 뒤, 수정하려는 입력·반환값의 전후 차이를 PR 비교에서 확인하세요. 선언 생략 안내도 확인하세요."),
@@ -99,7 +99,7 @@ export function repositoryReview(report, id, purpose = "onboarding") {
 function oneLine(value) { return String(value).replace(/[\r\n]+/g, " "); }
 
 export function repositoryReviewText(snapshot, review) {
-  const lines = ["저장소 구조 검토 계획", `저장소: ${oneLine(snapshot.repo)}`, `커밋: ${oneLine(snapshot.head)}`,
+  const lines = ["저장소 구조 검토 계획", ...repositoryIdentityText(snapshot),
     `Python 소스 루트: ${oneLine(snapshot.root)}`, `선택 파일: ${oneLine(review.selected_path || "미선택")}`,
     `목적: ${review.title}`, oneLine(review.summary)];
   if (review.coverage) lines.push(`범위: Python 원본 ${snapshot.totalFiles}개 중 구문 분석 ${review.coverage.parsed_files}개, 그래프 파일 ${review.coverage.displayed_files}개·관계 ${review.coverage.displayed_edges}개 표시`);
@@ -107,7 +107,7 @@ export function repositoryReviewText(snapshot, review) {
     lines.push("", `${index + 1}. ${item.title}`, `관찰: ${oneLine(item.observation)}`,
       `할 일: ${oneLine(item.action)}`, `확인 기준: ${oneLine(item.check)}`);
     for (const evidence of item.evidence) lines.push(`근거: ${oneLine(evidence.label)} (${oneLine(evidence.path)}:${evidence.line})`,
-      sourceURL(snapshot.repo, snapshot.head, evidence.path, evidence.line));
+      repositoryEvidenceText(snapshot, evidence.path, evidence.line));
     if (item.omitted_evidence) lines.push(`이 항목의 근거 ${item.omitted_evidence}개는 목록 한도로 생략했습니다.`);
   }
   lines.push("", "한도와 미확인 범위", ...review.limits.map(oneLine), ...(snapshot.warnings || []).map(oneLine));
