@@ -31,9 +31,10 @@
     // Never carry embedded credentials, URL query tokens or a local file path.
     // The destination's shared-settings parser validates scope before analysis.
     for (const [key, value] of params) {
+      const selected = value.trim();
       if (!["pr", "repo"].includes(key)
-          && (/^[\\/]|^~[\\/]|^[A-Za-z]:[\\/]|[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(value)
-            || /^(?:file|data|javascript|mailto):/i.test(value))) return destination.href;
+          && (/^[\\/]|^~[\\/]|^[A-Za-z]:[\\/]|[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(selected)
+            || /^(?:file|data|javascript|mailto):/i.test(selected))) return destination.href;
     }
     const targetKey = params.has("pr") ? "pr" : "repo";
     if (params.has(targetKey)) {

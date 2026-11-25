@@ -89,8 +89,9 @@ test("overlong recovery never silently transfers a truncated scope", () => {
 });
 
 test("URL credentials and local absolute paths cannot pass through scope fields", () => {
-  for (const value of ["file:///Users/example/private.py", "https://user:password@example.invalid/private.py:Token",
-    "/Users/example/private.py", "C:\\Users\\example\\private.py", "~/private.py", "data:text/plain,secret"]) {
+  for (const value of ["file:///Users/example/private.py", "file:/Users/example/private.py",
+    "https://user:password@example.invalid/private.py:Token", "/Users/example/private.py",
+    "C:\\Users\\example\\private.py", "~/private.py", "data:text/plain,secret"].flatMap(value => [value, " " + value + " "])) {
     for (const field of ["paths", "models", "responses"]) {
       const ui = start("file:///tmp/index.html?" + new URLSearchParams({ "pr-url": pr, [field]: value }));
       assert.equal(ui.recovery.href, serviceURL, field + ": " + value);
