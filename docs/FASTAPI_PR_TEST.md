@@ -30,9 +30,11 @@
 
 - 세 분석 방식에 공개/private 지원 범위와 용도 설명을 붙이고, 분석 대상 → 설정 순서로 입력을 정리했습니다. 로컬 폴더는 외부 전송 없음과 Python 한도를 바로 표시하고 루트 예시·상세 제한은 펼쳐 읽습니다. 저장 예제는 입력 아래에 유지합니다.
 - 저장소·로컬 결과는 읽은 파일·표시한 파일·import 관계·미확인 import 요약 뒤 파일·방향·목적을 한곳에서 선택합니다. 구조도·코드 근거·검토 계획·개선 후보·직접 선언 바로가기는 키보드 포커스도 이동합니다. 개선 후보는 기본 접힘이며 읽기 실패·생략·빈 결과 복구 안내는 계속 표시합니다. PR에는 실제 변경 파일·Python 비교 범위를 요약합니다.
-- 구현·로컬 검증 완료, 공개 배포 검증 전으로 **67% (2/3)**입니다. JavaScript145개·관련 Python65개와 JS 구문·diff 검사가 통과했습니다. 독립 검토의 카드 설명 접근성 지적을 `aria-describedby`로 수정했습니다. 실제 SQLModel 예제의 Python2/2개·후보 펼침·구간 포커스와 PR 예제의 변경6개/Python4/4개를 확인했습니다.
+- 구현·로컬 검증·공개 배포 검증을 완료해 **100% (3/3)**입니다. JavaScript145개·관련 Python65개와 JS 구문·diff 검사가 통과했습니다. 독립 검토의 카드 설명 접근성 지적을 `aria-describedby`로 수정했습니다. 실제 SQLModel 예제의 Python2/2개·후보 펼침·구간 포커스와 PR 예제의 변경6개/Python4/4개를 확인했습니다.
 - 데스크톱1280×720에서 첫 PR 분석 버튼이 화면 안에 있고, 모바일390×844에서 입력·긴 파일 경로의 결과에 페이지 가로 넘침이 없습니다. 로컬 분석 버튼의 파란 배경·흰 글자와 최소48px 높이를 확인했습니다. 이번 폴더 선택 자동화는 브라우저 연결 만료로 완료하지 못했으며, 합성 폴더 실제 선택 검증은 아래 이전 배포 기록을 따릅니다. 로컬 수집기·전송 금지·결과 근거는 이번 자동 회귀 검사로 재확인했습니다.
 - 최신 로컬 ZIP36파일·웹 자산33개와 압축 해제본의 바이트가 일치합니다. 크기·SHA-256: `architecture-output/readable-ui-package-check.json`. 외부 실사용0/5명·재사용0/2명은 변경하지 않습니다.
+- 소스 `0325a57a4d082d05dc62b94ccd5419aaa6d7d6f2`의 [Pages 배포](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45551047243)에서 JavaScript145개·Python62개·빌드가 통과했고 [동일 소스 전체 CI](https://github.com/Leegiyeon/Generate-Architectures/actions/runs/45551042555)도 성공했습니다. 공개 HTTPS 자산33개가 빌드와 일치하며 런타임6개 SHA-256·JS/WASM MIME을 확인했습니다. 실제 공개 모바일에서 로컬 모드 복원·미전송 안내, SQLModel Python2/2개와 요약·목적 전환·파일 유지·후보 펼침·키보드 포커스를 확인했습니다. 1280×720·390×844에 가로 넘침이 없고 공개 탭 오류·경고0건입니다. viewport를 복원하고 검사용 로컬 서버를 종료했습니다.
+- 기록: `architecture-output/pages-readable-ui-live-http-check.json`, `readable-ui-local-browser-check.json`, `readable-ui-live-browser-check.json`. 공개 화면: `readable-ui-live.jpg`, `readable-ui-live-mobile.jpg`, `readable-ui-live-result-mobile.jpg`. 폴더 선택 도구 연결 만료의 검증 공백과 OS별 권한·모든 브라우저·실제 민감한 저장소 미검증은 유지합니다.
 
 ### private 저장소 로컬 폴더 분석 — 2026-11-25
 
