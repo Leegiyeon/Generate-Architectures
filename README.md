@@ -24,7 +24,7 @@ PR 경로는 소스 조회 전에 적용하며 선택 범위에서 Python 파일
 python3 scripts/build_pr_preview.py --output architecture-output/pr-preview --archive architecture-output/fastapi-pr-review-local.zip
 ```
 
-ZIP 전체를 풀고 `fastapi-pr-review` 폴더에서 `python3 start.py`(Windows: `py -3 start.py`)를 실행하세요. macOS에서는 `START.command`도 사용할 수 있습니다. 서버는 `127.0.0.1`의 빈 포트로 열리며 Ctrl+C로 종료합니다. 공개 GitHub 조회에는 인터넷이 필요합니다. ZIP은 웹 출력 폴더 밖에 지정하세요.
+ZIP 전체를 풀고 `fastapi-pr-review` 폴더에서 `python3 start.py`(Windows: `py -3 start.py`)를 실행하세요. macOS에서는 `START.command`도 사용할 수 있습니다. `index.html` 직접 열기는 지원하지 않으며, 화면의 복구 링크로 입력 설정을 웹서비스에서 이어갈 수 있습니다. 서버는 `127.0.0.1`의 빈 포트로 열리며 Ctrl+C로 종료합니다. 공개 GitHub 조회에는 인터넷이 필요합니다. ZIP은 웹 출력 폴더 밖에 지정하세요.
 
 이미 받은 Git 저장소도 대상 코드를 실행하지 않고 비교합니다.
 

@@ -2,7 +2,7 @@
 
 ## Source of truth
 - Status: Active
-- Last refreshed: 2026-11-24
+- Last refreshed: 2026-11-25
 - Primary product surfaces: 공개 FastAPI PR Review의 PR 비교·저장소 현재 구조 입력·결과·코드 구조도.
 - Evidence reviewed: `app/pr_preview/{index.html,app.js,styles.css}`, `scripts/{pr_preview_browser.py,preview_fastapi_pr.py,application_graph.py,render_application_graph.py}`, `docs/{PRODUCT.md,FASTAPI_PR_TEST.md}`.
 
@@ -63,6 +63,8 @@
 - Touch/hover differences: 핵심 정보는 hover에 의존하지 않는다.
 
 ## Interaction states
+- Startup failure: HTML의 분석 입력·버튼은 기본 잠금 상태이며 전체 모듈 초기화가 끝난 뒤 해제한다. 모듈과 독립적인 classic 시작 스크립트가 file:// 직접 열기·모듈 읽기/초기화 실패·JavaScript 비활성화를 안내한다. 준비 전 기본 폼 GET 제출을 막아 입력이 query로 바뀌며 무반응처럼 보이지 않게 한다. 파일 모드에서는 모듈을 요청하지 않으며 자동 외부 이동 없이 배포 서비스 링크와 ZIP의 START.command/start.py 실행 방법을 제공한다.
+- Startup recovery: 고정된 canonical 배포 주소의 fragment에 알려진 PR·범위 또는 공유 설정만 전달한다. 로컬 파일 경로·알 수 없는 query 값·토큰은 복구 링크로 복사하지 않는다. 기존 공유 설정 검증기를 목적지에서 사용하고 자동 분석하지 않는다. 저장된 예제는 시작 실패 상태에서도 읽을 수 있다.
 - Loading: 조회·분석 중 양쪽 입력과 모드 전환을 잠그고 진행 상태·취소 버튼으로 이동한다. 취소 버튼은 활성 상태를 유지하며 사용자 취소 후 입력을 보존하고 해당 입력으로 돌아간다. 조회부터 Worker 분석까지 하나의 90초 제한시간을 사용하고, 취소·시간 초과는 원본 조회와 Worker를 중단한다. 저장소 고정 스냅샷은 2건·3분 캐시.
 - Empty: 인식된 선언이 없거나 소스를 읽지 못한 범위를 구별해 표시. 개선 후보가 없으면 지원 규칙·표시 범위에서 후보를 찾지 못한 상태로 알린다. 구조가 적절하다거나 개선이 불필요하다는 판정으로 바꾸지 않는다.
 - 저장소 파일이 하나도 표시되지 않아도 HTTP·인코딩·구문 오류의 구체적 진단을 생략하지 않는다. 이때 진단 목록은 펼쳐 두며, 소스 루트에 Python 파일이 없는 상태와 읽기·해석에 실패한 상태를 다른 문구로 안내한다.

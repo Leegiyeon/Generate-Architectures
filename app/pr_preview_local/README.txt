@@ -7,6 +7,8 @@ FastAPI PR Review — 로컬 테스트
 Pyodide 분석 런타임은 패키지에 포함됩니다. OpenAI API와 API 키는 사용하지 않습니다.
 
 1. ZIP 전체를 압축 해제합니다. index.html을 직접 열지 마세요.
+   직접 열기 안내가 나오면 ‘웹서비스에서 열기’로 이동하거나 아래 실행 방법을 사용하세요.
+   이전 화면의 PR·범위가 주소에 남아 있다면 복구 링크가 알려진 분석 설정만 이어줍니다.
 2. macOS: START.command를 엽니다.
    실행 권한 때문에 열리지 않으면 터미널에서 이 폴더로 이동해 python3 start.py를 실행합니다.
    Windows: 이 폴더에서 py -3 start.py를 실행합니다.

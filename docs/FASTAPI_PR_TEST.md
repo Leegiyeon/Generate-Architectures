@@ -31,17 +31,25 @@
 동일 기능의 로컬 실행본은 `architecture-output/fastapi-pr-review-local.zip`으로 준비했습니다. ZIP 전체를 압축 해제하고 `fastapi-pr-review` 폴더에서 `python3 start.py`를 실행합니다(Windows는 `py -3 start.py`). Python 3.10 이상과 GitHub 접속이 필요합니다. 분석 런타임을 포함하며 OpenAI API 키는 사용하지 않습니다. `PR 변경 분석`에서 예제·본인의 공개 PR을 확인하거나, `저장소 현재 구조`에서 `저장소 예제로 시작` 또는 `구조 비교 예제`를 선택합니다. 본인의 공개 저장소 URL·Python 소스 루트로 바꾸고(커밋 SHA는 선택), 파일·사용 목적을 선택해 검토 계획과 근거가 있는 구조 개선 후보를 확인할 수 있습니다. 후보에는 현재·가정 도표, 적용 전제·순서·검증·단점과 SVG·텍스트 출력이 있습니다. 웹 배포와 별도로 기기 안에서 실행하는 패키지입니다.
 
 - 재생성: `python3 scripts/build_pr_preview.py --output architecture-output/pr-preview --archive architecture-output/fastapi-pr-review-local.zip`.
-- 최신 ZIP은 33개 파일·웹 자산 30개·6,461,581바이트입니다. 첫 사용·공유 개선 소스와 압축 해제본의 바이트 일치를 확인했습니다. 이전 30파일 패키지에서는 다른 작업 경로의 실행·HTTP 200·JS/WASM MIME·런타임 SHA-256·127.0.0.1 연결·정상 종료·잘못된 포트 거부·README 비노출을 확인했습니다. 런처와 런타임은 이번에 변경하지 않았습니다.
-- 최신 패키지 일치 기록: `architecture-output/acquisition-package-check.json`, 이전 실행 기록: `architecture-output/local-package-smoke.json`. ZIP SHA-256은 `f0e98b3be46afe6aaa88ba5a41efd0033be54f83e965f658e49cbd656752b79c`입니다. macOS Finder 더블 클릭 및 Windows 실행은 별도로 확인하지 않았습니다. 새 기능 화면은 아래 구조 비교·목적별 계획·저장소 모드 검증 기록을 참고합니다.
+- 최신 ZIP은 시작 오류 복구 스크립트를 포함한 34개 파일·웹 자산31개입니다. 기존 압축 해제본이 이전 ZIP과 일치하는지 확인한 뒤 갱신했습니다. 이전 30파일 패키지에서는 다른 작업 경로의 실행·HTTP 200·JS/WASM MIME·런타임 SHA-256·127.0.0.1 연결·정상 종료·잘못된 포트 거부·README 비노출을 확인했습니다. 런처와 런타임은 이번에 변경하지 않았습니다.
+- 최신 패키지 크기·SHA-256·일치 기록: `architecture-output/startup-package-check.json`, 이전 실행 기록: `architecture-output/local-package-smoke.json`. macOS Finder 더블 클릭 및 Windows 실행은 별도로 확인하지 않았습니다. `index.html` 직접 열기 대신 런처 또는 웹서비스를 사용합니다.
 
 ### 마무리 상태
 
 PR 기능·저장소 모드·목적별 검토 계획·조건부 구조 비교를 공개 배포하고 실제 주소에서 검증했습니다. 로컬 실행 ZIP도 유지합니다. 아래 패키징 기록과 과거 배포 차단 기록은 검증 범위의 이력이며, 현재 공개 배포 상태는 다음 항목을 따릅니다. 외부 사용자 성과는 미검증입니다.
 
-- 직접 실행할 압축 해제본: `architecture-output/local-preview/fastapi-pr-review/START.command`. macOS에서는 이 파일을 열거나, 같은 폴더에서 `python3 start.py`를 실행합니다. 기존 파일이 이전 패키지와 일치하는지 확인한 뒤 갱신했고, 최신 ZIP 33개 파일과 압축 해제본의 일치를 확인했습니다.
+- 직접 실행할 압축 해제본: `architecture-output/local-preview/fastapi-pr-review/START.command`. macOS에서는 이 파일을 열거나, 같은 폴더에서 `python3 start.py`를 실행합니다. 기존 파일이 이전 패키지와 일치하는지 확인한 뒤 갱신했고, 최신 ZIP34개 파일과 압축 해제본의 일치를 확인했습니다.
 - 기본 `python3`를 사용하는 `START.command`를 다른 작업 폴더에서 실행해 새 구조도 자산 제공·실행 권한·정상 종료를 확인했습니다. 검사 중 브라우저 자동 열기를 억제했으므로 Finder 더블 클릭 자체와 Windows 실행은 검증하지 않았습니다. 기록은 `architecture-output/local-launcher-smoke.json`입니다.
 - 최종 패키징 검토에서 발견한 입력 파일 덮어쓰기 위험을 수정했습니다. 웹 출력 폴더 안의 ZIP 경로·잘못된 확장자·원본 소스 충돌을 거부하고, 임시 ZIP 작성 후 교체해 실패 시 이전 ZIP을 보존합니다. 관련 회귀 검사 4개 통과 및 수정 후 재검토에서 추가 중요한 문제 없음.
 - 최초 배포 시점 ZIP의 웹 자산 27개·런타임 무결성 6개·HTTP MIME·정상 종료를 재검증했습니다. 당시 검사용 서버는 모두 종료했습니다. 최신 UX 패키지 검증 범위는 위 기록을 따릅니다.
+
+### 로컬 HTML 직접 열기·시작 오류 복구 — 2026-11-25
+
+- 사용자 화면은 `file://.../index.html?pr-url=...&focus=api`였습니다. 모듈이 실행되지 않아 기본 폼 GET 제출로 이동한 정황입니다. [MDN의 모듈 실행 안내](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules/Modules_on_the_web#server_configuration)처럼 HTTP(S)로 실행해야 합니다. 파일 주소의 브라우저 직접 조작은 도구 정책으로 차단되어 콘솔 오류 자체는 읽지 못했습니다.
+- 분석 입력은 기본 잠금 상태로 시작하고, classic 스크립트가 전체 모듈 초기화 완료 후 해제합니다. 파일 직접 열기는 모듈을 요청하지 않고 실행 방법을 표시하며, 모듈 읽기·초기화 실패와 JavaScript 비활성화에도 무반응 대신 복구 안내를 제공합니다. 준비 전 기본 폼 제출을 막고 저장 예제는 읽을 수 있습니다.
+- 고정된 웹서비스 주소의 fragment로 알려진 PR·관점·범위 또는 저장소 공유 설정을 이어갑니다. 로컬 파일 경로·알 수 없는 query·URL 자격증명·query 토큰을 전달하지 않고 자동 외부 이동·자동 분석을 하지 않습니다. 목적지의 기존 설정 검증기를 재사용합니다.
+- 신규 시작 회귀8개를 포함한 로컬 JavaScript121개·관련 Python65개 통과. 독립 검토에서 발견한 범위 필드의 로컬 경로·URL 자격증명 전달도 차단했습니다. ZIP34파일·웹 자산31개를 재생성했습니다. 로컬 HTTP 브라우저에서 SALGU #7의 Python40/40개와 추가 라우트7개, 설정 복원·정상 시작 잠금 해제·저장소 모드 전환·모바일390px 가로 넘침 없음을 확인했습니다. Java/Spring·TypeScript의 분석 지원을 의미하지 않습니다.
+- 공개 배포·최종 검증은 진행 중입니다. 기존 공개 서비스에서도 동일 SALGU PR의 Python40/40개·추가 라우트7개 분석을 확인했습니다. 파일 모드와 모듈 실패 분기는 자동 회귀 검사로 확인했으며 파일 주소의 실제 브라우저 실행은 미검증입니다. 사용자 실사용·재사용 집계는 변경하지 않습니다.
 
 ### 첫 사용·공유 자료 공개 검증 — 2026-11-24
 

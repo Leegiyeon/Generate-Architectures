@@ -30,6 +30,11 @@ h1 { margin: 0 0 14px; font-size: clamp(1.9rem, 4.1vw, 2.65rem); line-height: 1.
 .mobile-break { display: none; }
 .service-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; padding: 0; margin: 17px 0 0; color: #3f526f; font-size: .875rem; }
 .service-facts li::before { content: "✓ "; color: #2556d9; }
+.startup-notice { padding: 18px 20px; margin-bottom: 24px; border: 1px solid #bdc9dc; border-radius: 12px; background: #fff; overflow-wrap: anywhere; }
+.startup-notice h2 { margin: 0 0 8px; font-size: 1.1rem; }
+.startup-notice p { margin: 8px 0; }
+.startup-notice .help { margin-bottom: 0; }
+.form-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
 .sample-preview { margin-bottom: 24px; border: 1px solid #bdc9dc; border-radius: 12px; background: #fff; }
 .sample-preview > summary { padding: 15px 20px; color: #254fbc; font-size: .9375rem; font-weight: 650; }
 .sample-preview > summary span { margin-left: 9px; color: var(--muted); font-size: .8125rem; font-weight: 400; }

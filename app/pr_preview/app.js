@@ -359,3 +359,4 @@ for (const input of form.querySelectorAll('input[name="focus"]')) {
     if (lastReport && !results.hidden) render(lastReport.pull, lastReport.report, lastReport.options);
   });
 }
+document.dispatchEvent(new Event("review-ready"));
